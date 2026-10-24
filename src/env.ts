@@ -35,6 +35,7 @@ const baseSchema = z.object({
   ALLOW_MOCK_IN_PROD: bool,
   MOCK_LATENCY_MS: z.coerce.number().int().min(0).default(200),
   MOCK_FAILURE_RATE: z.coerce.number().min(0).max(1).default(0),
+  AUDIT_POLL_SECONDS: z.coerce.number().int().min(1).default(10),
   MOCK_AUDIT_SECONDS: z.coerce.number().int().min(0).default(20),
   MONTHLY_PROVIDER_BUDGET_USD: z.coerce.number().min(0).default(50),
 

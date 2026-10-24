@@ -1,4 +1,5 @@
 import "server-only";
+import { getEnv } from "@/env";
 import type { EmailMessage } from "@/server/providers/email/types";
 import { jobIds } from "./config";
 import { getQueue } from "./queues";
@@ -37,6 +38,37 @@ export async function enqueueProcessTask(taskId: string): Promise<void> {
     await existing.remove();
   }
   await queue.add("process-task", { taskId }, { jobId });
+}
+
+export type AuditJobData = { auditId: string; agencyId: string; attempt?: number };
+
+/** Queues the first step of an audit: asking the provider to start crawling. */
+export async function enqueueAuditRun(data: AuditJobData): Promise<void> {
+  await getQueue("audits").add("run", data, { jobId: jobIds.auditRun(data.auditId) });
+}
+
+/** Queues the next progress check, 10 seconds from now by default. */
+export async function enqueueAuditPoll(
+  data: AuditJobData & { attempt: number },
+  delayMs = getEnv().AUDIT_POLL_SECONDS * 1000,
+): Promise<void> {
+  await getQueue("audits").add("poll", data, {
+    delay: delayMs,
+    jobId: jobIds.auditPoll(data.auditId, data.attempt),
+  });
+}
+
+/** Queues a monthly audit for a project. Returns false if it was already queued this month. */
+export async function enqueueAutoAudit(data: {
+  agencyId: string;
+  projectId: string;
+  month: string;
+}): Promise<boolean> {
+  const queue = getQueue("audits");
+  const jobId = jobIds.auditAuto(data.projectId, data.month);
+  if (await queue.getJob(jobId)) return false;
+  await queue.add("auto", data, { jobId, attempts: 1 });
+  return true;
 }
 
 export type CheckNowJobData = {

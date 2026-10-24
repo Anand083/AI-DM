@@ -42,6 +42,7 @@ export function ProjectForm({
       languageCode: "en",
       device: "DESKTOP",
       rankCheckFrequency: "DAILY",
+      autoAudit: false,
     },
   });
 
@@ -111,6 +112,10 @@ export function ProjectForm({
             <option value="DAILY">Every day</option>
             <option value="WEEKLY">Every week</option>
           </Select>
+        </div>
+        <div className="flex items-center gap-2 sm:col-span-2">
+          <input id="autoAudit" type="checkbox" className="size-4" {...register("autoAudit")} />
+          <Label htmlFor="autoAudit">Run a site audit automatically every month</Label>
         </div>
       </div>
       <div className="flex gap-2">

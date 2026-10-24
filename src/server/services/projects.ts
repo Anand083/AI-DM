@@ -28,6 +28,7 @@ const projectSelect = {
   languageCode: true,
   device: true,
   rankCheckFrequency: true,
+  autoAudit: true,
   createdAt: true,
   client: { select: { id: true, name: true, status: true } },
 } satisfies Prisma.ProjectSelect;

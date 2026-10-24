@@ -155,6 +155,9 @@ model Agency {
   providerTasks PendingProviderTask[]
   keywords      Keyword[]
   rankChecks    RankCheck[]
+  audits        Audit[]
+  auditPages    AuditPage[]
+  auditIssues   AuditIssue[]
 
   @@index([status, deletedAt])
 }
@@ -239,6 +242,8 @@ model Project {
   device             Device             @default(DESKTOP)
   rankCheckFrequency RankCheckFrequency @default(DAILY)
   rankCheckHourUtc   Int                @default(3)
+  /// Run a site audit on its own once a month.
+  autoAudit          Boolean            @default(false)
   deletedAt          DateTime?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -246,6 +251,7 @@ model Project {
   agency   Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   keywords Keyword[]
+  audits   Audit[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -350,6 +356,85 @@ model RankCheck {
 
   @@unique([keywordId, date])
   @@index([agencyId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Site audits
+// ---------------------------------------------------------------------------
+
+enum AuditStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum IssueSeverity {
+  CRITICAL
+  WARNING
+  NOTICE
+}
+
+model Audit {
+  id             String      @id @default(cuid(2))
+  agencyId       String
+  projectId      String
+  status         AuditStatus @default(QUEUED)
+  providerTaskId String?
+  /// 0 to 100 while running.
+  progress       Int         @default(0)
+  maxPages       Int
+  pagesCrawled   Int         @default(0)
+  /// 0 to 100, set when the audit completes.
+  healthScore    Int?
+  /// { critical, warning, notice, byCode: { code: count } }
+  counts         Json?
+  requestedById  String?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  error          String?
+  createdAt      DateTime    @default(now())
+
+  agency  Agency       @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pages   AuditPage[]
+  issues  AuditIssue[]
+
+  @@index([agencyId, projectId, createdAt])
+  @@index([status, createdAt])
+}
+
+model AuditPage {
+  id         String  @id @default(cuid(2))
+  agencyId   String
+  auditId    String
+  url        String
+  statusCode Int
+  title      String?
+  loadTimeMs Int
+  wordCount  Int
+  issueCount Int
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  audit  Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, auditId, issueCount])
+}
+
+model AuditIssue {
+  id       String        @id @default(cuid(2))
+  agencyId String
+  auditId  String
+  code     String
+  severity IssueSeverity
+  url      String
+  details  Json?
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  audit  Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, auditId, code])
+  @@index([agencyId, auditId, severity])
 }
 
 // ---------------------------------------------------------------------------

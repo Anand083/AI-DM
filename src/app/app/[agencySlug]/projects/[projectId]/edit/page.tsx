@@ -29,6 +29,7 @@ export default async function EditProjectPage({
           languageCode: project.languageCode,
           device: project.device,
           rankCheckFrequency: project.rankCheckFrequency,
+          autoAudit: project.autoAudit,
         }}
       />
       {can(ctx.role, "content.delete") ? (

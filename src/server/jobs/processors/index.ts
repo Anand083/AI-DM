@@ -2,6 +2,10 @@ import "server-only";
 import type { Job } from "bullmq";
 import { db, rawDb } from "@/server/db/client";
 import { AppError } from "@/server/services/errors";
+import { ProviderError } from "@/server/providers/seo/errors";
+import { createAudit } from "@/server/services/audits";
+import { failAudit, pollAudit, runAuditStart } from "@/server/services/audit-runner";
+import { runAuditScheduler } from "@/server/jobs/system/audit-scheduler";
 import { runProjectRankCheck } from "@/server/services/rank-checks";
 import { getSeoGateway } from "@/server/services/seo-gateway-instance";
 import { getEnv } from "@/env";
@@ -13,7 +17,12 @@ import { getBudget } from "@/server/services/budget-instance";
 import { pollProviderTasks, processProviderTask } from "@/server/services/provider-tasks";
 import { getEmailProvider } from "@/server/providers/email";
 import type { EmailJobData } from "@/server/jobs/enqueue";
-import { enqueueProcessTask, enqueueRankCheck } from "@/server/jobs/enqueue";
+import {
+  enqueueAuditPoll,
+  enqueueAutoAudit,
+  enqueueProcessTask,
+  enqueueRankCheck,
+} from "@/server/jobs/enqueue";
 import type { JobProcessors } from "@/server/jobs/runtime";
 import { purgeExpired } from "@/server/jobs/system/purge";
 import { runRankCheckScheduler } from "@/server/jobs/system/scheduler";
@@ -43,7 +52,14 @@ export const processors: JobProcessors = {
           paused: async () => budget.state === "paused",
         });
         logger.info(result, "rank check scheduler tick");
-        return result;
+        const audits = await runAuditScheduler({
+          db: rawDb,
+          now: new Date(),
+          enqueue: enqueueAutoAudit,
+          paused: async () => budget.state === "paused",
+        });
+        if (audits.queued > 0) logger.info(audits, "monthly audits queued");
+        return { ...result, audits };
       }
       case "purge:expired": {
         const result = await purgeExpired(rawDb);
@@ -83,7 +99,58 @@ export const processors: JobProcessors = {
       throw error;
     }
   },
-  audits: placeholder("audits", "Step 11"),
+  audits: async (job) => {
+    const deps = { db, gateway: getSeoGateway(), enqueuePoll: enqueueAuditPoll };
+    const data = job.data as {
+      auditId?: string;
+      agencyId: string;
+      projectId?: string;
+      attempt?: number;
+    };
+    try {
+      switch (job.name) {
+        case "run":
+          return await runAuditStart(deps, { auditId: data.auditId!, agencyId: data.agencyId });
+        case "poll":
+          return await pollAudit(deps, {
+            auditId: data.auditId!,
+            agencyId: data.agencyId,
+            attempt: data.attempt ?? 1,
+          });
+        case "auto":
+          // The monthly audit. Plan limits or a running audit are not errors worth retrying.
+          try {
+            await createAudit({ agencyId: data.agencyId }, data.projectId!, null);
+          } catch (error) {
+            if (!(error instanceof AppError)) throw error;
+            logger.info(
+              { projectId: data.projectId, message: error.message },
+              "monthly audit skipped",
+            );
+          }
+          return;
+        default:
+          logger.warn({ name: job.name }, "unknown audits job");
+      }
+    } catch (error) {
+      if (!data.auditId) throw error;
+      // Known problems end the audit now. Other problems are retried, and the audit is only
+      // marked failed on the last try.
+      if (error instanceof AppError || (error instanceof ProviderError && !error.retryable)) {
+        await failAudit(db, data.agencyId, data.auditId, error.message);
+        return { error: error.message };
+      }
+      if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) {
+        await failAudit(
+          db,
+          data.agencyId,
+          data.auditId,
+          "The audit could not be completed. Please try again.",
+        );
+      }
+      throw error;
+    }
+  },
   reports: placeholder("reports", "Step 15"),
   alerts: placeholder("alerts", "Step 13"),
   "provider-tasks": async (job) => {

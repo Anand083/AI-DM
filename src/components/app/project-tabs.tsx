@@ -9,6 +9,7 @@ export function ProjectTabs({ base, canEdit }: { base: string; canEdit: boolean 
   const tabs = [
     { label: "Overview", href: base },
     { label: "Rankings", href: `${base}/rankings` },
+    { label: "Audit", href: `${base}/audit` },
     ...(canEdit ? [{ label: "Settings", href: `${base}/edit` }] : []),
   ];
   return (

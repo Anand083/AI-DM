@@ -36,6 +36,8 @@ export default defineConfig({
     {
       // The worker sends emails (and runs all other background jobs).
       command: "pnpm worker",
+      // Quick audits for tests: 3 seconds of fake crawling, checked every 2 seconds.
+      env: { MOCK_AUDIT_SECONDS: "3", AUDIT_POLL_SECONDS: "2" },
       wait: { stdout: /worker started/ },
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,

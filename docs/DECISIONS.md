@@ -137,3 +137,15 @@
 - `pnpm mock:backfill --days 90 [--agency slug]` creates fake history from the mock provider. It refuses to run in production and is used by the E2E test.
 - Recharts is used for the position chart (axis reversed, gaps for "not ranking"). The chart has a text summary and a "Show the numbers" table for screen readers.
 - `runProjectRankCheck` and `refreshKeywordSnapshots` take the tenant-guarded client, so even worker code is checked by the tenant guard.
+
+## Step 11
+
+- Audit lifecycle: `Audit` row QUEUED, then the worker job `run` asks the provider to start (RUNNING, task id saved) and queues a delayed job `poll` every `AUDIT_POLL_SECONDS` (default 10). Each poll updates progress; on "completed" the result is fetched through the gateway (usage: one `AUDIT_PAGE` unit per crawled page, written once), pages and issues are saved in one transaction (a retry starts from a clean slate), the health score is calculated and the audit becomes COMPLETED. After 360 polls (1 hour) the audit is marked FAILED.
+- Errors: plan or budget messages and non-retryable provider errors fail the audit at once with a readable message. Temporary errors are retried (3 tries); only the last failure marks the audit FAILED with a generic message.
+- Page limit per audit = what the plan still allows this month, capped at 500 (`MAX_PAGES_PER_AUDIT`). If nothing is left, starting is refused with an upgrade message. One audit at a time per project.
+- Health score = the plan's formula, rounded; bands: 80+ Good, 50 to 79 Needs work, below 50 Poor (shown as a word, not only a colour).
+- Comparison: an issue is the same when code and page address match. "Compared with" uses the last COMPLETED audit of the project before this one.
+- At most 20,000 issues are stored per audit.
+- Monthly audits: `Project.autoAudit` (checkbox in project settings). The 15-minute tick queues an `auto` job for projects with no audit yet this calendar month (job id has the month, so once per month). Plan limits or a running audit make it skip quietly. Paused budget skips too.
+- Issue text lives in `src/server/audit/issue-catalog.ts` in plain English; a test checks all 23 codes have text and the same severity as the provider list.
+- Tests: the Playwright worker runs with `MOCK_AUDIT_SECONDS=3` and `AUDIT_POLL_SECONDS=2` so an audit finishes in seconds.

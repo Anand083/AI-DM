@@ -20,6 +20,9 @@ export const TENANT_MODELS = new Set([
   "PendingProviderTask",
   "Keyword",
   "RankCheck",
+  "Audit",
+  "AuditPage",
+  "AuditIssue",
 ]);
 
 const WHERE_OPERATIONS = new Set([

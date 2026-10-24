@@ -28,6 +28,7 @@ export const projectSchema = z.object({
   languageCode: z.string().refine((v) => LANGUAGE_CODES.has(v), "Choose a language from the list."),
   device: z.enum(["DESKTOP", "MOBILE"]),
   rankCheckFrequency: z.enum(["DAILY", "WEEKLY"]),
+  autoAudit: z.boolean().default(false),
 });
 
 export type ProjectInput = z.output<typeof projectSchema>;
