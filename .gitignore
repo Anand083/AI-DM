@@ -43,3 +43,5 @@ next-env.d.ts
 /storage
 /test-results
 /playwright-report
+dump.rdb
+*.rdb
