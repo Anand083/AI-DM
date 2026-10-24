@@ -14,13 +14,15 @@
     "test:integration": "vitest run tests/integration --passWithNoTests",
     "test:e2e": "playwright test",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "echo \"db:seed: added in Step 2\"",
+    "db:seed": "prisma db seed",
     "worker:dev": "echo \"worker:dev: added in Step 8\"",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@paralleldrive/cuid2": "^3.3.0",
     "@prisma/client": "^6.19.3",
+    "better-auth": "^1.7.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "ioredis": "^6.0.0",
@@ -53,5 +55,8 @@
     "typescript": "^5",
     "vitest": "^5.0.5"
   },
-  "packageManager": "pnpm@10.28.0"
+  "packageManager": "pnpm@10.28.0",
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
 }
