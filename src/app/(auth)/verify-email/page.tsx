@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { safeNext } from "@/lib/safe-next";
 import { ResendVerification } from "@/components/auth/resend-verification";
 
 export const metadata: Metadata = { title: "Check your email" };
@@ -30,7 +31,7 @@ export default async function VerifyEmailPage({
         </Link>
       }
     >
-      {email ? <ResendVerification email={email} /> : null}
+      {email ? <ResendVerification email={email} next={safeNext(params.next)} /> : null}
     </AuthShell>
   );
 }

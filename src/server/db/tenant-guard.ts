@@ -57,6 +57,10 @@ function hasAgencyValue(v: unknown): boolean {
 function whereHasAgency(where: unknown): boolean {
   if (!isObj(where)) return false;
   if (hasAgencyValue(where.agencyId)) return true;
+  // Compound unique keys such as { agencyId_userId: { agencyId, userId } }.
+  for (const [key, value] of Object.entries(where)) {
+    if (key.includes("_") && isObj(value) && hasAgencyValue(value.agencyId)) return true;
+  }
   const and = where.AND;
   const parts = Array.isArray(and) ? and : and === undefined ? [] : [and];
   return parts.some(whereHasAgency);

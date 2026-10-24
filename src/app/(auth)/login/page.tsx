@@ -2,14 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { LoginForm } from "@/components/auth/login-form";
+import { safeNext } from "@/lib/safe-next";
 
 export const metadata: Metadata = { title: "Sign in" };
-
-/** Only allow paths inside the app, so a link cannot send people to another site. */
-function safeNext(value: string | string[] | undefined): string {
-  const next = Array.isArray(value) ? value[0] : value;
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/app";
-}
 
 export default async function LoginPage({
   searchParams,

@@ -9,14 +9,17 @@ import { authClient } from "@/lib/auth-client";
 import { signupSchema, type SignupValues } from "@/lib/auth-schemas";
 import { zodResolver } from "@/lib/form";
 
-export function SignupForm() {
+export function SignupForm({ next, defaultEmail }: { next: string; defaultEmail?: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<SignupValues>({ resolver: zodResolver(signupSchema) });
+  } = useForm<SignupValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { email: defaultEmail ?? "" },
+  });
 
   async function onSubmit(values: SignupValues) {
     setError(null);
@@ -24,10 +27,12 @@ export function SignupForm() {
     const { error: signUpError } = await authClient.signUp.email({
       ...values,
       timezone,
-      callbackURL: "/app",
+      callbackURL: next,
     });
     if (!signUpError) {
-      router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
+      router.push(
+        `/verify-email?email=${encodeURIComponent(values.email)}&next=${encodeURIComponent(next)}`,
+      );
       return;
     }
     if (signUpError.status === 429) {

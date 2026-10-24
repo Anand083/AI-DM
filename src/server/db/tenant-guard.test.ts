@@ -32,6 +32,26 @@ describe("assertTenantScoped", () => {
     ).not.toThrow();
   });
 
+  it("accepts agencyId inside a compound unique key", () => {
+    expect(() =>
+      assertTenantScoped("AgencyMember", "findUnique", {
+        where: { agencyId_userId: { agencyId: A, userId: "u1" } },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertTenantScoped("ClientUser", "upsert", {
+        where: { clientId_userId: { clientId: "c", userId: "u" }, agencyId: A },
+        create: { agencyId: A, clientId: "c", userId: "u" },
+        update: {},
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertTenantScoped("ClientUser", "findUnique", {
+        where: { clientId_userId: { clientId: "c", userId: "u" } },
+      }),
+    ).toThrow();
+  });
+
   it("accepts agencyId inside AND", () => {
     expect(() =>
       assertTenantScoped("Client", "findMany", {

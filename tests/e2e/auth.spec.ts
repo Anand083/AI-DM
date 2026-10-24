@@ -22,8 +22,7 @@ test("sign up, confirm email from the inbox, sign in and sign out", async ({ pag
   const mail = await waitForEmail(email, /confirm/i);
   const link = extractLink(mail, /verify-email/);
   await page.goto(link);
-  await expect(page).toHaveURL(/\/app/);
-  await expect(page.getByRole("heading", { name: /Welcome, Test Person/ })).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/onboarding/);
 
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login/);

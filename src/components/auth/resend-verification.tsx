@@ -5,12 +5,12 @@ import { FormMessage } from "@/components/auth/field";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
-export function ResendVerification({ email }: { email: string }) {
+export function ResendVerification({ email, next }: { email: string; next: string }) {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   async function resend() {
     setState("sending");
-    const { error } = await authClient.sendVerificationEmail({ email, callbackURL: "/app" });
+    const { error } = await authClient.sendVerificationEmail({ email, callbackURL: next });
     setState(error ? "error" : "sent");
   }
 

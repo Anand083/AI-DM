@@ -40,3 +40,16 @@
 - Turned off `cacheComponents` and `partialPrefetching` (enabled by the Next 16 starter). The plan does not use them and they force Suspense around all dynamic data.
 - 2FA plugin is in the plan's stack, but no step lists a 2FA screen, so it is not built yet. Ask the founder when it is wanted.
 - `scripts/mail-sink.ts` is a small Mailpit-compatible mail catcher for machines without Docker. Mailpit stays the tool in docker-compose and CI. The cloud sandbox blocked downloading the Mailpit binary, so this was used for local E2E runs.
+
+## Step 4
+
+- Roles: Owner, Admin, Member, Client (plan section 8). `scopeOf()` returns all/own/none; "own" for clients must be enforced by the caller with `ctx.clientIds` (Step 17). `canManageMember()` holds the "admins cannot touch owners" rule.
+- Team invites can only give ADMIN or MEMBER. Owners are never invited. Nobody can change their own role or remove themselves. An owner can remove another owner, and the last owner cannot be removed.
+- Invitation links hold a 32 byte random token. Only its SHA-256 hash is stored. Resend replaces the token, so the old link stops working. Accepting needs a verified user whose email matches the invited email, works once (race safe) and expires after 7 days.
+- Two reads use the plain client on purpose, because they cannot name one agency up front: `listUserAgencies(userId)` and the invitation lookup by secret token. Everything after the lookup uses the guarded client with `agencyId`.
+- The tenant guard now accepts compound unique keys that contain `agencyId` (for example `agencyId_userId`).
+- After email confirmation, users return to the page they came from (`next`), which is how invited people land back on their invitation.
+- `withTenantAction(config, handler)` order: signed in and verified, tenant context (else "Not found."), `can()`, Zod input, handler. Known errors become messages, unknown errors are logged and hidden.
+- Trial: STARTER, 14 days, mock provider. Plan limit checks (team size etc.) arrive in Step 9.
+- Vitest is split into `unit` and `integration` projects, so unit tests do not need a database. `vitest.config.mts` avoids a Vite warning.
+- The basic agency frame (header, switcher, sign out) is temporary; Step 5 builds the real shell.
