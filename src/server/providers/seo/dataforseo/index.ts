@@ -1,5 +1,8 @@
+import { logger } from "@/server/logger";
 import { NotImplementedError } from "../errors";
 import { estimateCostMicros } from "../pricing";
+import { DataForSeoClient } from "./client";
+import { mapTasksReady, mapUserData } from "./mappers";
 import type {
   AiEngine,
   AiVisibilityResult,
@@ -23,11 +26,50 @@ import type {
  * `testConnection()`; Step 8c implements the rest against the free sandbox.
  * Vendor response shapes will be mapped to our own types in `./mappers`.
  */
+export type DataForSeoOptions = { login: string; password: string; baseUrl: string };
+
+/** Paths that list finished tasks, per operation. Audit tasks are checked with the summary call instead (Step 8c). */
+export const TASKS_READY_PATH: Record<string, string> = {
+  rankings: "/v3/serp/google/organic/tasks_ready",
+  reviews: "/v3/business_data/google/reviews/tasks_ready",
+};
+
 export class DataForSeoProvider implements SeoDataProvider {
   readonly name = "dataforseo" as const;
+  readonly client: DataForSeoClient;
 
-  testConnection(): Promise<{ ok: boolean; balanceUsd?: number; message?: string }> {
-    throw new NotImplementedError("DataForSEO testConnection");
+  constructor(options: DataForSeoOptions & { client?: DataForSeoClient }) {
+    this.client =
+      options.client ??
+      new DataForSeoClient({
+        login: options.login,
+        password: options.password,
+        baseUrl: options.baseUrl,
+        logger,
+      });
+  }
+
+  /** Free call that checks the login and returns the account balance. */
+  async testConnection(): Promise<{ ok: boolean; balanceUsd?: number; message?: string }> {
+    try {
+      const { response } = await this.client.get<{ login?: string; money?: { balance?: number } }>(
+        "/v3/appendix/user_data",
+      );
+      return mapUserData(response);
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : "Could not reach DataForSEO.",
+      };
+    }
+  }
+
+  /** Ids of finished tasks for an operation (used by the poll job). Returns [] if the operation has no such call. */
+  async listReadyTaskIds(operation: string): Promise<string[]> {
+    const path = TASKS_READY_PATH[operation];
+    if (!path) return [];
+    const { response } = await this.client.get<{ id: string; tag?: string }>(path);
+    return mapTasksReady(response).map((task) => task.id);
   }
   getRankings(_i: {
     domain: string;

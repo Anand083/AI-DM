@@ -47,3 +47,17 @@ describe("health check with real services", () => {
     expect(report.checks.redis.ok).toBe(false);
   });
 });
+
+describe("GET /api/health", () => {
+  it("returns ok and the provider status, without error details", async () => {
+    const { GET } = await import("@/app/api/health/route");
+    const response = await GET();
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toEqual({
+      ok: true,
+      checks: { database: { ok: true }, redis: { ok: true } },
+      providers: { mock: { ok: true } },
+    });
+  });
+});

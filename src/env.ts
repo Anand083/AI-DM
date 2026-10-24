@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseOverrides, providersInUse } from "@/server/providers/seo/overrides";
 
 const bool = z
   .enum(["true", "false"])
@@ -27,7 +28,10 @@ const baseSchema = z.object({
   AUTH_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).default(900),
 
   SEO_PROVIDER: z.enum(["mock", "dataforseo"]).default("mock"),
-  SEO_PROVIDER_OVERRIDES: optionalString,
+  SEO_PROVIDER_OVERRIDES: optionalString.superRefine((value, ctx) => {
+    for (const problem of parseOverrides(value).problems)
+      ctx.addIssue({ code: "custom", message: problem });
+  }),
   ALLOW_MOCK_IN_PROD: bool,
   MOCK_LATENCY_MS: z.coerce.number().int().min(0).default(200),
   MOCK_FAILURE_RATE: z.coerce.number().min(0).max(1).default(0),
@@ -66,13 +70,17 @@ export type Env = z.infer<typeof baseSchema>;
 /** Extra rules that only apply in production. Returns one message per problem. */
 function productionProblems(env: Env): [string, string][] {
   const problems: [string, string][] = [];
-  if (env.SEO_PROVIDER === "mock" && !env.ALLOW_MOCK_IN_PROD) {
+  const used = providersInUse(
+    env.SEO_PROVIDER,
+    parseOverrides(env.SEO_PROVIDER_OVERRIDES).overrides,
+  );
+  if (used.has("mock") && !env.ALLOW_MOCK_IN_PROD) {
     problems.push([
       "SEO_PROVIDER",
       "the mock provider is not allowed in production unless ALLOW_MOCK_IN_PROD=true",
     ]);
   }
-  if (env.SEO_PROVIDER === "dataforseo" && (!env.DATAFORSEO_LOGIN || !env.DATAFORSEO_PASSWORD)) {
+  if (used.has("dataforseo") && (!env.DATAFORSEO_LOGIN || !env.DATAFORSEO_PASSWORD)) {
     problems.push(["DATAFORSEO_LOGIN", "DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD are required"]);
   }
   if (env.BETTER_AUTH_SECRET.startsWith("change-me")) {

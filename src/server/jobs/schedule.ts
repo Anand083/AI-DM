@@ -18,7 +18,7 @@ export function weeklyDay(projectId: string): number {
 
 /**
  * Is this project's rank check due at `now`? A project is due once its scheduled time today has
- * passed. The scheduler runs every 15 minutes, and the job id (`rank:<project>:<date>`) makes
+ * passed. The scheduler runs every 15 minutes, and the job id (`rank_<project>_<date>`) makes
  * sure a project is only queued once per day, so a missed tick is caught up on the next one.
  */
 export function isRankCheckDue(project: SchedulableProject, now: Date): boolean {

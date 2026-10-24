@@ -1,4 +1,4 @@
-import { Queue, type Job } from "bullmq";
+import { Queue } from "bullmq";
 import IORedis from "ioredis";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { redisConnectionOptions, type QueueName } from "@/server/jobs/config";

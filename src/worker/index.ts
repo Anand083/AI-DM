@@ -37,6 +37,12 @@ async function main(): Promise<void> {
     { pattern: "0 2 * * *", tz: "UTC" },
     { name: "purge:expired", opts: { attempts: 1 } },
   );
+  // Poll mode asks DataForSEO every 5 minutes. With callbacks the poll is only a safety net.
+  await getQueue("provider-tasks").upsertJobScheduler(
+    "provider-task-poll",
+    { every: (env.DATAFORSEO_CALLBACK_MODE === "poll" ? 5 : 30) * 60 * 1000 },
+    { name: "poll", opts: { attempts: 1 } },
+  );
   logger.info({ concurrency: env.WORKER_CONCURRENCY, prefix: env.QUEUE_PREFIX }, "worker started");
 
   let stopping = false;

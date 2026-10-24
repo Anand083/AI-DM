@@ -23,3 +23,18 @@ export async function enqueueRankCheck(data: RankCheckJobData): Promise<boolean>
   await queue.add("project", data, { jobId });
   return true;
 }
+
+/**
+ * Queues the job that processes a finished provider task. If an earlier job for the same task
+ * failed, it is replaced so the task is not stuck.
+ */
+export async function enqueueProcessTask(taskId: string): Promise<void> {
+  const queue = getQueue("provider-tasks");
+  const jobId = jobIds.providerTask(taskId);
+  const existing = await queue.getJob(jobId);
+  if (existing) {
+    if ((await existing.getState()) !== "failed") return;
+    await existing.remove();
+  }
+  await queue.add("process-task", { taskId }, { jobId });
+}

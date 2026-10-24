@@ -18,7 +18,12 @@ export default defineConfig({
     projects: [
       {
         ...shared,
-        test: { name: "unit", environment: "node", include: ["src/**/*.test.{ts,tsx}"] },
+        test: {
+          name: "unit",
+          environment: "node",
+          include: ["src/**/*.test.{ts,tsx}"],
+          setupFiles: ["tests/setup/env.ts"],
+        },
       },
       {
         ...shared,

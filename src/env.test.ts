@@ -31,6 +31,18 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ ...good, MOCK_FAILURE_RATE: "2" })).toThrow(/MOCK_FAILURE_RATE/);
   });
 
+  describe("SEO_PROVIDER_OVERRIDES", () => {
+    it("accepts a valid list and rejects a bad one", () => {
+      expect(
+        parseEnv({ ...good, SEO_PROVIDER_OVERRIDES: "rankings=dataforseo,audit=mock" })
+          .SEO_PROVIDER_OVERRIDES,
+      ).toBe("rankings=dataforseo,audit=mock");
+      expect(() => parseEnv({ ...good, SEO_PROVIDER_OVERRIDES: "rankings=nope" })).toThrow(
+        /SEO_PROVIDER_OVERRIDES/,
+      );
+    });
+  });
+
   describe("production", () => {
     const prod = {
       NODE_ENV: "production",
@@ -51,6 +63,26 @@ describe("parseEnv", () => {
       expect(() => parseEnv({ ...env, ENCRYPTION_KEY: "change-me-32-bytes" })).toThrow(
         /ENCRYPTION_KEY/,
       );
+    });
+
+    it("looks at overrides too: a mock override needs the flag, a DataForSEO override needs credentials", () => {
+      const real = {
+        ...prod,
+        SEO_PROVIDER: "dataforseo",
+        DATAFORSEO_LOGIN: "a",
+        DATAFORSEO_PASSWORD: "b",
+      };
+      expect(() => parseEnv(real)).not.toThrow();
+      expect(() => parseEnv({ ...real, SEO_PROVIDER_OVERRIDES: "audit=mock" })).toThrow(
+        /ALLOW_MOCK_IN_PROD/,
+      );
+      expect(() =>
+        parseEnv({
+          ...prod,
+          ALLOW_MOCK_IN_PROD: "true",
+          SEO_PROVIDER_OVERRIDES: "rankings=dataforseo",
+        }),
+      ).toThrow(/DATAFORSEO_LOGIN/);
     });
 
     it("requires DataForSEO credentials when that provider is chosen", () => {

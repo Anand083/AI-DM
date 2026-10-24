@@ -144,14 +144,15 @@ model Agency {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  members      AgencyMember[]
-  invitations  Invitation[]
-  clients      Client[]
-  clientUsers  ClientUser[]
-  projects     Project[]
-  subscription Subscription?
-  activityLogs ActivityLog[]
-  usageRecords UsageRecord[]
+  members       AgencyMember[]
+  invitations   Invitation[]
+  clients       Client[]
+  clientUsers   ClientUser[]
+  projects      Project[]
+  subscription  Subscription?
+  activityLogs  ActivityLog[]
+  usageRecords  UsageRecord[]
+  providerTasks PendingProviderTask[]
 
   @@index([status, deletedAt])
 }
@@ -324,6 +325,39 @@ model UsageRecord {
 
   @@index([agencyId, metric, createdAt])
   @@index([createdAt])
+}
+
+enum ProviderTaskStatus {
+  PENDING
+  READY
+  PROCESSED
+  FAILED
+}
+
+/// A job we sent to a provider that finishes later (for example a DataForSEO task).
+/// `tag` carries our own job id so we can match the provider's callback to our work.
+model PendingProviderTask {
+  id             String             @id @default(cuid(2))
+  agencyId       String
+  projectId      String?
+  provider       String
+  operation      String
+  providerTaskId String             @unique
+  tag            String
+  requestHash    String?
+  status         ProviderTaskStatus @default(PENDING)
+  attempts       Int                @default(0)
+  /// Result sent by a postback, or fetched later. Null until then.
+  result         Json?
+  error          String?
+  createdAt      DateTime           @default(now())
+  readyAt        DateTime?
+  processedAt    DateTime?
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([agencyId])
 }
 
 /// Shared cache of provider answers. SEO data is public, so it is shared between agencies.

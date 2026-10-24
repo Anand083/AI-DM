@@ -37,9 +37,15 @@ export function redisConnectionOptions(url: string): ConnectionOptions {
   };
 }
 
-/** Job ids make a job safe to add twice: BullMQ ignores a second job with the same id. */
+/**
+ * Job ids make a job safe to add twice: BullMQ ignores a second job with the same id.
+ * BullMQ does not allow ":" in custom ids (and rejects ids that are only digits), so ids use "_".
+ */
+const safe = (part: string) => part.replace(/[^A-Za-z0-9_-]/g, "_");
+
 export const jobIds = {
-  rankCheck: (projectId: string, date: string) => `rank:${projectId}:${date}`,
-  email: (key: string) => `email:${key}`,
-  maintenance: (name: string, date: string) => `maintenance:${name}:${date}`,
+  rankCheck: (projectId: string, date: string) => `rank_${safe(projectId)}_${date}`,
+  email: (key: string) => `email_${safe(key)}`,
+  providerTask: (taskId: string) => `ptask_${safe(taskId)}`,
+  maintenance: (name: string, date: string) => `maintenance_${safe(name)}_${date}`,
 };

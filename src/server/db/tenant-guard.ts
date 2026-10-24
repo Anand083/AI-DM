@@ -17,6 +17,7 @@ export const TENANT_MODELS = new Set([
   "Subscription",
   "ActivityLog",
   "UsageRecord",
+  "PendingProviderTask",
 ]);
 
 const WHERE_OPERATIONS = new Set([

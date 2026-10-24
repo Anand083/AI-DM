@@ -12,7 +12,7 @@ export type SchedulerDeps = {
 
 /**
  * Adds a rank check job for every project that is due. Safe to run often: the job id
- * (`rank:<project>:<date>`) means a project is queued once per day.
+ * (`rank_<project>_<date>`) means a project is queued once per day.
  */
 export async function runRankCheckScheduler(
   deps: SchedulerDeps,
