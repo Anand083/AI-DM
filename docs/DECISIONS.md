@@ -28,3 +28,15 @@
 - Plan prices are placeholders (Starter $49, Growth $149, Agency $399 per month, yearly = 10 months). Editable later in admin.
 - Better Auth tables (Session, Account, Verification) are in the schema now; Step 3 may add the 2FA table.
 - Integration tests run `prisma migrate deploy` on the test DB once (vitest global setup) and run files one at a time.
+
+## Step 3
+
+- Better Auth 1.7 with the Prisma adapter, DB sessions, `requireEmailVerification: true` (unverified users cannot sign in), min password length 10, reset link valid 1 hour, sessions revoked after a password reset. Ids come from cuid2.
+- Rate limiting is our own Redis fixed-window limiter (`src/server/rate-limit.ts`) run from a Better Auth `before` hook, per IP and per email. Defaults 5 per 15 minutes (`AUTH_RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_WINDOW_SECONDS`; the E2E server raises the max). If Redis is down the check is skipped and logged, so people are not locked out. IP comes from `x-forwarded-for`, so Caddy must set it (Step 33).
+- The forgot-password page always says "if an account exists", so it does not reveal which emails are registered.
+- Emails are sent inside the request for now. The plan says emails go through the worker; this moves to a BullMQ job in Step 8.
+- `@types/nodemailer` added as a dev dependency (types only). `react-hook-form` is used with a small own Zod resolver (`src/lib/form.ts`) instead of the extra resolvers package.
+- `src/proxy.ts` (Next 16 name for middleware) only checks that a session cookie exists for `/app/*`. The real check is `requireUser()` in pages and actions.
+- Turned off `cacheComponents` and `partialPrefetching` (enabled by the Next 16 starter). The plan does not use them and they force Suspense around all dynamic data.
+- 2FA plugin is in the plan's stack, but no step lists a 2FA screen, so it is not built yet. Ask the founder when it is wanted.
+- `scripts/mail-sink.ts` is a small Mailpit-compatible mail catcher for machines without Docker. Mailpit stays the tool in docker-compose and CI. The cloud sandbox blocked downloading the Mailpit binary, so this was used for local E2E runs.

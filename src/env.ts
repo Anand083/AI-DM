@@ -23,6 +23,8 @@ const baseSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32, "must be at least 32 characters"),
   BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
   COOKIE_SECURE: bool,
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(5),
+  AUTH_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).default(900),
 
   SEO_PROVIDER: z.enum(["mock", "dataforseo"]).default("mock"),
   SEO_PROVIDER_OVERRIDES: optionalString,
