@@ -38,3 +38,47 @@ export async function insertAlert(
     });
   });
 }
+
+const daysAgo = (n: number) =>
+  new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z").getTime() - n * 86_400_000;
+
+/** Adds keywords with two rank checks each (about 25 and 1 days ago), as the worker would over time. */
+export async function seedRankings(
+  agencySlug: string,
+  projectId: string,
+  rows: [phrase: string, before: number | null, after: number | null][],
+) {
+  return withDb(async (prisma) => {
+    const agency = await prisma.agency.findUniqueOrThrow({ where: { slug: agencySlug } });
+    for (const [phrase, before, after] of rows) {
+      const keyword = await prisma.keyword.create({
+        data: { agencyId: agency.id, projectId, phrase },
+      });
+      for (const [days, position] of [
+        [25, before],
+        [1, after],
+      ] as const) {
+        await prisma.rankCheck.create({
+          data: {
+            agencyId: agency.id,
+            keywordId: keyword.id,
+            date: new Date(daysAgo(days)),
+            position,
+            rankingUrl: position ? "https://shop.example/page" : null,
+            provider: "mock",
+          },
+        });
+      }
+    }
+  });
+}
+
+/** Moves the end of a report's share link, to test links that expired. */
+export async function expireShareLink(reportTitle: string) {
+  return withDb((prisma) =>
+    prisma.report.updateMany({
+      where: { title: reportTitle },
+      data: { shareExpiresAt: new Date(Date.now() - 60_000) },
+    }),
+  );
+}

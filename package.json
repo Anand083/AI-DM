@@ -15,18 +15,19 @@
     "test:e2e": "playwright test",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "worker:dev": "tsx watch --conditions=react-server src/worker/index.ts",
+    "worker:dev": "tsx watch --tsconfig tsconfig.worker.json src/worker/index.ts",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
-    "worker": "tsx --conditions=react-server src/worker/index.ts",
-    "queues:stats": "tsx --conditions=react-server scripts/queue-stats.ts",
-    "mock:backfill": "tsx --conditions=react-server scripts/mock-backfill.ts"
+    "worker": "tsx --tsconfig tsconfig.worker.json src/worker/index.ts",
+    "queues:stats": "tsx --tsconfig tsconfig.worker.json scripts/queue-stats.ts",
+    "mock:backfill": "tsx --tsconfig tsconfig.worker.json scripts/mock-backfill.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1156.0",
     "@paralleldrive/cuid2": "^3.3.0",
     "@prisma/client": "^6.19.3",
     "@react-email/components": "^1.0.12",
+    "@react-pdf/renderer": "^4.9.0",
     "@tanstack/react-table": "^8.21.3",
     "better-auth": "^1.7.12",
     "bullmq": "^6.4.2",

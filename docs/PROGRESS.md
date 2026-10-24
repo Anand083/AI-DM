@@ -21,5 +21,6 @@
 | 12 Keyword research | Done | search with filters and sparkline, saved lists, add to rank tracker, CSV; repeat searches are free; tests pass |
 | 13 Dashboards and alerts | Done | agency dashboard, 3 alert rules with settings, bell + alerts page, daily digest; unit + integration + E2E pass |
 | 14 Branding | Done | name, logo (checked + resized), colours with contrast warnings, live preview, storage provider; unit + integration + E2E pass |
+| 15 Reports | Done | builder (period, sections, notes), pure assembler, mock summary, PDF (SVG chart) built in the worker, web view, authorized download, public share link with expiry and revoke, noindex; unit + integration + E2E pass |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).

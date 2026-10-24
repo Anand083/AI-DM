@@ -95,3 +95,11 @@ export async function enqueueCheckNow(data: CheckNowJobData): Promise<string> {
   await getQueue("rank-checks").add("check-now", data, { jobId, attempts: 1 });
   return jobId;
 }
+
+/** Queues the worker job that builds a report (data, summary and PDF). */
+export async function enqueueReport(data: { reportId: string; agencyId: string }): Promise<void> {
+  await getQueue("reports").add("generate", data, {
+    jobId: jobIds.report(data.reportId),
+    attempts: 2,
+  });
+}

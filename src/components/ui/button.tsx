@@ -18,6 +18,11 @@ const buttonVariants = cva(
   },
 );
 
+/** The same look for links that should look like buttons. */
+export function buttonClasses(variant?: VariantProps<typeof buttonVariants>["variant"]): string {
+  return buttonVariants({ variant });
+}
+
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants>;
 

@@ -25,19 +25,13 @@ import {
   enqueueProcessTask,
   enqueueRankCheck,
 } from "@/server/jobs/enqueue";
+import { generateReport } from "@/server/services/report-generator";
 import { runDigestScheduler, sendDigest } from "@/server/services/alert-digest";
 import type { JobProcessors } from "@/server/jobs/runtime";
 import { purgeExpired } from "@/server/jobs/system/purge";
 import { runRankCheckScheduler } from "@/server/jobs/system/scheduler";
 
 type RankJobData = { projectId: string; agencyId: string; date: string; keywordIds?: string[] };
-
-/** Queues whose feature arrives in a later step. The job finishes and says so in the log. */
-function placeholder(queue: string, step: string) {
-  return async (job: Job) => {
-    logger.info({ queue, jobId: job.id, name: job.name }, `${queue} processor is built in ${step}`);
-  };
-}
 
 export const processors: JobProcessors = {
   emails: async (job: Job<EmailJobData>) => {
@@ -160,7 +154,16 @@ export const processors: JobProcessors = {
       throw error;
     }
   },
-  reports: placeholder("reports", "Step 15"),
+  reports: async (job) => {
+    if (job.name !== "generate") {
+      logger.warn({ name: job.name }, "unknown reports job");
+      return;
+    }
+    const { reportId, agencyId } = job.data as { reportId: string; agencyId: string };
+    return generateReport(agencyId, reportId, {
+      finalAttempt: job.attemptsMade + 1 >= (job.opts.attempts ?? 1),
+    });
+  },
   alerts: async (job) => {
     if (job.name !== "digest") {
       logger.warn({ name: job.name }, "unknown alerts job");

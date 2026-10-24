@@ -169,6 +169,7 @@ model Agency {
   keywordLists     KeywordList[]
   alerts           Alert[]
   branding         Branding?
+  reports          Report[]
   keywordListItems KeywordListItem[]
   auditPages       AuditPage[]
   auditIssues      AuditIssue[]
@@ -266,6 +267,7 @@ model Project {
   client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   keywords Keyword[]
   audits   Audit[]
+  reports  Report[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -375,6 +377,13 @@ model RankCheck {
 // ---------------------------------------------------------------------------
 // White label
 // ---------------------------------------------------------------------------
+
+enum ReportStatus {
+  QUEUED
+  GENERATING
+  READY
+  FAILED
+}
 
 enum CustomDomainStatus {
   NONE
@@ -674,4 +683,40 @@ model PlatformSetting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------
+
+model Report {
+  id             String       @id @default(cuid(2))
+  agencyId       String
+  projectId      String
+  title          String
+  status         ReportStatus @default(QUEUED)
+  /// YYYY-MM-DD in the agency time zone.
+  periodStart    DateTime     @db.Date
+  periodEnd      DateTime     @db.Date
+  /// Section keys, for example ["summary", "distribution"].
+  sections       String[]
+  notes          String?
+  /// The finished report data (the typed report model). Set when the report is ready.
+  data           Json?
+  /// Storage key of the PDF, and its size.
+  pdfKey         String?
+  pdfBytes       Int?
+  error          String?
+  /// Random token for the public share link. Null when sharing is off.
+  shareToken     String?      @unique
+  shareExpiresAt DateTime?
+  createdById    String?
+  generatedAt    DateTime?
+  createdAt      DateTime     @default(now())
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, createdAt])
+  @@index([agencyId, projectId, createdAt])
 }

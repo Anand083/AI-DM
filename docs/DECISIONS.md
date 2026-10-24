@@ -92,7 +92,7 @@
 ## Step 8
 
 - BullMQ 6 with plain connection options parsed from `REDIS_URL` (`maxRetriesPerRequest: null`, required by workers). Jobs: 3 attempts, exponential backoff starting at 5 s, completed jobs kept 24 h (max 5000), failed jobs kept 7 days. `QUEUE_PREFIX` (default `bull`) separates copies on one Redis; tests use their own prefix.
-- Worker (`src/worker/index.ts`) runs with `tsx --conditions=react-server`, which makes the `server-only` package a no-op outside Next.js. It loads `.env` itself (`src/server/load-env.ts`). SIGTERM/SIGINT: stop taking jobs, wait for running jobs, close queues.
+- Worker (`src/worker/index.ts`) runs with `tsx --tsconfig tsconfig.worker.json`, which maps the `server-only` package to an empty stub (the same stub Vitest uses). It first used `--conditions=react-server`, but that breaks `@react-pdf/renderer` (Step 15), which needs the normal React build. It loads `.env` itself (`src/server/load-env.ts`). SIGTERM/SIGINT: stop taking jobs, wait for running jobs, close queues.
 - All emails now go through the `emails` queue (`enqueueEmail`), so no web request waits for SMTP. The E2E setup therefore starts the worker too (second Playwright web server).
 - Scheduler: a repeating job on the `maintenance` queue every 15 minutes. A project is due once today's `rankCheckHourUtc` plus its own minute offset (hash of project id, 0 to 59) has passed; weekly projects are due on one weekday (hash of project id). The job id `rank_<projectId>_<yyyy-mm-dd>` means one job per project per day, and a missed tick is caught up on the next one. The scheduler reads all agencies' projects in batches of 500 with the plain DB client (system work).
 - Daily clean-up at 02:00 UTC removes expired cache rows, sessions and verification tokens, and clients, projects and agencies deleted more than 30 days ago (database cascades remove their data).
@@ -179,3 +179,18 @@
 - Colours must be hex (`#abc` or `#aabbcc`, stored as `#aabbcc`). Contrast is only a warning: the main colour is used as a background for white text and the accent colour as link text on white, and both need contrast of at least 4.5 with white (WCAG AA). Text on a brand colour is picked automatically (black or white).
 - `brandCssVars()` returns `--brand-primary`, `--brand-primary-text`, `--brand-accent`, `--brand-accent-text` for use in the portal, reports and client emails.
 - The agency app shows the logo next to the agency name in the sidebar.
+
+## Step 15
+
+- `Report` row per report: period (dates in the agency time zone), sections, notes, status (QUEUED, GENERATING, READY, FAILED), the finished report data (`data`, the typed `ReportModel`), the PDF key in storage, and the share token with its expiry. The web view and the PDF both draw from the same saved model, so they always agree, and a report does not change when rankings change later.
+- Periods: last 7 days and last 30 days end today (agency time zone) and include it; last month is the whole previous calendar month; custom dates cannot be in the future and cover at most 366 days.
+- Start and end positions: end is the last check on or before the last day. Start is the last check on or before the first day (up to 7 days earlier), or else the first check inside the period. One single check gives no change (a check is not compared with itself). Not ranking counts as 101 for changes, like everywhere else.
+- Assembler (`src/lib/report-assembler.ts`) is a pure function, no database or clock. Limits: 10 movers each way, 15 opportunities (positions 4 to 20), 10 issues, 500 keywords in the full rankings table.
+- Summary writer is a provider (`src/server/providers/summary`). Only the mock exists: fixed sentences built from the numbers, no cost. A real writer needs a decision and credentials, so it is left for later.
+- PDF: `@react-pdf/renderer` 4.9 with the built-in Helvetica font, bars drawn as SVG rectangles. The PDF author, creator and producer are the agency display name, never the platform. The package is ES-module only and the worker runs as CommonJS, so it is loaded with a dynamic `import()` inside `pdf.tsx`. WebP logos are converted to PNG with sharp before they are put in the PDF.
+- PDF tests read the text back with a small helper (`tests/helpers/pdf-text.ts`) that inflates the compressed streams and decodes the text operators, so no PDF library is added.
+- Generation runs in the `reports` queue (job id `report_<id>`, 2 tries). A failed first try is retried; the report is marked FAILED only after the last try.
+- Share link: a random 24-byte token stored on the report (not hashed, so the agency can see the link again). The link works until `shareExpiresAt` (7, 30 or 90 days). Creating the link again keeps the same token and moves the expiry; turning it off removes the token, so the old link never works again. Unknown, expired, turned-off and not-ready reports all give the same 404. The page, the PDF and the logo are served at `/r/<token>`, `/r/<token>/pdf`, `/r/<token>/logo`, with `noindex`, `no-store` and `no-referrer`.
+- Public pages set their own `<title>` (report title and agency name), so the platform name is not shown.
+- Reports are always drawn in light colors (they are documents), even when the agency app is in dark mode.
+- Permissions: create, share, revoke and delete need `reports.create`; viewing the list and downloading need `data.view` and `reports.download`.

@@ -27,6 +27,7 @@ export const TENANT_MODELS = new Set([
   "KeywordListItem",
   "Alert",
   "Branding",
+  "Report",
 ]);
 
 const WHERE_OPERATIONS = new Set([
