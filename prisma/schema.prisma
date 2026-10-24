@@ -151,6 +151,7 @@ model Agency {
   projects     Project[]
   subscription Subscription?
   activityLogs ActivityLog[]
+  usageRecords UsageRecord[]
 
   @@index([status, deletedAt])
 }
@@ -288,6 +289,54 @@ model Subscription {
 
   @@index([planId])
   @@index([status, currentPeriodEnd])
+}
+
+// ---------------------------------------------------------------------------
+// Provider usage and cache
+// ---------------------------------------------------------------------------
+
+enum UsageMetric {
+  RANK_CHECK
+  LIVE_CHECK
+  AUDIT_PAGE
+  KEYWORD_RESEARCH
+  BACKLINK_QUERY
+  COMPETITOR_QUERY
+  AI_CHECK
+  REVIEW_QUERY
+  LEAD_AUDIT
+}
+
+/// One row per paid (or mock) provider call. `costMicros` is in micro-dollars (1,000,000 = $1).
+model UsageRecord {
+  id          String      @id @default(cuid(2))
+  agencyId    String
+  projectId   String?
+  metric      UsageMetric
+  quantity    Int
+  costMicros  Int
+  provider    String
+  operation   String
+  requestHash String?
+  createdAt   DateTime    @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, metric, createdAt])
+  @@index([createdAt])
+}
+
+/// Shared cache of provider answers. SEO data is public, so it is shared between agencies.
+model ProviderCache {
+  id          String   @id @default(cuid(2))
+  provider    String
+  operation   String
+  requestHash String   @unique
+  response    Json
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([expiresAt])
 }
 
 // ---------------------------------------------------------------------------

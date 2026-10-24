@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   assertTenantScoped,
@@ -116,16 +118,16 @@ describe("assertTenantScoped", () => {
     ).not.toThrow();
   });
 
-  it("covers every tenant model in the schema", () => {
-    expect([...TENANT_MODELS].sort()).toEqual([
-      "ActivityLog",
-      "AgencyMember",
-      "Client",
-      "ClientUser",
-      "Invitation",
-      "Project",
-      "Subscription",
-    ]);
+  it("covers every model that has an agencyId column in the Prisma schema", () => {
+    const schema = readFileSync(
+      path.resolve(import.meta.dirname, "../../../prisma/schema.prisma"),
+      "utf8",
+    );
+    const withAgencyId = [...schema.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)]
+      .filter(([, , body]) => /^\s+agencyId\s+String\b/m.test(body!))
+      .map(([, name]) => name!)
+      .sort();
+    expect([...TENANT_MODELS].sort()).toEqual(withAgencyId);
   });
 });
 

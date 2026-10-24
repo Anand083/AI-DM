@@ -16,6 +16,7 @@ export const TENANT_MODELS = new Set([
   "Project",
   "Subscription",
   "ActivityLog",
+  "UsageRecord",
 ]);
 
 const WHERE_OPERATIONS = new Set([

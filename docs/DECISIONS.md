@@ -74,3 +74,17 @@
 - Locations/languages are fixed lists in `src/data` (41 countries, 21 languages). Codes are the Google Ads geo IDs DataForSEO uses; verify in Step 8c.
 - `rankCheckHourUtc` defaults to 3 and is not shown in the UI. The scheduler (Step 8) will spread projects across the hour.
 - Client users cannot call the agency client/project services (they get the portal in Step 17).
+
+## Step 7
+
+- Provider methods return `{ data, costMicros? }` instead of bare data (the plan shows bare data). This lets a real provider report the actual cost, which the gateway then saves. The mock leaves `costMicros` empty so the gateway uses the estimate.
+- Dates inside provider results are ISO strings, so results can be cached as JSON.
+- Mock rankings: each (domain, keyword, country, language, device) has a fixed base position (15/25/25/20/15% split). A day's position = base + the sum of the last 14 daily steps (mostly 0, sometimes 1 or 2) + any drop events of the last 7 days (2% of keywords per day drop 10 to 25 positions and recover a week later). Non-ranking keywords appear at 70 to 100 on about 5% of days. Everything is seeded, so results are repeatable and the web app and worker agree.
+- Mock audit keeps no state: the task id holds the start time, page limit and domain, so any process can answer status and result calls. Pages are 20 to 300, capped by `maxPages`. Issue codes live in `src/server/audit/issue-codes.ts`; Step 11 adds the titles and fix text.
+- Cache (`ProviderCache`) is shared across agencies because SEO data is public. Hash = sha256(provider, operation, normalized input, and the UTC date for rankings, AI and reviews). TTLs: rankings, AI and reviews until the end of the UTC day; keyword ideas 30 days; backlinks and ranked keywords 7 days; audit results 30 days. Expired rows are removed by the maintenance job (Step 8).
+- Duplicate suppression: a Redis lock per request hash. A second identical request waits (up to 30 s) and returns the first one's answer. Only the request that really calls the provider writes a `UsageRecord`; cached answers write none and are not counted against limits.
+- `GatewayGuard.beforeCall` is the hook for plan limits and the budget (Step 9). Audit results are not guarded there because the page count is only known after the call; Step 9 will check audit limits when an audit starts.
+- `UsageRecord` is a tenant model (guarded). The gateway uses the plain client for the shared cache table. A new unit test checks that every Prisma model with an `agencyId` column is in `TENANT_MODELS`.
+- `SEO_PROVIDER_OVERRIDES` (one provider per module) is parsed in Step 8b. Until then every module uses `SEO_PROVIDER`.
+- Cost table in `pricing.ts` has placeholder numbers; verify against DataForSEO pricing before go-live.
+- ESLint: unused variables that start with `_` are allowed.
