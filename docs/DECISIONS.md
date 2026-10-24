@@ -169,3 +169,13 @@
 - The bell shows the unread count (99+ cap) and the 5 latest alerts; choosing one marks it read. The alerts page lists all or only unread with "Mark as read" and "Mark all as read". Every member can read and clear alerts for the agency (shared inbox); read state is per alert, not per person.
 - Dashboard: clients are paged (20); each row shows the average position of ranking keywords, the average weekly change (positive is better), the average of each project's latest audit score, and unread alerts. Usage (top 3 fullest limits) is shown to owners and admins only.
 - E2E tests insert an alert directly in the database (the real rules are covered by integration tests).
+
+## Step 14
+
+- `Branding` is one row per agency (display name, logo key, two colours, support email, website, and the custom domain fields used in Step 18). Until an agency saves, its branding is the agency name with the default colours (`#18181b`, `#2563eb`).
+- Logo rules: PNG, JPG or WebP only, max 1 MB, checked by the first bytes of the file (not by name or browser type), SVG refused, up to 40 million pixels. The server decodes and rewrites the image (this removes hidden data such as EXIF, fixes rotation) and fits it inside 512 x 512 without enlarging. Files are saved as `branding/<agencyId>/logo-<random>.<ext>`, so a new logo has a new address and the old file is deleted.
+- Storage provider: `STORAGE_PROVIDER=local` writes to `STORAGE_LOCAL_DIR` (default `./storage`, ignored by git) and keeps the content type in a small `.type` file next to each file; `s3` uses `@aws-sdk/client-s3` (tested with a fake client only). Keys may only contain letters, digits, `.`, `_`, `-` and `/`, and must stay inside the folder.
+- Serving: `GET /app/<slug>/branding/logo` needs a signed-in member of that agency; it sends `nosniff`, a strict CSP and `private` caching. Upload is `POST` (multipart field `logo`, announced size over 1.06 MB gets 413), removal is `DELETE`; both need `branding.edit`. Portal and public report logos get their own routes in Steps 15 and 17.
+- Colours must be hex (`#abc` or `#aabbcc`, stored as `#aabbcc`). Contrast is only a warning: the main colour is used as a background for white text and the accent colour as link text on white, and both need contrast of at least 4.5 with white (WCAG AA). Text on a brand colour is picked automatically (black or white).
+- `brandCssVars()` returns `--brand-primary`, `--brand-primary-text`, `--brand-accent`, `--brand-accent-text` for use in the portal, reports and client emails.
+- The agency app shows the logo next to the agency name in the sidebar.

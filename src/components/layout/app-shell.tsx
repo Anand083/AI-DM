@@ -18,6 +18,7 @@ export function AppShell({
   user,
   showDemoBadge,
   bell,
+  logoUrl,
   children,
 }: {
   agencySlug: string;
@@ -27,6 +28,8 @@ export function AppShell({
   user: { name: string; email: string };
   showDemoBadge: boolean;
   bell: { unread: number; recent: BellAlert[] };
+  /** URL of the agency logo, if it has one. */
+  logoUrl: string | null;
   children: ReactNode;
 }) {
   const base = `/app/${agencySlug}`;
@@ -39,7 +42,13 @@ export function AppShell({
   return (
     <div className="min-h-screen md:grid md:grid-cols-[14rem_1fr]">
       <aside className="hidden border-r border-zinc-200 p-4 md:block dark:border-zinc-800">
-        <p className="mb-4 truncate px-3 text-sm font-semibold">{agencyName}</p>
+        <div className="mb-4 flex items-center gap-2 px-3">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt="" className="size-8 shrink-0 rounded object-contain" />
+          ) : null}
+          <p className="truncate text-sm font-semibold">{agencyName}</p>
+        </div>
         <SidebarNav items={items} />
       </aside>
       <div className="flex min-w-0 flex-col">

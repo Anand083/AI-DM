@@ -7,6 +7,7 @@ import { getPageContext } from "@/server/auth/page-context";
 import { listUserAgencies } from "@/server/auth/tenant-context";
 import { getAgency } from "@/server/services/agency";
 import { getBellData } from "@/server/services/alerts";
+import { getBranding } from "@/server/services/branding";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +31,11 @@ export default async function AgencyLayout({
 }) {
   const { agencySlug } = await params;
   const { user, ctx } = await getPageContext(agencySlug);
-  const [agency, agencies, bell] = await Promise.all([
+  const [agency, agencies, bell, branding] = await Promise.all([
     getAgency(ctx),
     listUserAgencies(user.id),
     getBellData(ctx),
+    getBranding(ctx),
   ]);
 
   return (
@@ -45,6 +47,11 @@ export default async function AgencyLayout({
         role={ctx.role}
         user={{ name: user.name, email: user.email }}
         showDemoBadge={getEnv().SEO_PROVIDER === "mock"}
+        logoUrl={
+          branding.hasLogo
+            ? `/app/${agencySlug}/branding/logo?v=${branding.logoVersion ?? "1"}`
+            : null
+        }
         bell={{
           unread: bell.unread,
           recent: bell.recent.map((a) => ({

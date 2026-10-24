@@ -168,6 +168,7 @@ model Agency {
   audits           Audit[]
   keywordLists     KeywordList[]
   alerts           Alert[]
+  branding         Branding?
   keywordListItems KeywordListItem[]
   auditPages       AuditPage[]
   auditIssues      AuditIssue[]
@@ -369,6 +370,38 @@ model RankCheck {
 
   @@unique([keywordId, date])
   @@index([agencyId, date])
+}
+
+// ---------------------------------------------------------------------------
+// White label
+// ---------------------------------------------------------------------------
+
+enum CustomDomainStatus {
+  NONE
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+/// How an agency looks to its clients: name, logo, colours, contact details.
+model Branding {
+  id                 String             @id @default(cuid(2))
+  agencyId           String             @unique
+  displayName        String
+  /// Storage key of the logo file, or null.
+  logoKey            String?
+  logoContentType    String?
+  primaryColor       String             @default("#18181b")
+  accentColor        String             @default("#2563eb")
+  supportEmail       String?
+  website            String?
+  customDomain       String?            @unique
+  customDomainStatus CustomDomainStatus @default(NONE)
+  domainVerifyToken  String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 }
 
 // ---------------------------------------------------------------------------
