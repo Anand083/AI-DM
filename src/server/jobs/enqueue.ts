@@ -38,3 +38,19 @@ export async function enqueueProcessTask(taskId: string): Promise<void> {
   }
   await queue.add("process-task", { taskId }, { jobId });
 }
+
+export type CheckNowJobData = {
+  projectId: string;
+  agencyId: string;
+  userId: string;
+  date: string;
+  keywordIds?: string[];
+};
+
+/** Queues a live ("check now") rank check and returns the job id the page can poll. */
+export async function enqueueCheckNow(data: CheckNowJobData): Promise<string> {
+  const jobId = `live_${data.projectId}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  // A live check costs money, so it is tried once; the person can press the button again.
+  await getQueue("rank-checks").add("check-now", data, { jobId, attempts: 1 });
+  return jobId;
+}

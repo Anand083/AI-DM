@@ -122,3 +122,18 @@
 - Team size limit counts members plus pending invitations (admin/member). Keyword and client-user limits are enforced in Steps 10 and 17 using the same `assertCountWithinLimit`.
 - Usage page: progress bars (role `progressbar`, amber from 80%, red at 100%) for monthly metrics and for plan totals (clients, projects, keywords, team, client users). Visible to owners and admins.
 - A silent-failure lesson: when a code edit script replaces text that has since been reformatted, nothing happens. All later edits fail loudly if the text is not found.
+
+## Step 10
+
+- `Keyword` keeps a snapshot of its latest checks (`currentPosition`, `bestPosition`, `changeDay/Week/Month`, `lastCheckedOn`, `currentUrl`, `currentFeatures`). It is rebuilt from `RankCheck` after every save (`refreshKeywordSnapshots`), so the table can sort, filter and page in the database. `RankCheck` (unique per keyword per day, `date` is a plain UTC date) is the source of truth.
+- Change = earlier position minus latest position (positive = better); "not ranking" counts as 101 and shows as "100+". The comparison check for 1, 7 and 30 days is the newest check on or before that many days back, but never more than 7 days older than the target day; if none exists the change is empty ("-").
+- Visibility = average click weight x 100 (weights from the plan). Average position ignores keywords that do not rank. Distribution buckets: 1 to 3, 4 to 10, 11 to 20, 21 to 50, 51 to 100, not ranking.
+- Scheduled check job (`rank-checks` / `project`): standard priority, batches of 100, skips keywords that already have a check for the day, so a second run does no work and costs nothing. "Check now" (`check-now`): live priority, replaces the day's result, attempted once because it costs money; limit is checked when the button is pressed and again by the gateway when the job runs. Plan and budget problems found while running end the job quietly and are shown on the page; other errors are retried.
+- The page polls a server action every second for check-now progress. Only the agency that started a job can see its status.
+- Keyword rules: lowercase, single spaces, max 100 characters, up to 5,000 lines per paste, duplicates skipped, up to 10 tags of 30 characters. All-or-nothing plan limit (`maxKeywords` counts all keywords of all not-deleted projects of the agency); the error names the plan and limit.
+- Check now is capped at 500 keywords per request.
+- CSV export is capped at 10,000 rows. Text cells that start with = + - @ get a leading apostrophe so spreadsheets do not run them as formulas.
+- Project pages now have tabs: Overview, Rankings, Settings (the old edit form moved to Settings).
+- `pnpm mock:backfill --days 90 [--agency slug]` creates fake history from the mock provider. It refuses to run in production and is used by the E2E test.
+- Recharts is used for the position chart (axis reversed, gaps for "not ranking"). The chart has a text summary and a "Show the numbers" table for screen readers.
+- `runProjectRankCheck` and `refreshKeywordSnapshots` take the tenant-guarded client, so even worker code is checked by the tenant guard.

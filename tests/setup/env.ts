@@ -8,3 +8,4 @@ process.env.LOG_LEVEL = "silent";
 process.env.DATAFORSEO_CALLBACK_SECRET = "test-callback-secret";
 // Each test file gets its own queue prefix, so jobs added by tests never reach a real worker.
 process.env.QUEUE_PREFIX = `test-${process.pid}`;
+process.env.MOCK_LATENCY_MS = "0";

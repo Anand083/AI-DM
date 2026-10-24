@@ -18,6 +18,8 @@ export const TENANT_MODELS = new Set([
   "ActivityLog",
   "UsageRecord",
   "PendingProviderTask",
+  "Keyword",
+  "RankCheck",
 ]);
 
 const WHERE_OPERATIONS = new Set([

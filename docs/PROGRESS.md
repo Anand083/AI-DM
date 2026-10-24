@@ -16,5 +16,6 @@
 | 8b DataForSEO wiring | Done | HTTP client (msw tests), pingback/postback routes, poll job, overrides, provider health; mock stays default |
 | 8c DataForSEO sandbox (optional) | Skipped | Needs a free DataForSEO account (credentials). Waiting for the founder. |
 | 9 Usage metering and limits | Done | usage period math, assertWithinLimit, gateway guard, team size limit, budget guard (80%/100%), usage page; all tests pass |
+| 10 Rank tracker | Done | keywords, scheduled + live checks, rankings table, chart, summary, CSV, mock backfill; unit + integration + E2E pass |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).

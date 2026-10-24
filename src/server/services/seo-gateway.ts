@@ -29,6 +29,8 @@ export type GatewayResult<T> = {
   cached: boolean;
   /** Cost of the provider call that this request caused, in micro-dollars. 0 for cached answers. */
   costMicros: number;
+  /** Which provider produced the data ("mock", "dataforseo"). */
+  provider: string;
 };
 
 /**
@@ -118,10 +120,10 @@ export class SeoGateway {
     this.pollMs = deps.pollMs ?? 100;
   }
 
-  private async readCache<T>(hash: string): Promise<T | null> {
+  private async readCache<T>(hash: string): Promise<{ data: T; provider: string } | null> {
     const row = await this.deps.db.providerCache.findUnique({ where: { requestHash: hash } });
     if (!row || row.expiresAt <= this.now()) return null;
-    return row.response as unknown as T;
+    return { data: row.response as unknown as T, provider: row.provider };
   }
 
   private async cachedCall<T>(call: CachedCall<T>): Promise<GatewayResult<T>> {
@@ -135,7 +137,7 @@ export class SeoGateway {
     );
 
     const hit = await this.readCache<T>(hash);
-    if (hit !== null) return { data: hit, cached: true, costMicros: 0 };
+    if (hit) return { ...hit, cached: true, costMicros: 0 };
 
     const lockKey = `seo:${hash}`;
     const deadline = Date.now() + this.lockWaitMs;
@@ -144,7 +146,7 @@ export class SeoGateway {
       // Someone else is asking the provider the same thing. Wait for their answer.
       await new Promise((resolve) => setTimeout(resolve, this.pollMs));
       const waited = await this.readCache<T>(hash);
-      if (waited !== null) return { data: waited, cached: true, costMicros: 0 };
+      if (waited) return { ...waited, cached: true, costMicros: 0 };
       if (Date.now() > deadline) {
         throw new ProviderError(
           "Another identical request is taking too long. Please try again.",
@@ -157,7 +159,7 @@ export class SeoGateway {
     try {
       // The other request may have finished between our cache check and getting the lock.
       const again = await this.readCache<T>(hash);
-      if (again !== null) return { data: again, cached: true, costMicros: 0 };
+      if (again) return { ...again, cached: true, costMicros: 0 };
 
       if (this.deps.guard && typeof call.units === "number") {
         await this.deps.guard.beforeCall({
@@ -199,7 +201,7 @@ export class SeoGateway {
           requestHash: hash,
         },
       });
-      return { data: result.data, cached: false, costMicros };
+      return { data: result.data, cached: false, costMicros, provider: provider.name };
     } finally {
       await this.deps.locks.release(lockKey, token);
     }

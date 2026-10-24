@@ -52,7 +52,9 @@ export function ProjectForm({
       : await createProjectAction(agencySlug, clientId!, values);
     if (result.ok) {
       router.push(
-        clientId ? `/app/${agencySlug}/clients/${clientId}` : `/app/${agencySlug}/projects`,
+        clientId
+          ? `/app/${agencySlug}/clients/${clientId}`
+          : `/app/${agencySlug}/projects/${projectId}`,
       );
       router.refresh();
       return;

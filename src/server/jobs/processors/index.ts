@@ -1,6 +1,9 @@
 import "server-only";
 import type { Job } from "bullmq";
-import { rawDb } from "@/server/db/client";
+import { db, rawDb } from "@/server/db/client";
+import { AppError } from "@/server/services/errors";
+import { runProjectRankCheck } from "@/server/services/rank-checks";
+import { getSeoGateway } from "@/server/services/seo-gateway-instance";
 import { getEnv } from "@/env";
 import { logger } from "@/server/logger";
 import { NotImplementedError } from "@/server/providers/seo/errors";
@@ -14,6 +17,8 @@ import { enqueueProcessTask, enqueueRankCheck } from "@/server/jobs/enqueue";
 import type { JobProcessors } from "@/server/jobs/runtime";
 import { purgeExpired } from "@/server/jobs/system/purge";
 import { runRankCheckScheduler } from "@/server/jobs/system/scheduler";
+
+type RankJobData = { projectId: string; agencyId: string; date: string; keywordIds?: string[] };
 
 /** Queues whose feature arrives in a later step. The job finishes and says so in the log. */
 function placeholder(queue: string, step: string) {
@@ -49,7 +54,35 @@ export const processors: JobProcessors = {
         logger.warn({ name: job.name }, "unknown maintenance job");
     }
   },
-  "rank-checks": placeholder("rank-checks", "Step 10"),
+  "rank-checks": async (job) => {
+    const data = job.data as RankJobData;
+    const live = job.name === "check-now";
+    try {
+      const result = await runProjectRankCheck(
+        { db, gateway: getSeoGateway() },
+        {
+          projectId: data.projectId,
+          agencyId: data.agencyId,
+          date: data.date,
+          priority: live ? "live" : "standard",
+          keywordIds: data.keywordIds,
+          onProgress: async (done, total) => {
+            await job.updateProgress(total === 0 ? 100 : Math.round((done / total) * 100));
+          },
+        },
+      );
+      if (!result.projectActive)
+        logger.info({ jobId: job.id }, "rank check skipped: project is not active");
+      return result;
+    } catch (error) {
+      // Plan limits and the budget pause are not worth retrying. Tell the page and finish.
+      if (error instanceof AppError) {
+        logger.warn({ jobId: job.id, message: error.message }, "rank check stopped");
+        return { error: error.message };
+      }
+      throw error;
+    }
+  },
   audits: placeholder("audits", "Step 11"),
   reports: placeholder("reports", "Step 15"),
   alerts: placeholder("alerts", "Step 13"),

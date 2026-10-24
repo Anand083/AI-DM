@@ -153,6 +153,8 @@ model Agency {
   activityLogs  ActivityLog[]
   usageRecords  UsageRecord[]
   providerTasks PendingProviderTask[]
+  keywords      Keyword[]
+  rankChecks    RankCheck[]
 
   @@index([status, deletedAt])
 }
@@ -241,8 +243,9 @@ model Project {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  agency   Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  keywords Keyword[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -290,6 +293,63 @@ model Subscription {
 
   @@index([planId])
   @@index([status, currentPeriodEnd])
+}
+
+// ---------------------------------------------------------------------------
+// Rank tracking
+// ---------------------------------------------------------------------------
+
+/// A phrase tracked for a project. The `current*`, `best*` and `change*` columns are a snapshot
+/// of the latest rank checks, kept so tables can sort and filter in the database.
+model Keyword {
+  id        String   @id @default(cuid(2))
+  agencyId  String
+  projectId String
+  phrase    String
+  tags      String[]
+  targetUrl String?
+  createdAt DateTime @default(now())
+
+  /// Day of the latest rank check. Null means never checked.
+  lastCheckedOn   DateTime? @db.Date
+  /// Latest position, 1 to 100. Null with `lastCheckedOn` set means "not in the top 100".
+  currentPosition Int?
+  currentUrl      String?
+  currentFeatures String[]
+  bestPosition    Int?
+  /// Change since about 1, 7 and 30 days ago. Positive means better. Null when there is nothing to compare.
+  changeDay       Int?
+  changeWeek      Int?
+  changeMonth     Int?
+
+  agency     Agency      @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rankChecks RankCheck[]
+
+  @@unique([projectId, phrase])
+  @@index([agencyId, projectId, phrase])
+  @@index([agencyId, projectId, currentPosition])
+  @@index([agencyId, projectId, changeWeek])
+}
+
+/// One result per keyword per day. `position` null means not in the top 100.
+model RankCheck {
+  id           String   @id @default(cuid(2))
+  agencyId     String
+  keywordId    String
+  date         DateTime @db.Date
+  checkedAt    DateTime @default(now())
+  position     Int?
+  rankingUrl   String?
+  serpFeatures Json?
+  topResults   Json?
+  provider     String
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  keyword Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@unique([keywordId, date])
+  @@index([agencyId, date])
 }
 
 // ---------------------------------------------------------------------------
