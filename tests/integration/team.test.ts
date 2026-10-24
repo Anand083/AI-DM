@@ -18,8 +18,9 @@ import { createTestClient, resetDb } from "../helpers/db";
 type Sent = { to: string; subject: string; html: string; text: string; fromName?: string };
 const sent: Sent[] = [];
 
-vi.mock("@/server/providers/email", () => ({
-  getEmailProvider: () => ({ name: "console", send: async (m: Sent) => void sent.push(m) }),
+// Emails go through the queue in the real app. Here we catch them instead.
+vi.mock("@/server/jobs/enqueue", () => ({
+  enqueueEmail: async (m: Sent) => void sent.push(m),
 }));
 
 const prisma = createTestClient();

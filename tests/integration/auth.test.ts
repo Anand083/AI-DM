@@ -5,8 +5,9 @@ import { createTestClient, resetDb, testDatabaseUrl } from "../helpers/db";
 type Sent = { to: string; subject: string; html: string; text: string };
 const sent: Sent[] = [];
 
-vi.mock("@/server/providers/email", () => ({
-  getEmailProvider: () => ({ name: "console", send: async (m: Sent) => void sent.push(m) }),
+// Emails go through the queue in the real app. Here we catch them instead.
+vi.mock("@/server/jobs/enqueue", () => ({
+  enqueueEmail: async (m: Sent) => void sent.push(m),
 }));
 
 const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";

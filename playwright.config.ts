@@ -24,12 +24,21 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: process.env.CI ? "pnpm build && pnpm start" : "pnpm dev",
-    url: `http://localhost:${port}`,
-    reuseExistingServer: !process.env.CI,
-    // Many sign-ups come from one IP in tests, so raise the auth rate limit.
-    env: { AUTH_RATE_LIMIT_MAX: "1000" },
-    timeout: 180_000,
-  },
+  webServer: [
+    {
+      command: process.env.CI ? "pnpm build && pnpm start" : "pnpm dev",
+      url: `http://localhost:${port}`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+      // Many sign-ups come from one IP in tests, so raise the auth rate limit.
+      env: { AUTH_RATE_LIMIT_MAX: "1000" },
+    },
+    {
+      // The worker sends emails (and runs all other background jobs).
+      command: "pnpm worker",
+      wait: { stdout: /worker started/ },
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+  ],
 });

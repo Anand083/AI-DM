@@ -12,5 +12,6 @@
 
 **Phase A (Steps 0 to 6) is complete.**
 | 7 Provider layer and mock SEO provider | Done | interfaces, full mock (rankings, ideas, audit, backlinks, AI, reviews), DataForSEO stub, seoGateway with cache, lock, usage; tests pass |
+| 8 Background jobs | Done | 7 BullMQ queues, worker with graceful shutdown, retries, scheduler (15 min), purge job, emails via queue; integration tests with real Redis pass |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).

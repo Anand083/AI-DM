@@ -16,8 +16,8 @@ import { z } from "zod";
 import { createAgencyWithMembers } from "../../factories";
 import { createGuardedTestClient, createTestClient, resetDb } from "../../helpers/db";
 
-vi.mock("@/server/providers/email", () => ({
-  getEmailProvider: () => ({ name: "console", send: async () => {} }),
+vi.mock("@/server/jobs/enqueue", () => ({
+  enqueueEmail: async () => {},
 }));
 
 const prisma = createTestClient();

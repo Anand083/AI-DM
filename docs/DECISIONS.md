@@ -88,3 +88,13 @@
 - `SEO_PROVIDER_OVERRIDES` (one provider per module) is parsed in Step 8b. Until then every module uses `SEO_PROVIDER`.
 - Cost table in `pricing.ts` has placeholder numbers; verify against DataForSEO pricing before go-live.
 - ESLint: unused variables that start with `_` are allowed.
+
+## Step 8
+
+- BullMQ 6 with plain connection options parsed from `REDIS_URL` (`maxRetriesPerRequest: null`, required by workers). Jobs: 3 attempts, exponential backoff starting at 5 s, completed jobs kept 24 h (max 5000), failed jobs kept 7 days. `QUEUE_PREFIX` (default `bull`) separates copies on one Redis; tests use their own prefix.
+- Worker (`src/worker/index.ts`) runs with `tsx --conditions=react-server`, which makes the `server-only` package a no-op outside Next.js. It loads `.env` itself (`src/server/load-env.ts`). SIGTERM/SIGINT: stop taking jobs, wait for running jobs, close queues.
+- All emails now go through the `emails` queue (`enqueueEmail`), so no web request waits for SMTP. The E2E setup therefore starts the worker too (second Playwright web server).
+- Scheduler: a repeating job on the `maintenance` queue every 15 minutes. A project is due once today's `rankCheckHourUtc` plus its own minute offset (hash of project id, 0 to 59) has passed; weekly projects are due on one weekday (hash of project id). The job id `rank:<projectId>:<yyyy-mm-dd>` means one job per project per day, and a missed tick is caught up on the next one. The scheduler reads all agencies' projects in batches of 500 with the plain DB client (system work).
+- Daily clean-up at 02:00 UTC removes expired cache rows, sessions and verification tokens, and clients, projects and agencies deleted more than 30 days ago (database cascades remove their data).
+- Processors for rank-checks, audits, reports, alerts and provider-tasks are placeholders that log and finish; they are replaced in Steps 10, 11, 15, 13 and 8b.
+- The budget pause (Step 9) and the "jobs paused" banner will plug into the scheduler and processors.

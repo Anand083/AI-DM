@@ -18,6 +18,8 @@ docker compose up -d      # Postgres, Redis, Mailpit (mail UI at http://localhos
 pnpm db:migrate
 pnpm db:seed              # demo users; password is printed
 pnpm dev                  # http://localhost:3000
+pnpm worker:dev           # background worker: emails, rank checks, scheduler (run in a second terminal)
+pnpm queues:stats         # how many jobs are waiting, running, done and failed
 ```
 
 ## Checks

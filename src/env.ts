@@ -55,6 +55,7 @@ const baseSchema = z.object({
 
   SUMMARY_PROVIDER: z.enum(["mock"]).default("mock"),
   CUSTOM_DOMAINS_ENABLED: bool,
+  QUEUE_PREFIX: z.string().min(1).default("bull"),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(2),
   SENTRY_DSN: optionalString,
   ENCRYPTION_KEY: z.string().default("change-me-32-bytes"),
