@@ -1,16 +1,14 @@
-import { requireUser } from "@/server/auth/session";
-import { loadTenantContext } from "@/server/auth/tenant-context";
-import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { getPageContext } from "@/server/auth/page-context";
 import { getAgency } from "@/server/services/agency";
 
+export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
-// Placeholder. The dashboard comes in Step 13.
+// Placeholder. The real dashboard comes in Step 13.
 export default async function AgencyHome({ params }: { params: Promise<{ agencySlug: string }> }) {
   const { agencySlug } = await params;
-  const user = await requireUser();
-  const ctx = await loadTenantContext(user.id, agencySlug);
-  if (!ctx) notFound();
+  const { ctx } = await getPageContext(agencySlug);
   const agency = await getAgency(ctx);
   return (
     <>

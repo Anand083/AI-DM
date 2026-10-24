@@ -53,3 +53,13 @@
 - Trial: STARTER, 14 days, mock provider. Plan limit checks (team size etc.) arrive in Step 9.
 - Vitest is split into `unit` and `integration` projects, so unit tests do not need a database. `vitest.config.mts` avoids a Vite warning.
 - The basic agency frame (header, switcher, sign out) is temporary; Step 5 builds the real shell.
+
+## Step 5
+
+- `radix-ui` (approved, used by shadcn) powers Dialog and DropdownMenu. Toasts are our own small component (shadcn uses `sonner`, which is not approved).
+- `@tanstack/react-table` is pinned to v8 (v9 has a different API). `DataTable` is client-side (sort, search, page over rows it is given). A server-paged version will be added with the first long list (rankings, Step 10).
+- Menu items are filtered by permission (`nav-items.ts`). Branding and Usage need `branding.edit` (owner, admin); Billing needs `billing.manage` (owner). Each page repeats the check with `requirePermission()` (404 if not allowed), because a layout alone is not a security boundary.
+- Clients, Projects, Reports, Branding, Billing, Usage pages are "Coming soon" placeholders until their steps.
+- The "Demo data" badge shows when `SEO_PROVIDER=mock`.
+- Settings (name, time zone) can be edited by owner and admin (`branding.edit`); members see it read-only. The agency address (slug) is fixed.
+- Pages and the layout share one cached `getPageContext(slug)` per request.

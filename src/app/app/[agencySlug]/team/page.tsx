@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { TeamPanel } from "@/components/app/team-panel";
 import { canManageMember, can } from "@/server/auth/permissions";
-import { requireUser } from "@/server/auth/session";
-import { loadTenantContext } from "@/server/auth/tenant-context";
+import { getPageContext } from "@/server/auth/page-context";
 import { listMembers, listPendingInvitations } from "@/server/services/team";
 
 export const metadata: Metadata = { title: "Team" };
@@ -11,9 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function TeamPage({ params }: { params: Promise<{ agencySlug: string }> }) {
   const { agencySlug } = await params;
-  const user = await requireUser();
-  const ctx = await loadTenantContext(user.id, agencySlug);
-  if (!ctx) notFound();
+  const { user, ctx } = await getPageContext(agencySlug);
 
   const manage = can(ctx.role, "team.manage");
   const [members, invitations] = await Promise.all([
