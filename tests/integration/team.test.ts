@@ -11,8 +11,13 @@ import {
   resendInvitation,
   revokeInvitation,
 } from "@/server/services/team";
-import { ConflictError, ForbiddenError, NotFoundError } from "@/server/services/errors";
-import { createAgencyWithMembers, createUser } from "../factories";
+import {
+  ConflictError,
+  ForbiddenError,
+  LimitExceededError,
+  NotFoundError,
+} from "@/server/services/errors";
+import { createAgencyWithMembers, createUser, seedPlans } from "../factories";
 import { createTestClient, resetDb } from "../helpers/db";
 
 type Sent = { to: string; subject: string; html: string; text: string; fromName?: string };
@@ -27,6 +32,7 @@ const prisma = createTestClient();
 
 beforeAll(async () => {
   await resetDb(prisma);
+  await seedPlans(prisma);
 });
 beforeEach(() => {
   sent.length = 0;
@@ -43,7 +49,12 @@ function tokenFromLastEmail(to: string): string {
 }
 
 async function setup() {
-  const { agency, members } = await createAgencyWithMembers(prisma, ["OWNER", "ADMIN", "MEMBER"]);
+  const { agency, members } = await createAgencyWithMembers(
+    prisma,
+    ["OWNER", "ADMIN", "MEMBER"],
+    undefined,
+    "AGENCY",
+  );
   const [owner, admin, member] = members;
   return { agency, owner: owner!, admin: admin!, member: member! };
 }
@@ -246,6 +257,22 @@ describe("roles and removal", () => {
     ).toBe(1);
     await expect(removeMember(members[0]!.ctx, members[0]!.member.id)).rejects.toBeInstanceOf(
       ForbiddenError,
+    );
+  });
+});
+
+describe("team size limit", () => {
+  it("counts members and pending invitations against the plan", async () => {
+    // STARTER allows 2 team members.
+    const { members } = await createAgencyWithMembers(prisma, ["OWNER"], undefined, "STARTER");
+    const owner = members[0]!.ctx;
+    await inviteMember(owner, { email: "second@example.test", role: "MEMBER" });
+    const error = await inviteMember(owner, { email: "third@example.test", role: "MEMBER" }).catch(
+      (e) => e,
+    );
+    expect(error).toBeInstanceOf(LimitExceededError);
+    expect(error.message).toBe(
+      "Your Starter plan allows up to 2 team members. Upgrade your plan to add more.",
     );
   });
 });

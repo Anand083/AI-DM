@@ -6,6 +6,7 @@ import { logger } from "@/server/logger";
 import { NotImplementedError } from "@/server/providers/seo/errors";
 import { getProviderByName } from "@/server/providers/seo";
 import { DataForSeoProvider } from "@/server/providers/seo/dataforseo";
+import { getBudget } from "@/server/services/budget-instance";
 import { pollProviderTasks, processProviderTask } from "@/server/services/provider-tasks";
 import { getEmailProvider } from "@/server/providers/email";
 import type { EmailJobData } from "@/server/jobs/enqueue";
@@ -28,10 +29,13 @@ export const processors: JobProcessors = {
   maintenance: async (job) => {
     switch (job.name) {
       case "scheduler:rank-checks": {
+        // Also the place where budget alerts are sent (80% and 100%).
+        const budget = await getBudget().checkAndAlert();
         const result = await runRankCheckScheduler({
           db: rawDb,
           now: new Date(),
           enqueue: enqueueRankCheck,
+          paused: async () => budget.state === "paused",
         });
         logger.info(result, "rank check scheduler tick");
         return result;

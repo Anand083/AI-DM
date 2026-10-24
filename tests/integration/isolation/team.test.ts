@@ -13,7 +13,7 @@ import {
 import { getAgency } from "@/server/services/agency";
 import { NotFoundError } from "@/server/services/errors";
 import { z } from "zod";
-import { createAgencyWithMembers } from "../../factories";
+import { createAgencyWithMembers, seedPlans } from "../../factories";
 import { createGuardedTestClient, createTestClient, resetDb } from "../../helpers/db";
 
 vi.mock("@/server/jobs/enqueue", () => ({
@@ -29,8 +29,9 @@ let inviteB: { id: string };
 
 beforeAll(async () => {
   await resetDb(prisma);
-  A = await createAgencyWithMembers(prisma, ["OWNER", "MEMBER"], "Agency A");
-  B = await createAgencyWithMembers(prisma, ["OWNER", "MEMBER"], "Agency B");
+  await seedPlans(prisma);
+  A = await createAgencyWithMembers(prisma, ["OWNER", "MEMBER"], "Agency A", "AGENCY");
+  B = await createAgencyWithMembers(prisma, ["OWNER", "MEMBER"], "Agency B", "AGENCY");
   inviteB = await inviteMember(B.members[0]!.ctx, { email: "inv-b@example.test", role: "MEMBER" });
 });
 afterAll(async () => {

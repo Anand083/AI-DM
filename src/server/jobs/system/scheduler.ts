@@ -8,6 +8,8 @@ export type SchedulerDeps = {
   /** Returns true when a job was added, false when one already existed. */
   enqueue: (job: { projectId: string; agencyId: string; date: string }) => Promise<boolean>;
   batchSize?: number;
+  /** When true (provider budget used up) nothing is queued. */
+  paused?: () => Promise<boolean>;
 };
 
 /**
@@ -16,7 +18,8 @@ export type SchedulerDeps = {
  */
 export async function runRankCheckScheduler(
   deps: SchedulerDeps,
-): Promise<{ scanned: number; due: number; queued: number }> {
+): Promise<{ scanned: number; due: number; queued: number; paused?: true }> {
+  if (await deps.paused?.()) return { scanned: 0, due: 0, queued: 0, paused: true };
   const batchSize = deps.batchSize ?? 500;
   const date = deps.now.toISOString().slice(0, 10);
   let cursor: string | undefined;

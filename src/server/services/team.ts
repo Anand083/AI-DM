@@ -10,6 +10,7 @@ import { logActivity } from "./activity";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "./errors";
 import { sendInviteEmail } from "./email";
 import { paging, type Page } from "./paging";
+import { assertCountWithinLimit } from "./plan";
 
 export const INVITE_DAYS = 7;
 
@@ -119,6 +120,19 @@ export async function inviteMember(ctx: TenantContext, rawInput: unknown) {
   });
   if (pending)
     throw new ConflictError("This person already has an invitation. You can send it again.");
+
+  const [memberCount, pendingCount] = await Promise.all([
+    db.agencyMember.count({ where: { agencyId: ctx.agencyId } }),
+    db.invitation.count({
+      where: {
+        agencyId: ctx.agencyId,
+        acceptedAt: null,
+        expiresAt: { gt: new Date() },
+        role: { in: ["ADMIN", "MEMBER"] },
+      },
+    }),
+  ]);
+  await assertCountWithinLimit(ctx, "maxTeamMembers", memberCount + pendingCount);
 
   const token = generateToken();
   const invitation = await db.invitation.create({

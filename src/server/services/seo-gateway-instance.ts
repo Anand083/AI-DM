@@ -3,7 +3,10 @@ import { rawDb } from "@/server/db/client";
 import { RedisLockStore } from "@/server/locks";
 import { getSeoProvider } from "@/server/providers/seo";
 import { getRedis } from "@/server/redis";
+import { getBudget } from "./budget-instance";
 import { SeoGateway } from "./seo-gateway";
+import { createSeoGuard } from "./seo-guard";
+import { assertWithinLimit } from "./usage";
 
 let gateway: SeoGateway | undefined;
 
@@ -17,6 +20,7 @@ export function getSeoGateway(): SeoGateway {
     provider: (module) => getSeoProvider(module),
     db: rawDb,
     locks: new RedisLockStore(getRedis()),
+    guard: createSeoGuard({ isPaused: () => getBudget().isPaused(), assertWithinLimit }),
   });
   return gateway;
 }

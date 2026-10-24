@@ -110,3 +110,15 @@
 - Processing job (`process-task`): gets the stored or fetched result, runs the handler for the operation, marks PROCESSED. Three attempts, then FAILED. No handlers exist yet; they arrive with Steps 8c, 10 and 11.
 - `/api/health` also reports provider status (cached 5 minutes, `testConnection()` only). A provider outage does not make the app unhealthy.
 - `SEO_PROVIDER_OVERRIDES` is validated at start-up and used by `getSeoProvider(module)`. In production the mock needs `ALLOW_MOCK_IN_PROD` and DataForSEO needs credentials if ANY module uses them.
+
+## Step 9
+
+- Usage period: monthly windows counted from the start of the billing period (or, in a trial, from 14 days before the trial ends, capped at the trial end). Yearly plans still reset every month on the same day; a day that does not exist in a short month is clamped (Jan 31 gives Feb 28). Times are stored in UTC; the usage page shows dates in the agency time zone.
+- Plan limits that apply per month: audit pages, keyword research, live checks, AI checks, backlink lookups, lead audits. Standard rank checks, competitor queries and review queries have no plan limit in the plan (rank checks are limited by the keyword count); their cost still counts toward the platform budget.
+- `assertWithinLimit` also blocks agencies whose subscription is EXPIRED or CANCELED. Trial expiry and the grace period are handled with billing (Step 22).
+- Messages: "You have used all 50 live rank checks for this month on your Starter plan. It resets on March 10, 2026. Upgrade your plan to get more." or, if the request is too big, "This needs 10 ..., but you only have 5 left ...".
+- The gateway guard runs before real provider calls only (never for cache hits) and checks the platform budget first, then the agency limit. When the budget is paused the message never shows money amounts.
+- Platform budget (calendar month, UTC): under 80% ok; 80% to 99% warn (email to every super admin once per month); 100% and over paused: the rank check scheduler queues nothing and all new provider calls are refused. Spending is the sum of `UsageRecord.costMicros` for the month (cached 30 s). A value saved in `PlatformSetting` key `providerBudgetUsd` wins over `MONTHLY_PROVIDER_BUDGET_USD`; a budget of 0 turns the guard off. The 15-minute scheduler tick calls `checkAndAlert()`. The admin banner (Step 20) reads `getBudget().status()`.
+- Team size limit counts members plus pending invitations (admin/member). Keyword and client-user limits are enforced in Steps 10 and 17 using the same `assertCountWithinLimit`.
+- Usage page: progress bars (role `progressbar`, amber from 80%, red at 100%) for monthly metrics and for plan totals (clients, projects, keywords, team, client users). Visible to owners and admins.
+- A silent-failure lesson: when a code edit script replaces text that has since been reformatted, nothing happens. All later edits fail loudly if the text is not found.
