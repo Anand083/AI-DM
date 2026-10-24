@@ -144,20 +144,22 @@ model Agency {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  members       AgencyMember[]
-  invitations   Invitation[]
-  clients       Client[]
-  clientUsers   ClientUser[]
-  projects      Project[]
-  subscription  Subscription?
-  activityLogs  ActivityLog[]
-  usageRecords  UsageRecord[]
-  providerTasks PendingProviderTask[]
-  keywords      Keyword[]
-  rankChecks    RankCheck[]
-  audits        Audit[]
-  auditPages    AuditPage[]
-  auditIssues   AuditIssue[]
+  members          AgencyMember[]
+  invitations      Invitation[]
+  clients          Client[]
+  clientUsers      ClientUser[]
+  projects         Project[]
+  subscription     Subscription?
+  activityLogs     ActivityLog[]
+  usageRecords     UsageRecord[]
+  providerTasks    PendingProviderTask[]
+  keywords         Keyword[]
+  rankChecks       RankCheck[]
+  audits           Audit[]
+  keywordLists     KeywordList[]
+  keywordListItems KeywordListItem[]
+  auditPages       AuditPage[]
+  auditIssues      AuditIssue[]
 
   @@index([status, deletedAt])
 }
@@ -356,6 +358,46 @@ model RankCheck {
 
   @@unique([keywordId, date])
   @@index([agencyId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Keyword research
+// ---------------------------------------------------------------------------
+
+/// A saved set of researched keywords.
+model KeywordList {
+  id          String   @id @default(cuid(2))
+  agencyId    String
+  name        String
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  agency Agency            @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  items  KeywordListItem[]
+
+  @@unique([agencyId, name])
+}
+
+model KeywordListItem {
+  id           String   @id @default(cuid(2))
+  agencyId     String
+  listId       String
+  phrase       String
+  volume       Int
+  /// Cost per click in micro-dollars.
+  cpcMicros    Int
+  difficulty   Int
+  intent       String
+  locationCode Int
+  languageCode String
+  createdAt    DateTime @default(now())
+
+  agency Agency      @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  list   KeywordList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, phrase])
+  @@index([agencyId, listId, createdAt])
 }
 
 // ---------------------------------------------------------------------------

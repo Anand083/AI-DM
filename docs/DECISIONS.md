@@ -149,3 +149,12 @@
 - Monthly audits: `Project.autoAudit` (checkbox in project settings). The 15-minute tick queues an `auto` job for projects with no audit yet this calendar month (job id has the month, so once per month). Plan limits or a running audit make it skip quietly. Paused budget skips too.
 - Issue text lives in `src/server/audit/issue-catalog.ts` in plain English; a test checks all 23 codes have text and the same severity as the provider list.
 - Tests: the Playwright worker runs with `MOCK_AUDIT_SECONDS=3` and `AUDIT_POLL_SECONDS=2` so an audit finishes in seconds.
+
+## Step 12
+
+- New menu item "Keyword research" (needs `tools.run`: owner, admin, member). Search is a plain GET form (`q`, `loc`, `lang`, filters), so results are shareable links. One search asks for 100 ideas; filtering, sorting and paging (25 a page) happen on those 100.
+- Cache and limits: the gateway answers a repeat search from saved results (30 days) before any limit check, so repeats are free and write no usage record. This also works across agencies because SEO data is public. New searches count one `KEYWORD_RESEARCH` unit and are blocked at the plan limit.
+- Seed rules: 2 to 80 characters, lowercased, single spaces. The country and language must be in our lists.
+- Saved lists (`KeywordList`, `KeywordListItem`): names are unique per agency, up to 200 lists, up to 5,000 keywords per list; saving repeats is skipped. Saving needs `content.edit`; deleting a list needs `content.delete`. The sparkline trend is not stored.
+- "Add to rank tracker" reuses the rank tracker's `addKeywords` (so the same limit, dedupe and tag rules apply) and tags the keywords "research".
+- CSV for results and lists use the same escaping as the rankings CSV.

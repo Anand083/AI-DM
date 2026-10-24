@@ -23,6 +23,8 @@ export const TENANT_MODELS = new Set([
   "Audit",
   "AuditPage",
   "AuditIssue",
+  "KeywordList",
+  "KeywordListItem",
 ]);
 
 const WHERE_OPERATIONS = new Set([

@@ -9,6 +9,7 @@ describe("navItemsFor", () => {
       "dashboard",
       "clients",
       "projects",
+      "research",
       "reports",
       "team",
       "branding",

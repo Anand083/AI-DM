@@ -11,6 +11,7 @@ const MENU = [
   ["Dashboard", ""],
   ["Clients", "/clients"],
   ["Projects", "/projects"],
+  ["Keyword research", "/research"],
   ["Reports", "/reports"],
   ["Team", "/team"],
   ["Branding", "/branding"],
