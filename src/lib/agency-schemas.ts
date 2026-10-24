@@ -20,3 +20,24 @@ export const createAgencyFormSchema = z.object({
 });
 
 export type CreateAgencyFormValues = z.infer<typeof createAgencyFormSchema>;
+
+/** Settings page: name, time zone and alert settings. The server repeats these checks. */
+export const settingsFormSchema = createAgencyFormSchema
+  .pick({ name: true, timezone: true })
+  .extend({
+    alertDropPositions: z.coerce
+      .number()
+      .int()
+      .min(1, "Use at least 1.")
+      .max(50, "Use 50 or less."),
+    alertDropWithin: z.coerce.number().int().min(1, "Use at least 1.").max(100, "Use 100 or less."),
+    alertTopPosition: z.coerce
+      .number()
+      .int()
+      .min(1, "Use at least 1.")
+      .max(100, "Use 100 or less."),
+    alertOnCriticalAudit: z.boolean(),
+    dailyDigest: z.boolean(),
+  });
+
+export type SettingsFormValues = z.input<typeof settingsFormSchema>;

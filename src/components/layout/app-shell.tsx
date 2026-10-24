@@ -5,7 +5,7 @@ import type { Role } from "@/server/auth/permissions";
 import type { UserAgency } from "@/server/auth/tenant-context";
 import { MobileNav } from "./mobile-nav";
 import { navItemsFor } from "./nav-items";
-import { NotificationBell } from "./notification-bell";
+import { NotificationBell, type BellAlert } from "./notification-bell";
 import { SidebarNav } from "./sidebar-nav";
 import { UserMenu } from "./user-menu";
 
@@ -17,6 +17,7 @@ export function AppShell({
   role,
   user,
   showDemoBadge,
+  bell,
   children,
 }: {
   agencySlug: string;
@@ -25,6 +26,7 @@ export function AppShell({
   role: Role;
   user: { name: string; email: string };
   showDemoBadge: boolean;
+  bell: { unread: number; recent: BellAlert[] };
   children: ReactNode;
 }) {
   const base = `/app/${agencySlug}`;
@@ -46,7 +48,7 @@ export function AppShell({
           <AgencySwitcher agencies={agencies} currentSlug={agencySlug} />
           {showDemoBadge ? <Badge tone="warning">Demo data</Badge> : null}
           <div className="ml-auto flex items-center gap-2">
-            <NotificationBell />
+            <NotificationBell agencySlug={agencySlug} unread={bell.unread} recent={bell.recent} />
             <UserMenu name={user.name} email={user.email} settingsHref={`${base}/settings`} />
           </div>
         </header>

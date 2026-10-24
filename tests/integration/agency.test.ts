@@ -98,9 +98,31 @@ describe("loadTenantContext", () => {
 describe("agency settings", () => {
   it("lets owners and admins edit, not members", async () => {
     const { agency, members } = await createAgencyWithMembers(prisma, ["OWNER", "ADMIN", "MEMBER"]);
-    const input = { name: "Renamed Agency", timezone: "Asia/Kolkata" };
+    const input = {
+      name: "Renamed Agency",
+      timezone: "Asia/Kolkata",
+      alertDropPositions: 7,
+      alertDropWithin: 30,
+      alertTopPosition: 5,
+      alertOnCriticalAudit: false,
+      dailyDigest: true,
+    };
     await updateAgencySettings(members[1]!.ctx, input);
-    expect((await getAgency(members[0]!.ctx)).name).toBe("Renamed Agency");
+    expect(await getAgency(members[0]!.ctx)).toMatchObject({
+      name: "Renamed Agency",
+      timezone: "Asia/Kolkata",
+      alertDropPositions: 7,
+      alertDropWithin: 30,
+      alertTopPosition: 5,
+      alertOnCriticalAudit: false,
+      dailyDigest: true,
+    });
+    await expect(
+      updateAgencySettings(members[0]!.ctx, { ...input, alertDropPositions: 0 }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    await expect(
+      updateAgencySettings(members[0]!.ctx, { ...input, alertTopPosition: 101 }),
+    ).rejects.toBeInstanceOf(ValidationError);
     await expect(updateAgencySettings(members[2]!.ctx, input)).rejects.toBeInstanceOf(
       ForbiddenError,
     );

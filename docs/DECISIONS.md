@@ -158,3 +158,14 @@
 - Saved lists (`KeywordList`, `KeywordListItem`): names are unique per agency, up to 200 lists, up to 5,000 keywords per list; saving repeats is skipped. Saving needs `content.edit`; deleting a list needs `content.delete`. The sparkline trend is not stored.
 - "Add to rank tracker" reuses the rank tracker's `addKeywords` (so the same limit, dedupe and tag rules apply) and tags the keywords "research".
 - CSV for results and lists use the same escaping as the rankings CSV.
+
+## Step 13
+
+- Alerts are summaries, not one per keyword: after a rank check run, at most one RANK_DROP and one RANK_GAIN alert per project and day (the body shows the 5 biggest moves; the data field keeps up to 50). The dedupe key (`rank_drop:<project>:<date>`, `audit_critical:<audit>`) is unique per agency, so a repeated job creates nothing new.
+- Rules: a drop is "was in the top `alertDropWithin` (20) and lost at least `alertDropPositions` (5) places, or fell out of the top 100". Drops of 10 or more places or out of the top 100 are critical, smaller ones warnings. "Reached the top `alertTopPosition` (10)" is info. A keyword checked for the first time, or checked again the same day, is not compared (it has no earlier day to compare with).
+- Audit alert: critical issues that the previous completed audit did not have (all critical issues for the first audit). Can be switched off in settings.
+- Thresholds are columns on `Agency` and edited in Settings by owners and admins.
+- Daily digest (optional, off by default): at 8 o'clock agency time the 15-minute tick queues one digest per agency per day. It emails owners and admins the alerts from the last 36 hours that were not emailed yet, marks them emailed, and never sends an empty email.
+- The bell shows the unread count (99+ cap) and the 5 latest alerts; choosing one marks it read. The alerts page lists all or only unread with "Mark as read" and "Mark all as read". Every member can read and clear alerts for the agency (shared inbox); read state is per alert, not per person.
+- Dashboard: clients are paged (20); each row shows the average position of ranking keywords, the average weekly change (positive is better), the average of each project's latest audit score, and unread alerts. Usage (top 3 fullest limits) is shown to owners and admins only.
+- E2E tests insert an alert directly in the database (the real rules are covered by integration tests).

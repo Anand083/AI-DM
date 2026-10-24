@@ -19,5 +19,6 @@
 | 10 Rank tracker | Done | keywords, scheduled + live checks, rankings table, chart, summary, CSV, mock backfill; unit + integration + E2E pass |
 | 11 Site audit | Done | catalog of 23 issues, delayed polling jobs, results with fix text, comparison, monthly auto audit; tests pass |
 | 12 Keyword research | Done | search with filters and sparkline, saved lists, add to rank tracker, CSV; repeat searches are free; tests pass |
+| 13 Dashboards and alerts | Done | agency dashboard, 3 alert rules with settings, bell + alerts page, daily digest; unit + integration + E2E pass |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).

@@ -47,6 +47,7 @@ export const jobIds = {
   rankCheck: (projectId: string, date: string) => `rank_${safe(projectId)}_${date}`,
   email: (key: string) => `email_${safe(key)}`,
   providerTask: (taskId: string) => `ptask_${safe(taskId)}`,
+  digest: (agencyId: string, date: string) => `digest_${safe(agencyId)}_${date}`,
   auditRun: (auditId: string) => `audit_${safe(auditId)}_run`,
   auditPoll: (auditId: string, attempt: number) => `audit_${safe(auditId)}_poll_${attempt}`,
   auditAuto: (projectId: string, month: string) => `audit_auto_${safe(projectId)}_${month}`,

@@ -71,6 +71,15 @@ export async function enqueueAutoAudit(data: {
   return true;
 }
 
+/** Queues the daily alert digest for an agency. Returns false if it was already queued for that date. */
+export async function enqueueDigest(data: { agencyId: string; date: string }): Promise<boolean> {
+  const queue = getQueue("alerts");
+  const jobId = jobIds.digest(data.agencyId, data.date);
+  if (await queue.getJob(jobId)) return false;
+  await queue.add("digest", data, { jobId, attempts: 2 });
+  return true;
+}
+
 export type CheckNowJobData = {
   projectId: string;
   agencyId: string;

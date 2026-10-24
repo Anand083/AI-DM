@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
-import { countBySeverity, healthScore } from "@/lib/audit-math";
+import { buildAuditAlert } from "@/lib/alert-rules";
+import { compareIssues, countBySeverity, healthScore } from "@/lib/audit-math";
+import { createAlerts, loadAlertSettings } from "./alert-store";
 import type { Db } from "@/server/db/client";
 import type { AuditResult, AuditStatus } from "@/server/providers/seo/types";
 import type { GatewayCaller, GatewayResult } from "./seo-gateway";
@@ -83,7 +85,14 @@ export async function pollAudit(
   const now = deps.now ?? (() => new Date());
   const audit = await db.audit.findFirst({
     where: { id: input.auditId, agencyId: input.agencyId },
-    select: { id: true, status: true, providerTaskId: true, projectId: true },
+    select: {
+      id: true,
+      status: true,
+      providerTaskId: true,
+      projectId: true,
+      createdAt: true,
+      project: { select: { name: true } },
+    },
   });
   if (!audit || audit.status !== "RUNNING" || !audit.providerTaskId) return "skipped";
 
@@ -175,5 +184,47 @@ export async function pollAudit(
       },
     });
   });
+
+  await raiseAuditAlert(db, input.agencyId, audit, issues);
   return "completed";
+}
+
+/** An alert for critical issues that the audit before did not have (or any critical issue in a first audit). */
+async function raiseAuditAlert(
+  db: Db,
+  agencyId: string,
+  audit: { id: string; projectId: string; createdAt: Date; project: { name: string } },
+  issues: { code: string; url: string; severity: string }[],
+) {
+  const critical = issues.filter((i) => i.severity === "CRITICAL");
+  if (critical.length === 0) return;
+  const previous = await db.audit.findFirst({
+    where: {
+      agencyId,
+      projectId: audit.projectId,
+      status: "COMPLETED",
+      createdAt: { lt: audit.createdAt },
+      id: { not: audit.id },
+    },
+    select: { id: true },
+    orderBy: { createdAt: "desc" },
+  });
+  let newCritical = critical.length;
+  if (previous) {
+    const before = await db.auditIssue.findMany({
+      where: { agencyId, auditId: previous.id, severity: "CRITICAL" },
+      select: { code: true, url: true },
+      take: 20_000,
+    });
+    newCritical = compareIssues(before, critical).new;
+  }
+  const draft = buildAuditAlert({
+    auditId: audit.id,
+    projectId: audit.projectId,
+    projectName: audit.project.name,
+    newCritical,
+    firstAudit: !previous,
+    settings: await loadAlertSettings(db, agencyId),
+  });
+  if (draft) await createAlerts(db, agencyId, [draft]);
 }

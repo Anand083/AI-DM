@@ -41,6 +41,11 @@ export type CreateAgencyInput = z.infer<typeof createAgencySchema>;
 export const updateAgencySchema = z.object({
   name: createAgencySchema.shape.name,
   timezone: createAgencySchema.shape.timezone,
+  alertDropPositions: z.coerce.number().int().min(1, "Use at least 1.").max(50, "Use 50 or less."),
+  alertDropWithin: z.coerce.number().int().min(1, "Use at least 1.").max(100, "Use 100 or less."),
+  alertTopPosition: z.coerce.number().int().min(1, "Use at least 1.").max(100, "Use 100 or less."),
+  alertOnCriticalAudit: z.boolean(),
+  dailyDigest: z.boolean(),
 });
 
 /**
@@ -105,7 +110,18 @@ export async function isSlugAvailable(slug: string): Promise<boolean> {
 export async function getAgency(ctx: TenantContext) {
   const agency = await db.agency.findFirst({
     where: { id: ctx.agencyId, deletedAt: null },
-    select: { id: true, name: true, slug: true, timezone: true, status: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      timezone: true,
+      status: true,
+      alertDropPositions: true,
+      alertDropWithin: true,
+      alertTopPosition: true,
+      alertOnCriticalAudit: true,
+      dailyDigest: true,
+    },
   });
   if (!agency) throw new NotFoundError();
   return agency;

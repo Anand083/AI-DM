@@ -20,9 +20,12 @@ import type { EmailJobData } from "@/server/jobs/enqueue";
 import {
   enqueueAuditPoll,
   enqueueAutoAudit,
+  enqueueDigest,
+  enqueueEmail,
   enqueueProcessTask,
   enqueueRankCheck,
 } from "@/server/jobs/enqueue";
+import { runDigestScheduler, sendDigest } from "@/server/services/alert-digest";
 import type { JobProcessors } from "@/server/jobs/runtime";
 import { purgeExpired } from "@/server/jobs/system/purge";
 import { runRankCheckScheduler } from "@/server/jobs/system/scheduler";
@@ -59,7 +62,13 @@ export const processors: JobProcessors = {
           paused: async () => budget.state === "paused",
         });
         if (audits.queued > 0) logger.info(audits, "monthly audits queued");
-        return { ...result, audits };
+        const digests = await runDigestScheduler({
+          db: rawDb,
+          now: new Date(),
+          enqueue: enqueueDigest,
+        });
+        if (digests.queued > 0) logger.info(digests, "daily digests queued");
+        return { ...result, audits, digests };
       }
       case "purge:expired": {
         const result = await purgeExpired(rawDb);
@@ -152,7 +161,21 @@ export const processors: JobProcessors = {
     }
   },
   reports: placeholder("reports", "Step 15"),
-  alerts: placeholder("alerts", "Step 13"),
+  alerts: async (job) => {
+    if (job.name !== "digest") {
+      logger.warn({ name: job.name }, "unknown alerts job");
+      return;
+    }
+    const { agencyId, date } = job.data as { agencyId: string; date: string };
+    return sendDigest({
+      db: rawDb,
+      agencyId,
+      date,
+      now: new Date(),
+      appUrl: getEnv().APP_URL,
+      send: (email, key) => enqueueEmail(email, key),
+    });
+  },
   "provider-tasks": async (job) => {
     switch (job.name) {
       case "poll": {

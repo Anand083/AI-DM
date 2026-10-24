@@ -47,7 +47,7 @@ test("the top bar shows the agency switcher, demo badge, bell and user menu", as
   await expect(page.getByLabel("Switch agency")).toBeVisible();
   await expect(page.getByText("Demo data")).toBeVisible();
   await page.getByRole("button", { name: "Notifications" }).click();
-  await expect(page.getByText("You have no notifications yet.")).toBeVisible();
+  await expect(page.getByText("You have no unread notifications.")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: /Olivia Owner/ }).click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();

@@ -144,6 +144,16 @@ model Agency {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
+  /// Alert settings. A keyword that was in the top `alertDropWithin` and fell by `alertDropPositions` or more gives an alert.
+  alertDropPositions   Int       @default(5)
+  alertDropWithin      Int       @default(20)
+  /// A keyword that moves into the top `alertTopPosition` gives an alert.
+  alertTopPosition     Int       @default(10)
+  alertOnCriticalAudit Boolean   @default(true)
+  /// Email a summary of new alerts to owners and admins every morning (agency time).
+  dailyDigest          Boolean   @default(false)
+  lastDigestOn         DateTime? @db.Date
+
   members          AgencyMember[]
   invitations      Invitation[]
   clients          Client[]
@@ -157,6 +167,7 @@ model Agency {
   rankChecks       RankCheck[]
   audits           Audit[]
   keywordLists     KeywordList[]
+  alerts           Alert[]
   keywordListItems KeywordListItem[]
   auditPages       AuditPage[]
   auditIssues      AuditIssue[]
@@ -358,6 +369,50 @@ model RankCheck {
 
   @@unique([keywordId, date])
   @@index([agencyId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Alerts
+// ---------------------------------------------------------------------------
+
+enum AlertType {
+  RANK_DROP
+  RANK_GAIN
+  AUDIT_CRITICAL
+  BACKLINKS_LOST
+  AI_MENTION_LOST
+  NEW_REVIEW
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+/// Something worth a look. One alert summarises a whole run (for example all keywords that
+/// dropped today in a project), so a big move does not flood the bell.
+model Alert {
+  id        String        @id @default(cuid(2))
+  agencyId  String
+  projectId String?
+  type      AlertType
+  severity  AlertSeverity
+  title     String
+  body      String
+  data      Json?
+  /// Stops the same alert being created twice (for example "rank_drop:<project>:<date>").
+  dedupeKey String
+  readAt    DateTime?
+  emailedAt DateTime?
+  createdAt DateTime      @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, dedupeKey])
+  @@index([agencyId, readAt, createdAt])
+  @@index([agencyId, projectId, readAt])
+  @@index([agencyId, emailedAt, createdAt])
 }
 
 // ---------------------------------------------------------------------------

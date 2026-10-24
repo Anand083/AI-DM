@@ -1,4 +1,6 @@
 import type { Db } from "@/server/db/client";
+import { buildRankAlerts, type RankMove } from "@/lib/alert-rules";
+import { createAlerts, loadAlertSettings } from "./alert-store";
 import { refreshKeywordSnapshots } from "./rank-snapshots";
 import type { GatewayCaller, GatewayResult } from "./seo-gateway";
 import type { RankPriority, RankResult } from "@/server/providers/seo/types";
@@ -49,7 +51,14 @@ export async function runProjectRankCheck(
       deletedAt: null,
       client: { deletedAt: null, status: "ACTIVE" },
     },
-    select: { id: true, domain: true, locationCode: true, languageCode: true, device: true },
+    select: {
+      id: true,
+      name: true,
+      domain: true,
+      locationCode: true,
+      languageCode: true,
+      device: true,
+    },
   });
   if (!project) return { checked: 0, skipped: 0, total: 0, projectActive: false };
 
@@ -61,6 +70,7 @@ export async function runProjectRankCheck(
   const total = await db.keyword.count({ where: keywordWhere });
   const date = new Date(`${run.date}T00:00:00Z`);
 
+  const moves: RankMove[] = [];
   let checked = 0;
   let skipped = 0;
   let cursor: string | undefined;
@@ -68,7 +78,7 @@ export async function runProjectRankCheck(
   for (;;) {
     const batch = await db.keyword.findMany({
       where: keywordWhere,
-      select: { id: true, phrase: true },
+      select: { id: true, phrase: true, lastCheckedOn: true, currentPosition: true },
       orderBy: { id: "asc" },
       take: RANK_BATCH_SIZE,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -124,6 +134,20 @@ export async function runProjectRankCheck(
         });
       }
       await db.rankCheck.createMany({ data: rows, skipDuplicates: true });
+      // Moves for alerts: compare with the latest check on an EARLIER day. A keyword checked for
+      // the first time, or checked again on the same day, has nothing to compare with.
+      const priorById = new Map(todo.map((k) => [k.id, k]));
+      for (const row of rows) {
+        const prior = priorById.get(row.keywordId);
+        if (prior?.lastCheckedOn && prior.lastCheckedOn < date) {
+          moves.push({
+            keywordId: row.keywordId,
+            phrase: prior.phrase,
+            previous: prior.currentPosition,
+            current: row.position,
+          });
+        }
+      }
       await refreshKeywordSnapshots(
         db,
         run.agencyId,
@@ -133,6 +157,20 @@ export async function runProjectRankCheck(
     }
     await run.onProgress?.(checked + skipped, total);
     if (batch.length < RANK_BATCH_SIZE) break;
+  }
+  if (moves.length > 0) {
+    const settings = await loadAlertSettings(db, run.agencyId);
+    await createAlerts(
+      db,
+      run.agencyId,
+      buildRankAlerts({
+        projectId: project.id,
+        projectName: project.name,
+        date: run.date,
+        moves,
+        settings,
+      }),
+    );
   }
   return { checked, skipped, total, projectActive: true };
 }
