@@ -63,3 +63,14 @@
 - The "Demo data" badge shows when `SEO_PROVIDER=mock`.
 - Settings (name, time zone) can be edited by owner and admin (`branding.edit`); members see it read-only. The agency address (slug) is fixed.
 - Pages and the layout share one cached `getPageContext(slug)` per request.
+
+## Step 6
+
+- Lists are server-paged with plain links and a GET search form (works without JavaScript, shareable URLs). Page size 20, service cap 100.
+- Plan count limits: clients count only ACTIVE, not-deleted clients (archiving frees a slot; restoring is checked again). Projects count not-deleted projects of ACTIVE clients. Error text: "Your <Plan> plan allows up to N clients. Upgrade your plan to add more." (`LimitExceededError`, code LIMIT). An archived client with projects can be restored even if it takes the agency over the project limit; Step 9 may tighten this.
+- `listClients` with no `status` returns all statuses; the Clients page passes ACTIVE by default.
+- Same domain twice for one client is blocked; the same domain for two different clients is allowed (agencies may track a site for two clients or migrations).
+- Domains are normalized to a bare host (no protocol, `www.`, path or port) and converted to punycode. IP addresses and single-label hosts like `localhost` are rejected. Client website is stored as `https://<domain>`.
+- Locations/languages are fixed lists in `src/data` (41 countries, 21 languages). Codes are the Google Ads geo IDs DataForSEO uses; verify in Step 8c.
+- `rankCheckHourUtc` defaults to 3 and is not shown in the UI. The scheduler (Step 8) will spread projects across the hour.
+- Client users cannot call the agency client/project services (they get the portal in Step 17).

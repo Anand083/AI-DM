@@ -9,9 +9,9 @@ import { generateToken, hashToken } from "@/server/tokens";
 import { logActivity } from "./activity";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "./errors";
 import { sendInviteEmail } from "./email";
+import { paging, type Page } from "./paging";
 
 export const INVITE_DAYS = 7;
-const MAX_PAGE_SIZE = 100;
 
 export const inviteSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email("Enter a valid email address.")),
@@ -28,14 +28,6 @@ const ROLE_LABEL: Record<InviteRole, string> = {
   MEMBER: "a team member",
   CLIENT: "a client",
 };
-
-export type Page = { page?: number; pageSize?: number };
-
-function paging({ page = 1, pageSize = 25 }: Page) {
-  const take = Math.min(Math.max(1, Math.floor(pageSize)), MAX_PAGE_SIZE);
-  const skip = (Math.max(1, Math.floor(page)) - 1) * take;
-  return { take, skip };
-}
 
 function requireTeamManage(ctx: TenantContext): void {
   if (!can(ctx.role, "team.manage")) throw new ForbiddenError();

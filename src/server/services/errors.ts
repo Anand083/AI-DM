@@ -33,3 +33,10 @@ export class ConflictError extends AppError {
     super(message, "CONFLICT");
   }
 }
+
+/** The plan does not allow more of something. The message tells the user what to do. */
+export class LimitExceededError extends AppError {
+  constructor(message: string) {
+    super(message, "LIMIT");
+  }
+}

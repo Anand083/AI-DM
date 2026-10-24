@@ -34,10 +34,18 @@ export async function createAgencyWithMembers(
   prisma: PrismaClient,
   roles: MemberRole[] = ["OWNER"],
   name = `Agency ${++counter}`,
+  /** Plan code. When given, the agency gets an ACTIVE subscription (plans must be seeded). */
+  plan?: string,
 ) {
   const agency = await prisma.agency.create({
     data: { name, slug: `agency-${createId().slice(0, 8).toLowerCase()}` },
   });
+  if (plan) {
+    const planRow = await prisma.plan.findUniqueOrThrow({ where: { code: plan } });
+    await prisma.subscription.create({
+      data: { agencyId: agency.id, planId: planRow.id, status: "ACTIVE" },
+    });
+  }
   const members = [];
   for (const role of roles) {
     const user = await createUser(prisma);

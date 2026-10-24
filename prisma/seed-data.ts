@@ -1,20 +1,4 @@
-/** Plan limits (plan section 9.6). -1 means unlimited. */
-export type PlanLimits = {
-  maxClients: number;
-  maxProjects: number;
-  maxKeywords: number;
-  maxTeamMembers: number;
-  maxClientUsers: number;
-  auditPagesPerMonth: number;
-  keywordResearchPerMonth: number;
-  liveChecksPerMonth: number;
-  aiChecksPerMonth: number;
-  backlinkQueriesPerMonth: number;
-  leadAuditsPerMonth: number;
-  reportSchedules: number;
-  customDomain: boolean;
-  whiteLabel: boolean;
-};
+import type { PlanLimits } from "../src/lib/plan-limits";
 
 const base: PlanLimits = {
   maxClients: 5,
