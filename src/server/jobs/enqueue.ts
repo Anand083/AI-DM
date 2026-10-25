@@ -107,6 +107,20 @@ export async function enqueueLeadPoll(
   });
 }
 
+/** Queues the answer to one assistant question. The language model is called in the worker. */
+export async function enqueueAssistant(data: {
+  agencyId: string;
+  projectId: string;
+  messageId: string;
+}): Promise<boolean> {
+  const queue = getQueue("modules");
+  const jobId = jobIds.assistant(data.messageId);
+  if (await queue.getJob(jobId)) return false;
+  // One try only: a failed answer is shown as failed and the person can ask again.
+  await queue.add("assistant", data, { jobId, attempts: 1 });
+  return true;
+}
+
 /** Queues a local rank check for the locations of a project. Returns false if one is queued for that date. */
 export async function enqueueLocalRanks(data: {
   agencyId: string;

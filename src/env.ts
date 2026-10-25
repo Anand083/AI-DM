@@ -65,6 +65,7 @@ const baseSchema = z.object({
   AWS_REGION: optionalString,
 
   SUMMARY_PROVIDER: z.enum(["mock", "openrouter"]).default("mock"),
+  ASSISTANT_PROVIDER: z.enum(["mock", "openrouter"]).default("mock"),
   OPENROUTER_API_KEY: optionalString,
   OPENROUTER_MODEL: z.string().min(1).default("anthropic/claude-haiku-5.5"),
   OPENROUTER_BASE_URL: z.url().default("https://openrouter.ai/api/v1"),
@@ -95,10 +96,13 @@ function productionProblems(env: Env): [string, string][] {
       "the mock provider is not allowed in production unless ALLOW_MOCK_IN_PROD=true",
     ]);
   }
-  if (env.SUMMARY_PROVIDER === "openrouter" && !env.OPENROUTER_API_KEY) {
+  if (
+    (env.SUMMARY_PROVIDER === "openrouter" || env.ASSISTANT_PROVIDER === "openrouter") &&
+    !env.OPENROUTER_API_KEY
+  ) {
     problems.push([
       "OPENROUTER_API_KEY",
-      "OPENROUTER_API_KEY is required when SUMMARY_PROVIDER=openrouter",
+      "OPENROUTER_API_KEY is required when SUMMARY_PROVIDER or ASSISTANT_PROVIDER is openrouter",
     ]);
   }
   if (used.has("dataforseo") && (!env.DATAFORSEO_LOGIN || !env.DATAFORSEO_PASSWORD)) {

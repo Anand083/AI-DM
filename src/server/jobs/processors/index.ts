@@ -47,6 +47,9 @@ import { getGoogleProvider } from "@/server/providers/google";
 import { pollLead, runLeadStart } from "@/server/services/lead-runner";
 import { notifyAgencyOfLead } from "@/server/services/leads";
 import { runCompetitorAlerts } from "@/server/jobs/system/competitor-alerts";
+import { getAssistantProvider } from "@/server/providers/assistant";
+import { buildBundleForUser } from "@/server/services/assistant";
+import { runAssistant } from "@/server/services/assistant-runner";
 import { pseudoLocationCode } from "@/lib/local";
 import { runListingChecks, runLocalRanks } from "@/server/services/local-runner";
 import { runCompetitorLinks } from "@/server/services/competitor-links-runner";
@@ -272,6 +275,15 @@ export const processors: JobProcessors = {
           data,
         );
         logger.info({ jobId: job.id, ...result }, "google sync");
+        return result;
+      }
+      case "assistant": {
+        const data = job.data as { projectId: string; agencyId: string; messageId: string };
+        const result = await runAssistant(
+          { db, provider: getAssistantProvider(), buildBundle: buildBundleForUser },
+          data,
+        );
+        logger.info({ jobId: job.id, ...result }, "assistant answer");
         return result;
       }
       case "local-ranks": {

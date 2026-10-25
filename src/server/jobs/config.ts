@@ -58,6 +58,7 @@ export const jobIds = {
   leadRun: (leadId: string) => `lead_${safe(leadId)}_run`,
   leadPoll: (leadId: string, attempt: number) => `lead_${safe(leadId)}_poll_${attempt}`,
   googleSync: (projectId: string, date: string) => `google_${safe(projectId)}_${date}`,
+  assistant: (messageId: string) => `assistant_${safe(messageId)}`,
   localRanks: (projectId: string, date: string) => `localranks_${safe(projectId)}_${date}`,
   listingChecks: (projectId: string, date: string) => `listings_${safe(projectId)}_${date}`,
   competitorLinks: (projectId: string, date: string) => `complinks_${safe(projectId)}_${date}`,

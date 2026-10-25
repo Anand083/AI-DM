@@ -217,6 +217,8 @@ model Agency {
   localRanks         LocalRank[]
   listingChecks      ListingCheck[]
   contentUpdates     ContentUpdate[]
+  assistantMessages  AssistantMessage[]
+  assistantActions   AssistantAction[]
 
   @@index([status, deletedAt])
 }
@@ -341,6 +343,8 @@ model Project {
   localRanks         LocalRank[]
   listingChecks      ListingCheck[]
   contentUpdates     ContentUpdate[]
+  assistantMessages  AssistantMessage[]
+  assistantActions   AssistantAction[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -1768,4 +1772,54 @@ model ContentUpdate {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([agencyId, projectId, updatedOn])
+}
+
+/// A question to the assistant (role USER) or its answer (role ASSISTANT) about one project.
+model AssistantMessage {
+  id         String   @id @default(cuid(2))
+  agencyId   String
+  projectId  String
+  /// The person who asked (also set on the answer, so it is shown to the same person).
+  userId     String
+  role       String
+  content    String
+  /// For a question: PENDING, DONE or FAILED. Null on answers.
+  status     String?
+  /// For an answer: the question it answers.
+  replyToId  String?
+  /// For an answer: [{ source, detail }] the answer is based on.
+  evidence   Json?
+  confidence String?
+  /// Which provider wrote the answer: "mock" or the model provider's name.
+  provider   String?
+  createdAt  DateTime @default(now())
+
+  agency  Agency            @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actions AssistantAction[]
+
+  @@index([agencyId, projectId, userId, createdAt])
+}
+
+/// Something the assistant suggests doing. It only happens when a person approves it.
+model AssistantAction {
+  id          String    @id @default(cuid(2))
+  agencyId    String
+  projectId   String
+  messageId   String
+  /// create_task or track_keywords.
+  type        String
+  payload     Json
+  /// PENDING, APPROVED, DISMISSED or FAILED.
+  status      String    @default("PENDING")
+  resultNote  String?
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  agency  Agency           @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  message AssistantMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, projectId, status])
 }

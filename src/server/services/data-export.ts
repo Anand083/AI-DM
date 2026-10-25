@@ -513,6 +513,16 @@ export function exportFiles(
       rows: allRows((a) => rawDb.contentUpdate.findMany({ where, ...order, ...a })),
     },
     {
+      name: "assistant-messages.jsonl",
+      model: "AssistantMessage",
+      rows: allRows((a) => rawDb.assistantMessage.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "assistant-actions.jsonl",
+      model: "AssistantAction",
+      rows: allRows((a) => rawDb.assistantAction.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),
