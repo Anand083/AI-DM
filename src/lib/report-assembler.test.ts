@@ -224,3 +224,19 @@ describe("reviews in the report", () => {
     expect(assembleReport(input({ reviews })).reviews).toEqual(reviews);
   });
 });
+
+describe("Google data in the report", () => {
+  it("is null when the loader gave none, and passed through when given", () => {
+    expect(assembleReport(input()).analytics).toBeNull();
+    const analytics = {
+      search: null,
+      analytics: {
+        sessions: 5,
+        conversions: 1,
+        sessionsChangePercent: null,
+        conversionsChangePercent: null,
+      },
+    };
+    expect(assembleReport(input({ analytics })).analytics).toEqual(analytics);
+  });
+});

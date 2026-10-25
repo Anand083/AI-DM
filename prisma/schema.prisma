@@ -177,6 +177,9 @@ model Agency {
   localBusinesses    LocalBusiness[]
   reviewSnapshots    ReviewSnapshot[]
   reviews            Review[]
+  googleConnections  GoogleConnection[]
+  searchConsoleDays  SearchConsoleDay[]
+  ga4Days            Ga4Day[]
   aiSettings         AiSetting[]
   backlinkSnapshots  BacklinkSnapshot[]
   keywordLists       KeywordList[]
@@ -295,6 +298,9 @@ model Project {
   localBusinesses    LocalBusiness[]
   reviewSnapshots    ReviewSnapshot[]
   reviews            Review[]
+  googleConnections  GoogleConnection[]
+  searchConsoleDays  SearchConsoleDay[]
+  ga4Days            Ga4Day[]
   aiSettings         AiSetting[]
   backlinkSnapshots  BacklinkSnapshot[]
   reports            Report[]
@@ -1181,4 +1187,72 @@ model Review {
   @@unique([projectId, key])
   @@index([agencyId, projectId, publishedAt])
   @@index([agencyId, projectId, rating, publishedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Google Search Console and Google Analytics 4
+// ---------------------------------------------------------------------------
+
+/// A project's link to a Google account. Tokens are encrypted with ENCRYPTION_KEY before saving.
+model GoogleConnection {
+  id                  String    @id @default(cuid(2))
+  agencyId            String
+  projectId           String
+  accountEmail        String?
+  accessTokenEnc      String
+  refreshTokenEnc     String?
+  accessExpiresAt     DateTime
+  scopes              String[]
+  /// The sites and properties the account can see, saved when connecting so choosing needs no Google call.
+  availableSites      Json
+  availableProperties Json
+  gscSite             String?
+  ga4PropertyId       String?
+  ga4PropertyName     String?
+  /// ACTIVE, or NEEDS_RECONNECT when Google no longer accepts the tokens.
+  status              String    @default("ACTIVE")
+  lastError           String?
+  lastSyncedOn        DateTime? @db.Date
+  connectedById       String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId])
+  @@index([agencyId])
+}
+
+/// One day of Search Console numbers. Position is in tenths (73 means 7.3).
+model SearchConsoleDay {
+  id             String   @id @default(cuid(2))
+  agencyId       String
+  projectId      String
+  date           DateTime @db.Date
+  clicks         Int
+  impressions    Int
+  positionTenths Int
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, date])
+  @@index([agencyId, projectId, date])
+}
+
+/// One day of Google Analytics 4 numbers.
+model Ga4Day {
+  id          String   @id @default(cuid(2))
+  agencyId    String
+  projectId   String
+  date        DateTime @db.Date
+  sessions    Int
+  conversions Int
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, date])
+  @@index([agencyId, projectId, date])
 }

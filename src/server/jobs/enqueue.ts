@@ -84,6 +84,23 @@ export async function enqueueBacklinkRefresh(data: {
   return true;
 }
 
+/** Queues the Google numbers sync of a project. Returns false if it was already queued for that date. */
+export async function enqueueGoogleSync(data: {
+  agencyId: string;
+  projectId: string;
+  date: string;
+}): Promise<boolean> {
+  const queue = getQueue("modules");
+  const jobId = jobIds.googleSync(data.projectId, data.date);
+  if (await queue.getJob(jobId)) return false;
+  await queue.add("google-sync", data, {
+    jobId,
+    attempts: 3,
+    backoff: { type: "exponential", delay: 60_000 },
+  });
+  return true;
+}
+
 /** Queues the review check of a project. Returns false if it was already queued for that date. */
 export async function enqueueReviewCheck(data: {
   agencyId: string;

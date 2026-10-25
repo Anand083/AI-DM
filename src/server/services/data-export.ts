@@ -113,7 +113,9 @@ const line = (row: unknown) =>
  * Everything an owner may take with them, one JSON-lines file per table. Secrets are left out:
  * no password hashes, session or share tokens, two-step secrets, invitation tokens or provider ids.
  */
-export function exportFiles(agencyId: string): { name: string; rows: AsyncGenerator<unknown> }[] {
+export function exportFiles(
+  agencyId: string,
+): { name: string; model: string; rows: AsyncGenerator<unknown> }[] {
   const where = { agencyId };
   const order = { orderBy: { id: "asc" as const } };
   const one = async function* (value: Promise<unknown>) {
@@ -123,6 +125,7 @@ export function exportFiles(agencyId: string): { name: string; rows: AsyncGenera
   return [
     {
       name: "agency.jsonl",
+      model: "Agency",
       rows: one(
         rawDb.agency.findUnique({
           where: { id: agencyId },
@@ -144,6 +147,7 @@ export function exportFiles(agencyId: string): { name: string; rows: AsyncGenera
     },
     {
       name: "team.jsonl",
+      model: "AgencyMember",
       rows: allRows((a) =>
         rawDb.agencyMember.findMany({
           where,
@@ -160,10 +164,12 @@ export function exportFiles(agencyId: string): { name: string; rows: AsyncGenera
     },
     {
       name: "clients.jsonl",
+      model: "Client",
       rows: allRows((a) => rawDb.client.findMany({ where, ...order, ...a })),
     },
     {
       name: "client-users.jsonl",
+      model: "ClientUser",
       rows: allRows((a) =>
         rawDb.clientUser.findMany({
           where,
@@ -180,18 +186,22 @@ export function exportFiles(agencyId: string): { name: string; rows: AsyncGenera
     },
     {
       name: "projects.jsonl",
+      model: "Project",
       rows: allRows((a) => rawDb.project.findMany({ where, ...order, ...a })),
     },
     {
       name: "keywords.jsonl",
+      model: "Keyword",
       rows: allRows((a) => rawDb.keyword.findMany({ where, ...order, ...a })),
     },
     {
       name: "rank-checks.jsonl",
+      model: "RankCheck",
       rows: allRows((a) => rawDb.rankCheck.findMany({ where, ...order, ...a })),
     },
     {
       name: "audits.jsonl",
+      model: "Audit",
       rows: allRows((a) =>
         rawDb.audit.findMany({
           where,
@@ -213,23 +223,32 @@ export function exportFiles(agencyId: string): { name: string; rows: AsyncGenera
     },
     {
       name: "audit-pages.jsonl",
+      model: "AuditPage",
       rows: allRows((a) => rawDb.auditPage.findMany({ where, ...order, ...a })),
     },
     {
       name: "audit-issues.jsonl",
+      model: "AuditIssue",
       rows: allRows((a) => rawDb.auditIssue.findMany({ where, ...order, ...a })),
     },
     {
       name: "keyword-lists.jsonl",
+      model: "KeywordList",
       rows: allRows((a) => rawDb.keywordList.findMany({ where, ...order, ...a })),
     },
     {
       name: "keyword-list-items.jsonl",
+      model: "KeywordListItem",
       rows: allRows((a) => rawDb.keywordListItem.findMany({ where, ...order, ...a })),
     },
-    { name: "alerts.jsonl", rows: allRows((a) => rawDb.alert.findMany({ where, ...order, ...a })) },
+    {
+      name: "alerts.jsonl",
+      model: "Alert",
+      rows: allRows((a) => rawDb.alert.findMany({ where, ...order, ...a })),
+    },
     {
       name: "reports.jsonl",
+      model: "Report",
       rows: allRows((a) =>
         rawDb.report.findMany({
           where,
@@ -253,10 +272,12 @@ export function exportFiles(agencyId: string): { name: string; rows: AsyncGenera
     },
     {
       name: "report-schedules.jsonl",
+      model: "ReportSchedule",
       rows: allRows((a) => rawDb.reportSchedule.findMany({ where, ...order, ...a })),
     },
     {
       name: "branding.jsonl",
+      model: "Branding",
       rows: allRows((a) =>
         rawDb.branding.findMany({
           where,
@@ -277,18 +298,119 @@ export function exportFiles(agencyId: string): { name: string; rows: AsyncGenera
     },
     {
       name: "invoices.jsonl",
+      model: "Invoice",
       rows: allRows((a) => rawDb.invoice.findMany({ where, ...order, ...a })),
     },
     {
       name: "usage.jsonl",
+      model: "UsageRecord",
       rows: allRows((a) => rawDb.usageRecord.findMany({ where, ...order, ...a })),
     },
     {
+      name: "backlinks.jsonl",
+      model: "Backlink",
+      rows: allRows((a) => rawDb.backlink.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "backlink-snapshots.jsonl",
+      model: "BacklinkSnapshot",
+      rows: allRows((a) => rawDb.backlinkSnapshot.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "competitors.jsonl",
+      model: "Competitor",
+      rows: allRows((a) => rawDb.competitor.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "competitor-keywords.jsonl",
+      model: "CompetitorKeyword",
+      rows: allRows((a) => rawDb.competitorKeyword.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "ai-prompts.jsonl",
+      model: "AiPrompt",
+      rows: allRows((a) => rawDb.aiPrompt.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "ai-settings.jsonl",
+      model: "AiSetting",
+      rows: allRows((a) => rawDb.aiSetting.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "ai-visibility-checks.jsonl",
+      model: "AiVisibilityCheck",
+      rows: allRows((a) => rawDb.aiVisibilityCheck.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "local-businesses.jsonl",
+      model: "LocalBusiness",
+      rows: allRows((a) => rawDb.localBusiness.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "review-snapshots.jsonl",
+      model: "ReviewSnapshot",
+      rows: allRows((a) => rawDb.reviewSnapshot.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "reviews.jsonl",
+      model: "Review",
+      rows: allRows((a) => rawDb.review.findMany({ where, ...order, ...a })),
+    },
+    {
+      // The tokens are left out: they are secrets and useless outside this platform.
+      name: "google-connections.jsonl",
+      model: "GoogleConnection",
+      rows: allRows((a) =>
+        rawDb.googleConnection.findMany({
+          where,
+          select: {
+            id: true,
+            projectId: true,
+            accountEmail: true,
+            gscSite: true,
+            ga4PropertyId: true,
+            ga4PropertyName: true,
+            status: true,
+            lastSyncedOn: true,
+            createdAt: true,
+          },
+          ...order,
+          ...a,
+        }),
+      ),
+    },
+    {
+      name: "search-console-days.jsonl",
+      model: "SearchConsoleDay",
+      rows: allRows((a) => rawDb.searchConsoleDay.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "ga4-days.jsonl",
+      model: "Ga4Day",
+      rows: allRows((a) => rawDb.ga4Day.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
+      model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),
     },
   ];
 }
+
+/**
+ * Tenant tables that are not in the export, and why. A test checks that every tenant table is
+ * either exported or listed here, so a new table cannot be forgotten.
+ */
+export const EXPORT_EXCLUDED: Record<string, string> = {
+  Invitation: "holds secret invitation tokens",
+  Subscription: "billing state of the platform, see the invoices file",
+  PendingProviderTask: "internal queue of data supplier tasks",
+  BillingEvent: "internal payment provider events",
+  CheckoutSession: "internal payment provider sessions",
+  Impersonation: "internal support sessions (the activity log has the record)",
+  UsageBonus: "internal credits given by support",
+  DataExport: "the exports themselves",
+};
 
 const README = `This is a copy of your agency's data.
 

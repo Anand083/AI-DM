@@ -14,6 +14,7 @@ export function ProjectTabs({ base, canEdit }: { base: string; canEdit: boolean 
     { label: "Competitors", href: `${base}/competitors` },
     { label: "AI visibility", href: `${base}/ai-visibility` },
     { label: "Reviews", href: `${base}/reviews` },
+    { label: "Analytics", href: `${base}/analytics` },
     ...(canEdit ? [{ label: "Settings", href: `${base}/edit` }] : []),
   ];
   return (

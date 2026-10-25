@@ -68,6 +68,9 @@ const baseSchema = z.object({
   CUSTOM_DOMAINS_ENABLED: bool,
   QUEUE_PREFIX: z.string().min(1).default("bull"),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(2),
+  GOOGLE_PROVIDER: z.enum(["mock", "google"]).default("mock"),
+  GOOGLE_CLIENT_ID: optionalString,
+  GOOGLE_CLIENT_SECRET: optionalString,
   SENTRY_DSN: optionalString,
   ENCRYPTION_KEY: z.string().default("change-me-32-bytes"),
 });
@@ -109,6 +112,24 @@ function productionProblems(env: Env): [string, string][] {
     problems.push([
       "DATAFORSEO_CALLBACK_SECRET",
       "must be a real secret of at least 16 characters",
+    ]);
+  }
+  if (env.ENCRYPTION_KEY.length < 32) {
+    problems.push([
+      "ENCRYPTION_KEY",
+      "must be at least 32 characters (used to encrypt Google tokens)",
+    ]);
+  }
+  if (env.GOOGLE_PROVIDER === "mock" && !env.ALLOW_MOCK_IN_PROD) {
+    problems.push([
+      "GOOGLE_PROVIDER",
+      "the mock Google provider is not allowed in production unless ALLOW_MOCK_IN_PROD=true",
+    ]);
+  }
+  if (env.GOOGLE_PROVIDER === "google" && (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET)) {
+    problems.push([
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required when GOOGLE_PROVIDER=google",
     ]);
   }
   if (env.STORAGE_PROVIDER === "s3" && (!env.S3_BUCKET || !env.AWS_REGION)) {

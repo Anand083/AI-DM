@@ -27,6 +27,7 @@ import {
   enqueueAutoAudit,
   enqueueBacklinkRefresh,
   enqueueDigest,
+  enqueueGoogleSync,
   enqueueEmail,
   enqueueProcessTask,
   enqueueRankCheck,
@@ -40,6 +41,9 @@ import type { JobProcessors } from "@/server/jobs/runtime";
 import { uploadLatestBackup } from "@/server/jobs/system/backup-upload";
 import { S3StorageProvider } from "@/server/providers/storage/s3";
 import { purgeExpired } from "@/server/jobs/system/purge";
+import { runGoogleScheduler } from "@/server/jobs/system/google-scheduler";
+import { getGoogleProvider } from "@/server/providers/google";
+import { runGoogleSync } from "@/server/services/google-sync";
 import { runReviewScheduler } from "@/server/jobs/system/review-scheduler";
 import { getSummaryProvider } from "@/server/providers/summary";
 import { runReviewRefresh } from "@/server/services/review-runner";
@@ -95,6 +99,12 @@ export const processors: JobProcessors = {
           paused: async () => budget.state === "paused",
         });
         if (reviewChecks.queued > 0) logger.info(reviewChecks, "daily review checks queued");
+        const googleSyncs = await runGoogleScheduler({
+          db: rawDb,
+          now: new Date(),
+          enqueue: enqueueGoogleSync,
+        });
+        if (googleSyncs.queued > 0) logger.info(googleSyncs, "daily Google syncs queued");
         const digests = await runDigestScheduler({
           db: rawDb,
           now: new Date(),
@@ -109,7 +119,17 @@ export const processors: JobProcessors = {
         if (reports.created > 0) logger.info(reports, "scheduled reports queued");
         const billing = await runBillingTick({ db: rawDb, now: new Date() });
         if (billing.checked + billing.reminders > 0) logger.info(billing, "billing tick");
-        return { ...result, audits, backlinks, aiChecks, reviewChecks, digests, reports, billing };
+        return {
+          ...result,
+          audits,
+          backlinks,
+          aiChecks,
+          reviewChecks,
+          googleSyncs,
+          digests,
+          reports,
+          billing,
+        };
       }
       case "export:agency": {
         const { exportId, agencyId } = job.data as { exportId: string; agencyId: string };
@@ -184,6 +204,15 @@ export const processors: JobProcessors = {
           }
           throw error;
         }
+      }
+      case "google-sync": {
+        const data = job.data as { projectId: string; agencyId: string };
+        const result = await runGoogleSync(
+          { db, provider: getGoogleProvider(), secret: getEnv().ENCRYPTION_KEY },
+          data,
+        );
+        logger.info({ jobId: job.id, ...result }, "google sync");
+        return result;
       }
       case "reviews": {
         const data = job.data as { projectId: string; agencyId: string; date: string };

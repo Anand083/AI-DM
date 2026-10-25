@@ -2,6 +2,7 @@ import "server-only";
 import { DEFAULT_ACCENT, DEFAULT_PRIMARY, initials } from "@/lib/brand";
 import { normalizeHex, readableTextOn } from "@/lib/color";
 import { formatChange, formatPosition } from "@/lib/rank-math";
+import { describeAnalytics } from "@/lib/report-analytics";
 import { describeReviews } from "@/lib/report-reviews";
 import { describeAi } from "@/lib/report-ai";
 import { describeBacklinks } from "@/lib/report-backlinks";
@@ -400,6 +401,21 @@ function createRenderer(rp: ReactPdf) {
                 </View>
               ) : (
                 <Text style={s.empty}>No review check has been done yet.</Text>
+              )}
+            </View>
+          ) : null}
+
+          {has("analytics") ? (
+            <View>
+              <Text style={s.h2}>Search Console and Analytics</Text>
+              {model.analytics ? (
+                describeAnalytics(model.analytics).map((line) => (
+                  <Text key={line} style={[s.p, { marginBottom: 4 }]}>
+                    {line}
+                  </Text>
+                ))
+              ) : (
+                <Text style={s.empty}>No Google data is connected for this period.</Text>
               )}
             </View>
           ) : null}

@@ -1,10 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadTenantContext } from "@/server/auth/tenant-context";
+import { TENANT_MODELS } from "@/server/db/tenant-guard";
 import { purgeExpired } from "@/server/jobs/system/purge";
 import { getStorage } from "@/server/providers/storage";
 import { deleteAgency } from "@/server/services/agency";
 import {
   buildAgencyExport,
+  EXPORT_EXCLUDED,
+  exportFiles,
   listExports,
   purgeExpiredExports,
   readExport,
@@ -105,6 +108,60 @@ beforeEach(async () => {
 });
 afterAll(async () => {
   await prisma.$disconnect();
+});
+
+describe("export coverage", () => {
+  it("includes every tenant table, or says why not", () => {
+    const exported = new Set(exportFiles("any").map((f) => f.model));
+    const missing = [...TENANT_MODELS].filter((m) => !exported.has(m) && !(m in EXPORT_EXCLUDED));
+    expect(missing).toEqual([]);
+    // A table cannot be both exported and excluded.
+    expect(Object.keys(EXPORT_EXCLUDED).filter((m) => exported.has(m))).toEqual([]);
+    // Every excluded name is a real tenant table.
+    expect(Object.keys(EXPORT_EXCLUDED).filter((m) => !TENANT_MODELS.has(m))).toEqual([]);
+  });
+
+  it("never exports Google tokens, and exports the other Phase F data", async () => {
+    const { agency, client } = await setup("Tokens Agency");
+    const project = await prisma.project.create({
+      data: {
+        agencyId: agency.id,
+        clientId: client.id,
+        name: "Second site",
+        domain: "second.test",
+        locationCode: 2840,
+        languageCode: "en",
+      },
+    });
+    await prisma.googleConnection.create({
+      data: {
+        agencyId: agency.id,
+        projectId: project.id,
+        accountEmail: "boss@agency.test",
+        accessTokenEnc: "v1.SECRETACCESS.x.y",
+        refreshTokenEnc: "v1.SECRETREFRESH.x.y",
+        accessExpiresAt: day(1),
+        scopes: [],
+        availableSites: [],
+        availableProperties: [],
+        gscSite: "sc-domain:site.test",
+      },
+    });
+    await prisma.competitor.create({
+      data: { agencyId: agency.id, projectId: project.id, domain: "rival.test" },
+    });
+    const collect = async (model: string) => {
+      const file = exportFiles(agency.id).find((f) => f.model === model)!;
+      const rows: unknown[] = [];
+      for await (const row of file.rows) rows.push(row);
+      return JSON.stringify(rows);
+    };
+    const google = await collect("GoogleConnection");
+    expect(google).toContain("boss@agency.test");
+    expect(google).toContain("sc-domain:site.test");
+    expect(google).not.toMatch(/SECRET|accessTokenEnc|refreshTokenEnc|v1\./);
+    expect(await collect("Competitor")).toContain("rival.test");
+  });
 });
 
 describe("data export", () => {

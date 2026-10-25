@@ -55,6 +55,7 @@ export const jobIds = {
   auditAuto: (projectId: string, month: string) => `audit_auto_${safe(projectId)}_${month}`,
   agencyExport: (exportId: string) => `export_${safe(exportId)}`,
   report: (reportId: string) => `report_${safe(reportId)}`,
+  googleSync: (projectId: string, date: string) => `google_${safe(projectId)}_${date}`,
   reviewCheck: (projectId: string, date: string) => `reviews_${safe(projectId)}_${date}`,
   aiCheck: (projectId: string, date: string) => `ai_${safe(projectId)}_${date}`,
   competitorGap: (projectId: string, date: string) => `competitors_${safe(projectId)}_${date}`,

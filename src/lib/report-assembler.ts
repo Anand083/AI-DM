@@ -93,6 +93,7 @@ export function assembleReport(input: ReportInput): Omit<ReportModel, "summary">
     competitors: input.competitors ?? null,
     ai: input.ai ?? null,
     reviews: input.reviews ?? null,
+    analytics: input.analytics ?? null,
     issues,
     opportunities,
     notes: input.notes?.trim() ? input.notes.trim() : null,

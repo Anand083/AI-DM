@@ -13,6 +13,7 @@ export const REPORT_SECTIONS = [
   { key: "competitors", label: "Competitors" },
   { key: "ai", label: "AI visibility" },
   { key: "reviews", label: "Local reviews" },
+  { key: "analytics", label: "Search Console and Analytics" },
   { key: "notes", label: "Notes" },
 ] as const;
 
@@ -126,6 +127,25 @@ export type ReportReviewsInput = {
   latest: { author: string; rating: number; text: string; publishedAt: string }[];
 };
 
+export type ReportAnalyticsInput = {
+  /** Null when no Search Console site is connected or there were no days in the period. */
+  search: {
+    clicks: number;
+    impressions: number;
+    ctrTenthsPercent: number;
+    positionTenths: number | null;
+    /** Percent change of clicks against the period of the same length before. Null without one. */
+    clicksChangePercent: number | null;
+    impressionsChangePercent: number | null;
+  } | null;
+  analytics: {
+    sessions: number;
+    conversions: number;
+    sessionsChangePercent: number | null;
+    conversionsChangePercent: number | null;
+  } | null;
+};
+
 export type ReportInput = {
   title: string;
   projectName: string;
@@ -141,6 +161,7 @@ export type ReportInput = {
   competitors?: ReportCompetitorsInput | null;
   ai?: ReportAiInput | null;
   reviews?: ReportReviewsInput | null;
+  analytics?: ReportAnalyticsInput | null;
   generatedOn: string;
 };
 
@@ -181,6 +202,8 @@ export type ReportModel = {
   ai?: ReportAiInput | null;
   /** Missing in reports made before the reviews section existed. */
   reviews?: ReportReviewsInput | null;
+  /** Missing in reports made before the Google data section existed. */
+  analytics?: ReportAnalyticsInput | null;
   issues: ReportAuditInput["issues"];
   opportunities: ReportKeywordRow[];
   notes: string | null;

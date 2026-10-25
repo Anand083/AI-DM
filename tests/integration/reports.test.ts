@@ -488,6 +488,75 @@ describe("generating a report", () => {
     expect((await getReport(owner.ctx, without.id)).model?.reviews).toBeNull();
   });
 
+  it("adds the Search Console and Analytics section from the saved days", async () => {
+    const { owner, project } = await setup();
+    const agencyId = owner.ctx.agencyId;
+    await prisma.googleConnection.create({
+      data: {
+        agencyId,
+        projectId: project.id,
+        accessTokenEnc: "v1.x.y.z",
+        accessExpiresAt: new Date("2026-04-01T00:00:00Z"),
+        scopes: [],
+        availableSites: [],
+        availableProperties: [],
+      },
+    });
+    const dayAt = (d: string) => new Date(`${d}T00:00:00Z`);
+    // The period is 2026-03-01 to 2026-03-30 (30 days). The 30 days before: 2026-01-30 to 2026-02-28.
+    await prisma.searchConsoleDay.createMany({
+      data: [
+        { date: "2026-03-05", clicks: 100, impressions: 1000, positionTenths: 80 },
+        { date: "2026-03-06", clicks: 100, impressions: 3000, positionTenths: 60 },
+        { date: "2026-02-10", clicks: 100, impressions: 2000, positionTenths: 90 },
+        { date: "2026-04-02", clicks: 999, impressions: 9999, positionTenths: 10 },
+      ].map((r) => ({ ...r, date: dayAt(r.date), agencyId, projectId: project.id })),
+    });
+    await prisma.ga4Day.createMany({
+      data: [
+        { date: "2026-03-05", sessions: 300, conversions: 6 },
+        { date: "2026-02-10", sessions: 200, conversions: 6 },
+      ].map((r) => ({ ...r, date: dayAt(r.date), agencyId, projectId: project.id })),
+    });
+
+    const created = await createReport(
+      owner.ctx,
+      { ...base, projectId: project.id, sections: [...base.sections, "analytics"] },
+      { now, enqueue },
+    );
+    await generateReport(agencyId, created.id);
+    const model = (await getReport(owner.ctx, created.id)).model;
+    expect(model?.analytics).toEqual({
+      search: {
+        clicks: 200,
+        impressions: 4000,
+        ctrTenthsPercent: 50,
+        // (80 * 1000 + 60 * 3000) / 4000
+        positionTenths: 65,
+        clicksChangePercent: 100,
+        impressionsChangePercent: 100,
+      },
+      analytics: {
+        sessions: 300,
+        conversions: 6,
+        sessionsChangePercent: 50,
+        conversionsChangePercent: 0,
+      },
+    });
+    const { text } = readPdf((await readReportPdf(owner.ctx, created.id))!.bytes);
+    expect(text).toContain("Search Console and Analytics");
+    expect(text).toContain("Google Search showed the site 4,000 times");
+    expect(text).not.toContain(getEnv().APP_NAME);
+
+    const without = await createReport(
+      owner.ctx,
+      { ...base, projectId: project.id },
+      { now, enqueue },
+    );
+    await generateReport(agencyId, without.id);
+    expect((await getReport(owner.ctx, without.id)).model?.analytics).toBeNull();
+  });
+
   it("works for a project with no keywords and no audit", async () => {
     const { owner } = await setup();
     const client = await prisma.client.create({

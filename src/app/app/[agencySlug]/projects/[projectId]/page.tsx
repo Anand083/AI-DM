@@ -5,6 +5,7 @@ import { ChangeBadge, DistributionBars, StatCard } from "@/components/app/rank-w
 import { EmptyState } from "@/components/ui/empty-state";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
+import { getAnalyticsOverview } from "@/server/services/google";
 import { getProjectSummary } from "@/server/services/keywords";
 
 export const metadata: Metadata = { title: "Project overview" };
@@ -20,7 +21,10 @@ export default async function ProjectOverview({
 }) {
   const { agencySlug, projectId } = await params;
   const { ctx } = await getPageContext(agencySlug);
-  const summary = await getProjectSummary(ctx, projectId);
+  const [summary, google] = await Promise.all([
+    getProjectSummary(ctx, projectId),
+    getAnalyticsOverview(ctx, projectId),
+  ]);
   const base = `/app/${agencySlug}/projects/${projectId}`;
 
   if (summary.totalKeywords === 0) {
@@ -75,6 +79,45 @@ export default async function ProjectOverview({
           See all rankings
         </Link>
       </div>
+
+      {google && (google.search?.hasData || google.analytics?.hasData) ? (
+        <section aria-labelledby="google-heading" className="space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="google-heading" className="text-lg font-semibold">
+              Google numbers, last 28 days
+            </h2>
+            <Link href={`${base}/analytics`} className="text-sm underline-offset-4 hover:underline">
+              See all Google numbers
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {google.search?.hasData ? (
+              <>
+                <StatCard
+                  label="Search clicks"
+                  value={google.search.now.clicks.toLocaleString("en-US")}
+                />
+                <StatCard
+                  label="Search impressions"
+                  value={google.search.now.impressions.toLocaleString("en-US")}
+                />
+              </>
+            ) : null}
+            {google.analytics?.hasData ? (
+              <>
+                <StatCard
+                  label="Sessions"
+                  value={google.analytics.now.sessions.toLocaleString("en-US")}
+                />
+                <StatCard
+                  label="Conversions"
+                  value={google.analytics.now.conversions.toLocaleString("en-US")}
+                />
+              </>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       <section aria-labelledby="dist-heading" className="space-y-3">
         <h2 id="dist-heading" className="text-lg font-semibold">

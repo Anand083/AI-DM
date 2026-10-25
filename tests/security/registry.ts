@@ -23,6 +23,8 @@ export type RouteGuard =
 export const ROUTES: Record<string, RouteGuard> = {
   "src/app/api/auth/[...all]/route.ts": "auth-library",
   "src/app/api/dev/billing/advance/route.ts": "dev-only",
+  "src/app/api/google/callback/route.ts": "tenant",
+  "src/app/api/google/start/route.ts": "tenant",
   "src/app/api/health/route.ts": "health",
   "src/app/api/internal/domain-allowed/route.ts": "feature-flag",
   "src/app/api/internal/domain-resolve/route.ts": "feature-flag",
@@ -77,6 +79,7 @@ export const ACTION_FILES: Record<string, ActionGuard> = {
   "src/app/app/[agencySlug]/projects/[projectId]/competitors/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/ai-visibility/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/reviews/actions.ts": "tenant",
+  "src/app/app/[agencySlug]/projects/[projectId]/analytics/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/rankings/actions.ts": "tenant",
   "src/app/app/[agencySlug]/reports/actions.ts": "tenant",
   "src/app/app/[agencySlug]/reports/schedules/actions.ts": "tenant",

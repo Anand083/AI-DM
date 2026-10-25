@@ -50,11 +50,27 @@ describe("parseEnv", () => {
       ENCRYPTION_KEY: "a-real-encryption-key-32-bytes!!",
       MOCK_BILLING_WEBHOOK_SECRET: "a-real-webhook-secret-1234",
       DATAFORSEO_CALLBACK_SECRET: "a-real-callback-secret-1234",
+      GOOGLE_PROVIDER: "google",
+      GOOGLE_CLIENT_ID: "id.apps.googleusercontent.com",
+      GOOGLE_CLIENT_SECRET: "a-real-google-secret",
     };
 
     it("refuses the mock SEO provider unless allowed", () => {
       expect(() => parseEnv(prod)).toThrow(/ALLOW_MOCK_IN_PROD/);
       expect(() => parseEnv({ ...prod, ALLOW_MOCK_IN_PROD: "true" })).not.toThrow();
+    });
+
+    it("checks the Google settings", () => {
+      const env = { ...prod, ALLOW_MOCK_IN_PROD: "true" };
+      expect(() => parseEnv({ ...env, GOOGLE_PROVIDER: "mock" })).not.toThrow();
+      expect(() =>
+        parseEnv({ ...env, GOOGLE_PROVIDER: "mock", ALLOW_MOCK_IN_PROD: "false" }),
+      ).toThrow(/GOOGLE_PROVIDER/);
+      expect(() => parseEnv({ ...env, GOOGLE_CLIENT_ID: "" })).toThrow(/GOOGLE_CLIENT_ID/);
+      expect(() => parseEnv({ ...env, GOOGLE_CLIENT_SECRET: "" })).toThrow(/GOOGLE_CLIENT_ID/);
+      expect(() => parseEnv({ ...env, ENCRYPTION_KEY: "short-but-real-key" })).toThrow(
+        /at least 32 characters/,
+      );
     });
 
     it("refuses placeholder secrets", () => {

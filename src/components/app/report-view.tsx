@@ -1,5 +1,6 @@
 import { brandCssVars, initials } from "@/lib/brand";
 import { formatChange, formatPosition } from "@/lib/rank-math";
+import { describeAnalytics } from "@/lib/report-analytics";
 import { describeReviews } from "@/lib/report-reviews";
 import { describeAi } from "@/lib/report-ai";
 import { describeBacklinks } from "@/lib/report-backlinks";
@@ -417,6 +418,16 @@ export function ReportView({
             </>
           ) : (
             <p className="text-sm text-zinc-600">No review check has been done yet.</p>
+          )}
+        </Section>
+      ) : null}
+
+      {has("analytics") ? (
+        <Section title="Search Console and Analytics">
+          {model.analytics ? (
+            describeAnalytics(model.analytics).map((line) => <p key={line}>{line}</p>)
+          ) : (
+            <p className="text-sm text-zinc-600">No Google data is connected for this period.</p>
           )}
         </Section>
       ) : null}

@@ -1,5 +1,6 @@
 import "server-only";
 import sharp from "sharp";
+import { percentChange } from "@/lib/google-metrics";
 import { engineLabel, sortByEngine, summarizeChecks } from "@/lib/ai-visibility";
 import { summarizeCompetitors } from "@/lib/competitors";
 import { assembleReport } from "@/lib/report-assembler";
@@ -7,6 +8,7 @@ import { pickPositions, START_LOOKBACK_DAYS, type PeriodCheck } from "@/lib/repo
 import {
   RANKINGS_LIMIT,
   type ReportAiInput,
+  type ReportAnalyticsInput,
   type ReportAuditInput,
   type ReportBacklinkRow,
   type ReportBacklinksInput,
@@ -26,6 +28,7 @@ import { getSummaryProvider } from "@/server/providers/summary";
 import { renderReportPdf, type PdfBranding } from "@/server/reports/pdf";
 import { loadBranding, readLogo } from "./branding";
 import { loadComparisonRows } from "./competitors";
+import { loadAnalyticsNumbers } from "./google";
 import { deliverScheduledReport, type SendEmail } from "./report-delivery";
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -99,7 +102,60 @@ export async function loadReportInput(agencyId: string, reportId: string): Promi
     reviews: (report.sections as string[]).includes("reviews")
       ? await loadReviews(agencyId, report.projectId, report.periodStart, report.periodEnd)
       : null,
+    analytics: (report.sections as string[]).includes("analytics")
+      ? await loadAnalytics(
+          agencyId,
+          report.projectId,
+          day(report.periodStart),
+          day(report.periodEnd),
+        )
+      : null,
     generatedOn: day(new Date()),
+  };
+}
+
+/** Search Console and Analytics totals for the period against the period of the same length before. */
+async function loadAnalytics(
+  agencyId: string,
+  projectId: string,
+  start: string,
+  end: string,
+): Promise<ReportAnalyticsInput | null> {
+  const connection = await db.googleConnection.findFirst({
+    where: { agencyId, projectId },
+    select: { id: true },
+  });
+  if (!connection) return null;
+  const n = await loadAnalyticsNumbers(agencyId, projectId, { start, end });
+  if (!n.hasSearch && !n.hasAnalytics) return null;
+  return {
+    search: n.hasSearch
+      ? {
+          clicks: n.search.now.clicks,
+          impressions: n.search.now.impressions,
+          ctrTenthsPercent: n.search.now.ctrTenthsPercent,
+          positionTenths: n.search.now.positionTenths,
+          clicksChangePercent: percentChange(n.search.now.clicks, n.search.before.clicks),
+          impressionsChangePercent: percentChange(
+            n.search.now.impressions,
+            n.search.before.impressions,
+          ),
+        }
+      : null,
+    analytics: n.hasAnalytics
+      ? {
+          sessions: n.analytics.now.sessions,
+          conversions: n.analytics.now.conversions,
+          sessionsChangePercent: percentChange(
+            n.analytics.now.sessions,
+            n.analytics.before.sessions,
+          ),
+          conversionsChangePercent: percentChange(
+            n.analytics.now.conversions,
+            n.analytics.before.conversions,
+          ),
+        }
+      : null,
   };
 }
 
