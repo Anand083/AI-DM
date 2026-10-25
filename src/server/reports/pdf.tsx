@@ -307,6 +307,47 @@ function createRenderer(rp: ReactPdf) {
             </View>
           ) : null}
 
+          {has("competitors") ? (
+            <View>
+              <Text style={s.h2}>Competitors</Text>
+              {model.competitors ? (
+                <View>
+                  <Text style={[s.p, { marginBottom: 4 }]}>
+                    Based on the top 10 results of {model.competitors.compared} tracked keywords.
+                  </Text>
+                  <View style={s.th}>
+                    <Text style={s.cIssue}>Competitor</Text>
+                    <Text style={s.cSev}>In top 10</Text>
+                    <Text style={s.cPages}>Ahead</Text>
+                  </View>
+                  {model.competitors.competitors.map((c) => (
+                    <View key={c.domain} style={s.tr} wrap={false}>
+                      <Text style={s.cIssue}>{c.domain}</Text>
+                      <Text style={s.cSev}>{c.inTop10}</Text>
+                      <Text style={s.cPages}>{c.theyAreAhead}</Text>
+                    </View>
+                  ))}
+                  {model.competitors.gap.length > 0 ? (
+                    <View style={{ marginTop: 6 }}>
+                      <Text style={[s.p, { fontWeight: 700 }]}>
+                        Keywords competitors rank for and you do not
+                      </Text>
+                      {model.competitors.gap.map((g) => (
+                        <View key={`${g.competitor}-${g.keyword}`} style={s.tr} wrap={false}>
+                          <Text style={s.cIssue}>{g.keyword}</Text>
+                          <Text style={s.cSev}>{g.volume}</Text>
+                          <Text style={s.cPages}>{g.position}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              ) : (
+                <Text style={s.empty}>No competitors have been added yet.</Text>
+              )}
+            </View>
+          ) : null}
+
           {has("issues") ? (
             <View>
               <Text style={s.h2}>Top issues</Text>

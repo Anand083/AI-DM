@@ -55,6 +55,7 @@ export const jobIds = {
   auditAuto: (projectId: string, month: string) => `audit_auto_${safe(projectId)}_${month}`,
   agencyExport: (exportId: string) => `export_${safe(exportId)}`,
   report: (reportId: string) => `report_${safe(reportId)}`,
+  competitorGap: (projectId: string, date: string) => `competitors_${safe(projectId)}_${date}`,
   backlinkRefresh: (projectId: string, date: string) => `backlinks_${safe(projectId)}_${date}`,
   maintenance: (name: string, date: string) => `maintenance_${safe(name)}_${date}`,
 };

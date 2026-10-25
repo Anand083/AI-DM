@@ -4,6 +4,7 @@ import { db, rawDb } from "@/server/db/client";
 import { AppError } from "@/server/services/errors";
 import { ProviderError } from "@/server/providers/seo/errors";
 import { createAudit } from "@/server/services/audits";
+import { runCompetitorGap } from "@/server/services/competitor-runner";
 import { runBacklinkRefresh } from "@/server/services/backlink-runner";
 import { backlinkWindow } from "@/server/services/backlinks";
 import { failAudit, pollAudit, runAuditStart } from "@/server/services/audit-runner";
@@ -158,6 +159,20 @@ export const processors: JobProcessors = {
           // Plan limits and the budget pause are not worth retrying.
           if (error instanceof AppError) {
             logger.warn({ jobId: job.id, message: error.message }, "backlink check stopped");
+            return { error: error.message };
+          }
+          throw error;
+        }
+      }
+      case "competitor-gap": {
+        const data = job.data as { projectId: string; agencyId: string };
+        try {
+          const result = await runCompetitorGap({ db, gateway: getSeoGateway() }, data);
+          logger.info({ jobId: job.id, ...result }, "competitor gap");
+          return result;
+        } catch (error) {
+          if (error instanceof AppError) {
+            logger.warn({ jobId: job.id, message: error.message }, "competitor gap stopped");
             return { error: error.message };
           }
           throw error;

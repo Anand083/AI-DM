@@ -157,34 +157,36 @@ model Agency {
   dailyDigest          Boolean   @default(false)
   lastDigestOn         DateTime? @db.Date
 
-  members           AgencyMember[]
-  invitations       Invitation[]
-  clients           Client[]
-  clientUsers       ClientUser[]
-  projects          Project[]
-  subscription      Subscription?
-  activityLogs      ActivityLog[]
-  usageRecords      UsageRecord[]
-  providerTasks     PendingProviderTask[]
-  keywords          Keyword[]
-  rankChecks        RankCheck[]
-  audits            Audit[]
-  backlinks         Backlink[]
-  backlinkSnapshots BacklinkSnapshot[]
-  keywordLists      KeywordList[]
-  alerts            Alert[]
-  branding          Branding?
-  reports           Report[]
-  dataExports       DataExport[]
-  impersonations    Impersonation[]
-  usageBonuses      UsageBonus[]
-  invoices          Invoice[]
-  checkoutSessions  CheckoutSession[]
-  billingEvents     BillingEvent[]
-  reportSchedules   ReportSchedule[]
-  keywordListItems  KeywordListItem[]
-  auditPages        AuditPage[]
-  auditIssues       AuditIssue[]
+  members            AgencyMember[]
+  invitations        Invitation[]
+  clients            Client[]
+  clientUsers        ClientUser[]
+  projects           Project[]
+  subscription       Subscription?
+  activityLogs       ActivityLog[]
+  usageRecords       UsageRecord[]
+  providerTasks      PendingProviderTask[]
+  keywords           Keyword[]
+  rankChecks         RankCheck[]
+  audits             Audit[]
+  backlinks          Backlink[]
+  competitors        Competitor[]
+  competitorKeywords CompetitorKeyword[]
+  backlinkSnapshots  BacklinkSnapshot[]
+  keywordLists       KeywordList[]
+  alerts             Alert[]
+  branding           Branding?
+  reports            Report[]
+  dataExports        DataExport[]
+  impersonations     Impersonation[]
+  usageBonuses       UsageBonus[]
+  invoices           Invoice[]
+  checkoutSessions   CheckoutSession[]
+  billingEvents      BillingEvent[]
+  reportSchedules    ReportSchedule[]
+  keywordListItems   KeywordListItem[]
+  auditPages         AuditPage[]
+  auditIssues        AuditIssue[]
 
   @@index([status, deletedAt])
 }
@@ -275,14 +277,16 @@ model Project {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  agency            Agency             @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  client            Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  keywords          Keyword[]
-  audits            Audit[]
-  backlinks         Backlink[]
-  backlinkSnapshots BacklinkSnapshot[]
-  reports           Report[]
-  reportSchedule    ReportSchedule?
+  agency             Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  client             Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  keywords           Keyword[]
+  audits             Audit[]
+  backlinks          Backlink[]
+  competitors        Competitor[]
+  competitorKeywords CompetitorKeyword[]
+  backlinkSnapshots  BacklinkSnapshot[]
+  reports            Report[]
+  reportSchedule     ReportSchedule?
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -989,4 +993,50 @@ model BacklinkSnapshot {
 
   @@unique([projectId, takenOn])
   @@index([agencyId, projectId, takenOn])
+}
+
+// ---------------------------------------------------------------------------
+// Competitors
+// ---------------------------------------------------------------------------
+
+/// A website a project is compared with. At most 5 per project (see MAX_COMPETITORS in the service).
+model Competitor {
+  id           String    @id @default(cuid(2))
+  agencyId     String
+  projectId    String
+  /// Lower case, without "www." and without a path.
+  domain       String
+  createdAt    DateTime  @default(now())
+  /// When the keyword gap list for this competitor was last refreshed.
+  gapFetchedAt DateTime?
+
+  agency   Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project  Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  keywords CompetitorKeyword[]
+
+  @@unique([projectId, domain])
+  @@index([agencyId, projectId])
+}
+
+/// A keyword a competitor ranks for that the project does not rank for or track (the keyword gap).
+/// The list for a competitor is replaced on every refresh.
+model CompetitorKeyword {
+  id           String   @id @default(cuid(2))
+  agencyId     String
+  projectId    String
+  competitorId String
+  keyword      String
+  /// The competitor's position, 1 to 100.
+  position     Int
+  volume       Int
+  url          String?
+  createdAt    DateTime @default(now())
+
+  agency     Agency     @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@unique([competitorId, keyword])
+  @@index([agencyId, projectId, volume])
+  @@index([agencyId, competitorId, volume])
 }

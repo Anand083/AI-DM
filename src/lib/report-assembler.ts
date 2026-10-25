@@ -90,6 +90,7 @@ export function assembleReport(input: ReportInput): Omit<ReportModel, "summary">
       .slice(0, RANKINGS_LIMIT),
     audit: input.audit,
     backlinks: input.backlinks ?? null,
+    competitors: input.competitors ?? null,
     issues,
     opportunities,
     notes: input.notes?.trim() ? input.notes.trim() : null,

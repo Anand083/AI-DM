@@ -284,6 +284,69 @@ describe("generating a report", () => {
     expect((await getReport(owner.ctx, without.id)).model?.backlinks).toBeNull();
   });
 
+  it("adds the competitor section with the comparison and the biggest gaps", async () => {
+    const { owner, project } = await setup();
+    const agencyId = owner.ctx.agencyId;
+    const rival = await prisma.competitor.create({
+      data: { agencyId, projectId: project.id, domain: "rival-shop.com" },
+    });
+    const date = new Date("2026-03-20T00:00:00Z");
+    const keyword = await prisma.keyword.create({
+      data: {
+        agencyId,
+        projectId: project.id,
+        phrase: "comfy chairs",
+        currentPosition: 6,
+        lastCheckedOn: date,
+      },
+    });
+    await prisma.rankCheck.create({
+      data: {
+        agencyId,
+        keywordId: keyword.id,
+        date,
+        checkedAt: date,
+        position: 6,
+        provider: "mock",
+        topResults: [
+          { position: 2, domain: "rival-shop.com", url: "https://rival-shop.com/", title: "t" },
+        ],
+      },
+    });
+    await prisma.competitorKeyword.createMany({
+      data: [
+        { keyword: "office desk", position: 3, volume: 2400 },
+        { keyword: "standing mat", position: 9, volume: 300 },
+      ].map((g) => ({ ...g, agencyId, projectId: project.id, competitorId: rival.id })),
+    });
+
+    const created = await createReport(
+      owner.ctx,
+      { ...base, projectId: project.id, sections: [...base.sections, "competitors"] },
+      { now, enqueue },
+    );
+    await generateReport(agencyId, created.id);
+    const model = (await getReport(owner.ctx, created.id)).model;
+    expect(model?.competitors?.compared).toBe(1);
+    expect(model?.competitors?.competitors).toEqual([
+      { domain: "rival-shop.com", inTop10: 1, theyAreAhead: 1, youAreAhead: 0, averagePosition: 2 },
+    ]);
+    expect(model?.competitors?.gap.map((g) => g.keyword)).toEqual(["office desk", "standing mat"]);
+    const { text } = readPdf((await readReportPdf(owner.ctx, created.id))!.bytes);
+    expect(text).toContain("Competitors");
+    expect(text).toContain("rival-shop.com");
+    expect(text).toContain("office desk");
+    expect(text).not.toContain(getEnv().APP_NAME);
+
+    const without = await createReport(
+      owner.ctx,
+      { ...base, projectId: project.id },
+      { now, enqueue },
+    );
+    await generateReport(agencyId, without.id);
+    expect((await getReport(owner.ctx, without.id)).model?.competitors).toBeNull();
+  });
+
   it("works for a project with no keywords and no audit", async () => {
     const { owner } = await setup();
     const client = await prisma.client.create({

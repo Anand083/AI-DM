@@ -271,6 +271,83 @@ export function ReportView({
         </Section>
       ) : null}
 
+      {has("competitors") ? (
+        <Section title="Competitors">
+          {model.competitors ? (
+            <>
+              <p className="text-sm text-zinc-600">
+                Based on the top 10 results of {model.competitors.compared} tracked{" "}
+                {model.competitors.compared === 1 ? "keyword" : "keywords"}.
+              </p>
+              <div className="overflow-x-auto rounded-lg border border-zinc-200">
+                <table className="w-full text-left text-sm" aria-label="Competitor comparison">
+                  <thead className="border-b border-zinc-200 bg-zinc-50">
+                    <tr>
+                      {[
+                        "Competitor",
+                        "In top 10",
+                        "Ahead of you",
+                        "Behind you",
+                        "Average position",
+                      ].map((h) => (
+                        <th key={h} scope="col" className="px-3 py-2 font-medium">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200">
+                    {model.competitors.competitors.map((c) => (
+                      <tr key={c.domain}>
+                        <td className="px-3 py-2 font-medium">{c.domain}</td>
+                        <td className="px-3 py-2 tabular-nums">{c.inTop10}</td>
+                        <td className="px-3 py-2 tabular-nums">{c.theyAreAhead}</td>
+                        <td className="px-3 py-2 tabular-nums">{c.youAreAhead}</td>
+                        <td className="px-3 py-2 tabular-nums">{c.averagePosition ?? "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {model.competitors.gap.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg border border-zinc-200">
+                  <table className="w-full text-left text-sm" aria-label="Biggest keyword gaps">
+                    <caption className="px-3 pt-2 text-left text-sm font-medium">
+                      Keywords competitors rank for and you do not
+                    </caption>
+                    <thead className="border-b border-zinc-200 bg-zinc-50">
+                      <tr>
+                        {["Keyword", "Searches a month", "Competitor", "Their position"].map(
+                          (h) => (
+                            <th key={h} scope="col" className="px-3 py-2 font-medium">
+                              {h}
+                            </th>
+                          ),
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200">
+                      {model.competitors.gap.map((g) => (
+                        <tr key={`${g.competitor}-${g.keyword}`}>
+                          <td className="px-3 py-2 font-medium">{g.keyword}</td>
+                          <td className="px-3 py-2 tabular-nums">
+                            {g.volume.toLocaleString("en-US")}
+                          </td>
+                          <td className="px-3 py-2">{g.competitor}</td>
+                          <td className="px-3 py-2 tabular-nums">{g.position}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm text-zinc-600">No competitors have been added yet.</p>
+          )}
+        </Section>
+      ) : null}
+
       {has("issues") ? (
         <Section title="Top issues">
           {model.issues.length === 0 ? (

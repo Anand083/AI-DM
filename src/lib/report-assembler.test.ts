@@ -174,3 +174,17 @@ describe("backlinks in the report", () => {
     expect(assembleReport(input({ backlinks })).backlinks).toEqual(backlinks);
   });
 });
+
+describe("competitors in the report", () => {
+  it("is null when the loader gave none, and passed through when given", () => {
+    expect(assembleReport(input()).competitors).toBeNull();
+    const competitors = {
+      compared: 2,
+      competitors: [
+        { domain: "rival.com", inTop10: 1, theyAreAhead: 1, youAreAhead: 1, averagePosition: 4 },
+      ],
+      gap: [{ keyword: "k", competitor: "rival.com", position: 3, volume: 100 }],
+    };
+    expect(assembleReport(input({ competitors })).competitors).toEqual(competitors);
+  });
+});

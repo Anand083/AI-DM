@@ -10,6 +10,7 @@ export const REPORT_SECTIONS = [
   { key: "issues", label: "Top issues" },
   { key: "opportunities", label: "Keyword opportunities" },
   { key: "backlinks", label: "Backlinks" },
+  { key: "competitors", label: "Competitors" },
   { key: "notes", label: "Notes" },
 ] as const;
 
@@ -78,6 +79,20 @@ export type ReportBacklinksInput = {
   topLost: ReportBacklinkRow[];
 };
 
+export type ReportCompetitorsInput = {
+  /** Keywords that were compared. */
+  compared: number;
+  competitors: {
+    domain: string;
+    inTop10: number;
+    theyAreAhead: number;
+    youAreAhead: number;
+    averagePosition: number | null;
+  }[];
+  /** The biggest keyword gaps, at most 10. */
+  gap: { keyword: string; competitor: string; position: number; volume: number }[];
+};
+
 export type ReportInput = {
   title: string;
   projectName: string;
@@ -90,6 +105,7 @@ export type ReportInput = {
   audit: ReportAuditInput | null;
   /** Optional so older callers and saved reports keep working. */
   backlinks?: ReportBacklinksInput | null;
+  competitors?: ReportCompetitorsInput | null;
   generatedOn: string;
 };
 
@@ -124,6 +140,8 @@ export type ReportModel = {
   audit: ReportAuditInput | null;
   /** Missing in reports made before the backlink section existed. */
   backlinks?: ReportBacklinksInput | null;
+  /** Missing in reports made before the competitor section existed. */
+  competitors?: ReportCompetitorsInput | null;
   issues: ReportAuditInput["issues"];
   opportunities: ReportKeywordRow[];
   notes: string | null;

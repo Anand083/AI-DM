@@ -10,18 +10,24 @@ export function Pagination({
   pageSize,
   total,
   params = {},
+  pageParam = "page",
+  label = "Pages",
 }: {
   basePath: string;
   page: number;
   pageSize: number;
   total: number;
   params?: Record<string, string | undefined>;
+  /** Name of the query parameter that holds the page number. Use another one for a second list on a page. */
+  pageParam?: string;
+  /** Accessible name of the navigation. Must differ when a page has two lists. */
+  label?: string;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const href = (p: number) => {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) if (value) query.set(key, value);
-    if (p > 1) query.set("page", String(p));
+    if (p > 1) query.set(pageParam, String(p));
     const text = query.toString();
     return text ? `${basePath}?${text}` : basePath;
   };
@@ -31,7 +37,7 @@ export function Pagination({
     "inline-flex h-9 items-center rounded-md border border-zinc-200 px-3 text-sm text-zinc-500 dark:border-zinc-800";
 
   return (
-    <nav aria-label="Pages" className="flex items-center justify-between gap-3 text-sm">
+    <nav aria-label={label} className="flex items-center justify-between gap-3 text-sm">
       <span>
         Page {page} of {pages} · {total} {total === 1 ? "result" : "results"}
       </span>

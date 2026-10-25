@@ -37,6 +37,8 @@ export const TENANT_MODELS = new Set([
   "DataExport",
   "Backlink",
   "BacklinkSnapshot",
+  "Competitor",
+  "CompetitorKeyword",
 ]);
 
 const WHERE_OPERATIONS = new Set([
