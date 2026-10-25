@@ -34,6 +34,12 @@ const status = withTenantAction(
   (ctx, input) => getCheckNowStatus(ctx, input.jobId),
 );
 
+/** Refreshes the pages after a check finished. Only a signed-in team member may ask for it. */
+const finish = withTenantAction(
+  { permission: "data.view", schema: z.object({ projectId: idSchema }) },
+  async () => undefined,
+);
+
 function refresh(slug: string, projectId: string) {
   revalidatePath(`/app/${slug}/projects/${projectId}`, "layout");
 }
@@ -55,5 +61,6 @@ export async function checkNowStatusAction(slug: string, jobId: string) {
   return status(slug, { jobId });
 }
 export async function finishCheckNowAction(slug: string, projectId: string) {
-  refresh(slug, projectId);
+  const result = await finish(slug, { projectId });
+  if (result.ok) refresh(slug, projectId);
 }

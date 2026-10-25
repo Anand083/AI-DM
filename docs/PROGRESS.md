@@ -27,5 +27,6 @@
 | 18 Custom domains | Done | behind CUSTOM_DOMAINS_ENABLED (off by default); DNS steps and Verify, host routing in proxy.ts, domain-allowed endpoint, trusted sign-in origin; unit + integration + E2E pass |
 | 19 Plans and mock billing | Done | billing provider interface + mock checkout (Pay / Fail payment, signed webhook), idempotent webhook route, subscription state machine, billing page, trial/payment/read-only banner, trial reminders, dev clock; unit + integration + E2E pass |
 | 20 Super admin | Done | /admin (404 for others), overview with MRR/churn/margin, agencies list + detail with actions, support sessions (30 min, red banner, logged, billing blocked), queues, data provider, plans editor, platform settings, suspended page, admin:create CLI; unit + integration + E2E pass |
+| 21 Security hardening | Done | security headers + CSP, rate limits (actions, public routes, provider callbacks), 2FA (authenticator app, required for admins), sessions page, data export zip, agency deletion, login activity log, CI audit + secret scan, route and action registry test; unit + integration + E2E pass |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).

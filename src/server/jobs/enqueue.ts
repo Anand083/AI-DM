@@ -103,3 +103,11 @@ export async function enqueueReport(data: { reportId: string; agencyId: string }
     attempts: 2,
   });
 }
+
+/** Queues the worker job that builds an agency data export (a zip for the owner to download). */
+export async function enqueueExport(data: { exportId: string; agencyId: string }): Promise<void> {
+  await getQueue("maintenance").add("export:agency", data, {
+    jobId: jobIds.agencyExport(data.exportId),
+    attempts: 2,
+  });
+}

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { createAgencyInUi, newEmail, signUpAndVerify } from "./helpers";
+import { createAgencyInUi, newEmail, signUpAndVerify, waitForHydration } from "./helpers";
 
 test("search, filter, save to a list and add 3 keywords to the rank tracker", async ({ page }) => {
   test.setTimeout(150_000);
@@ -48,6 +48,7 @@ test("search, filter, save to a list and add 3 keywords to the rank tracker", as
 
   // Select 3 and add them to the rank tracker.
   const names: string[] = [];
+  await waitForHydration(page, 'table input[type="checkbox"]');
   for (let i = 1; i <= 3; i++) {
     names.push(await rows.nth(i).getByRole("cell").nth(1).innerText());
     await rows.nth(i).getByRole("checkbox").check();

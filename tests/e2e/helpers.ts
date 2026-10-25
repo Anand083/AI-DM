@@ -33,3 +33,14 @@ export async function createAgencyInUi(page: Page, name: string): Promise<string
   await expect(page).toHaveURL(/\/app\/(?!onboarding)[a-z0-9-]+$/);
   return new URL(page.url()).pathname.split("/").pop()!;
 }
+
+/**
+ * Waits until React has taken over an element, so clicks and typing are not lost. Without this, a
+ * fast test can interact with a page that has not finished loading its scripts.
+ */
+export async function waitForHydration(page: Page, selector = "form, input, button") {
+  await page.waitForFunction((sel) => {
+    const el = document.querySelector(sel);
+    return !!el && Object.keys(el).some((key) => key.startsWith("__reactProps"));
+  }, selector);
+}

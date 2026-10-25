@@ -1,8 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-let realUser: { id: string; email: string; emailVerified: boolean; isSuperAdmin: boolean } | null =
-  null;
+let realUser: {
+  id: string;
+  email: string;
+  emailVerified: boolean;
+  isSuperAdmin: boolean;
+  twoFactorEnabled?: boolean;
+} | null = null;
 let support: {
   id: string;
   adminUserId: string;
@@ -107,7 +112,16 @@ describe("who can use the admin area", () => {
     await expect(requireSuperAdmin()).rejects.toThrow("NEXT_NOT_FOUND");
     realUser = { id: "u", email: "u@x.test", emailVerified: false, isSuperAdmin: true };
     await expect(requireSuperAdmin()).rejects.toThrow("NEXT_NOT_FOUND");
+    // A super admin without two-step sign in is sent to set it up.
     realUser = { id: "u", email: "u@x.test", emailVerified: true, isSuperAdmin: true };
+    await expect(requireSuperAdmin()).rejects.toThrow("NEXT_REDIRECT");
+    realUser = {
+      id: "u",
+      email: "u@x.test",
+      emailVerified: true,
+      isSuperAdmin: true,
+      twoFactorEnabled: true,
+    };
     await expect(requireSuperAdmin()).resolves.toEqual({ adminUserId: "u", email: "u@x.test" });
   });
 
@@ -120,6 +134,17 @@ describe("who can use the admin area", () => {
     realUser = { id: "u", email: "u@x.test", emailVerified: true, isSuperAdmin: false };
     expect(await action({ n: 5 })).toEqual({ ok: false, error: "Not found." });
     realUser = { id: "a", email: "a@x.test", emailVerified: true, isSuperAdmin: true };
+    expect(await action({ n: 5 })).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("two-step"),
+    });
+    realUser = {
+      id: "a",
+      email: "a@x.test",
+      emailVerified: true,
+      isSuperAdmin: true,
+      twoFactorEnabled: true,
+    };
     expect(await action({ n: 5 })).toEqual({ ok: true, data: 5 });
     expect(await action({ n: 0 })).toMatchObject({
       ok: false,

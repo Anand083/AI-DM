@@ -26,6 +26,7 @@ import {
   enqueueRankCheck,
   enqueueReport,
 } from "@/server/jobs/enqueue";
+import { buildAgencyExport, purgeExpiredExports } from "@/server/services/data-export";
 import { generateReport } from "@/server/services/report-generator";
 import { runDigestScheduler, sendDigest } from "@/server/services/alert-digest";
 import type { JobProcessors } from "@/server/jobs/runtime";
@@ -75,8 +76,14 @@ export const processors: JobProcessors = {
         if (billing.checked + billing.reminders > 0) logger.info(billing, "billing tick");
         return { ...result, audits, digests, reports, billing };
       }
+      case "export:agency": {
+        const { exportId, agencyId } = job.data as { exportId: string; agencyId: string };
+        return buildAgencyExport(agencyId, exportId, {
+          finalAttempt: job.attemptsMade + 1 >= (job.opts.attempts ?? 1),
+        });
+      }
       case "purge:expired": {
-        const result = await purgeExpired(rawDb);
+        const result = { ...(await purgeExpired(rawDb)), exports: await purgeExpiredExports() };
         logger.info(result, "purged expired data");
         return result;
       }

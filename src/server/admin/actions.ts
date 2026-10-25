@@ -1,6 +1,8 @@
 import "server-only";
 import type { z } from "zod";
+import { getEnv } from "@/env";
 import { logger } from "@/server/logger";
+import { mutationAllowed } from "@/server/request-limit";
 import { getRealSessionUser } from "@/server/auth/session";
 import { AppError } from "@/server/services/errors";
 import type { AdminContext } from "./guard";
@@ -21,6 +23,15 @@ export function withAdminAction<S extends z.ZodType, R = undefined>(
       const user = await getRealSessionUser();
       if (!user || !user.emailVerified || !user.isSuperAdmin) {
         return { ok: false, error: "Not found." };
+      }
+      if (!(await mutationAllowed(user.id, getEnv().MUTATION_RATE_LIMIT_PER_MINUTE))) {
+        return {
+          ok: false,
+          error: "You are doing that too fast. Please wait a minute and try again.",
+        };
+      }
+      if (user.twoFactorEnabled !== true) {
+        return { ok: false, error: "Turn on two-step sign in first (Security page)." };
       }
       const parsed = schema.safeParse(rawInput);
       if (!parsed.success) {

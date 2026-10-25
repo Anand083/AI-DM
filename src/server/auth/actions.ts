@@ -1,6 +1,8 @@
 import "server-only";
 import type { z } from "zod";
+import { getEnv } from "@/env";
 import { logger } from "@/server/logger";
+import { mutationAllowed } from "@/server/request-limit";
 import { AppError } from "@/server/services/errors";
 import { can, type Action } from "./permissions";
 import { getSessionUser, type SessionUser } from "./session";
@@ -11,10 +13,16 @@ export type ActionResult<T = undefined> =
 
 export type ActionDeps = {
   getUser: () => Promise<SessionUser | null>;
+  /** Returns false when this person has made too many changes in the last minute. */
+  checkRate?: (userId: string) => Promise<boolean>;
   loadContext: (userId: string, agencySlug: string) => Promise<TenantContext | null>;
 };
 
-const defaultDeps: ActionDeps = { getUser: getSessionUser, loadContext: loadTenantContext };
+const defaultDeps: ActionDeps = {
+  getUser: getSessionUser,
+  loadContext: loadTenantContext,
+  checkRate: (userId) => mutationAllowed(userId, getEnv().MUTATION_RATE_LIMIT_PER_MINUTE),
+};
 
 /**
  * Wraps a server action for an agency. Every call, in this order:
@@ -36,6 +44,12 @@ export function withTenantAction<S extends z.ZodType, R = undefined>(
     try {
       const user = await deps.getUser();
       if (!user || !user.emailVerified) return { ok: false, error: "Please sign in again." };
+      if (deps.checkRate && !(await deps.checkRate(user.id))) {
+        return {
+          ok: false,
+          error: "You are doing that too fast. Please wait a minute and try again.",
+        };
+      }
 
       const found = await deps.loadContext(user.id, agencySlug);
       if (!found) return { ok: false, error: "Not found." };

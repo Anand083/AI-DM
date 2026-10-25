@@ -26,6 +26,8 @@ const baseSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32, "must be at least 32 characters"),
   BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
   COOKIE_SECURE: bool,
+  /** How many changes (server actions) one signed-in person may make per minute. */
+  MUTATION_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(120),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(5),
   AUTH_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).default(900),
 

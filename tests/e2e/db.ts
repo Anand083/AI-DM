@@ -112,9 +112,17 @@ export async function markDomainVerified(agencySlug: string) {
   });
 }
 
-/** Makes a signed-up user a super admin, like `pnpm admin:create`. */
-export async function makeSuperAdmin(email: string) {
-  return withDb((prisma) => prisma.user.update({ where: { email }, data: { isSuperAdmin: true } }));
+/**
+ * Makes a signed-up user a super admin, like `pnpm admin:create`. Real admins must also set up
+ * two-step sign in. Tests that are not about that skip it by flipping the flag.
+ */
+export async function makeSuperAdmin(email: string, options: { withTwoFactor?: boolean } = {}) {
+  return withDb((prisma) =>
+    prisma.user.update({
+      where: { email },
+      data: { isSuperAdmin: true, twoFactorEnabled: options.withTwoFactor ?? true },
+    }),
+  );
 }
 
 export async function activityActions(

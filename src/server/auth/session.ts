@@ -12,6 +12,8 @@ export type SessionUser = {
   emailVerified: boolean;
   isSuperAdmin: boolean;
   timezone: string;
+  /** True once an authenticator app is set up. Super admins must have it. */
+  twoFactorEnabled?: boolean | null;
   /** Set when a super admin is looking at an agency as this user. The admin's own id. */
   impersonatorUserId?: string;
   /** The agency and end time of that support session. */
@@ -52,4 +54,10 @@ export async function requireUser(): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user || !user.emailVerified) redirect("/login");
   return user;
+}
+
+/** The id of the session this request is using, or null. */
+export async function getCurrentSessionId(): Promise<string | null> {
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  return session?.session.id ?? null;
 }

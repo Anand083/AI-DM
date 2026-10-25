@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ReportView } from "@/components/app/report-view";
+import { pageLimited } from "@/server/request-limit";
 import { getSharedReport } from "@/server/services/shared-reports";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SharedReportPage({ params }: Props) {
   const { token } = await params;
+  if (await pageLimited("share-page", 120)) {
+    return (
+      <main className="p-8 text-center text-sm">
+        Too many visits. Please wait a minute and try again.
+      </main>
+    );
+  }
   const shared = await getSharedReport(token);
   if (!shared) notFound();
   const { branding } = shared;

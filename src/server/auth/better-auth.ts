@@ -4,6 +4,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
+import { twoFactor } from "better-auth/plugins";
 import { getEnv } from "@/env";
 import { rawDb } from "@/server/db/client";
 import { logger } from "@/server/logger";
@@ -12,6 +13,24 @@ import { getRedis } from "@/server/redis";
 import { RedisRateLimitStore } from "@/server/rate-limit";
 import { sendResetPasswordEmail, sendVerifyEmail } from "@/server/services/email";
 import { AuthRateLimitError, clientIp, enforceAuthRateLimit } from "./auth-rate-limit";
+
+/** Writes `auth.login` for every agency (team or client) the user belongs to. */
+async function logSignIn(userId: string, ip?: string): Promise<void> {
+  const [teams, clients] = await Promise.all([
+    rawDb.agencyMember.findMany({ where: { userId }, select: { agencyId: true }, take: 50 }),
+    rawDb.clientUser.findMany({ where: { userId }, select: { agencyId: true }, take: 50 }),
+  ]);
+  const agencyIds = [...new Set([...teams, ...clients].map((m) => m.agencyId))];
+  if (agencyIds.length === 0) return;
+  await rawDb.activityLog.createMany({
+    data: agencyIds.map((agencyId) => ({
+      agencyId,
+      actorUserId: userId,
+      action: "auth.login",
+      ip,
+    })),
+  });
+}
 
 function createAuth() {
   const env = getEnv();
@@ -90,7 +109,22 @@ function createAuth() {
         }
       }),
     },
-    plugins: [nextCookies()],
+    databaseHooks: {
+      session: {
+        create: {
+          // Every sign-in is written to the activity log of each agency the person belongs to.
+          after: async (session) => {
+            try {
+              await logSignIn(session.userId, session.ipAddress ?? undefined);
+            } catch (error) {
+              logger.warn({ err: error }, "could not log a sign-in");
+            }
+          },
+        },
+      },
+    },
+    // Authenticator-app 2FA. nextCookies must stay last.
+    plugins: [twoFactor({ issuer: env.APP_NAME }), nextCookies()],
   });
 }
 

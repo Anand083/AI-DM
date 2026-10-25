@@ -1,9 +1,15 @@
 import type { NextConfig } from "next";
+import { NON_FRAMEABLE_SOURCE, securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   // Public report links must never be indexed or stored by shared caches.
   async headers() {
     return [
+      // Security headers on everything except the pages meant to be framed by other sites.
+      {
+        source: NON_FRAMEABLE_SOURCE,
+        headers: securityHeaders({ dev: process.env.NODE_ENV !== "production" }),
+      },
       {
         source: "/r/:path*",
         headers: [

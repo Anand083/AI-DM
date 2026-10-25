@@ -32,6 +32,9 @@ export function UserMenu({
         <DropdownMenuLabel>{email}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => router.push(settingsHref)}>Settings</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => router.push("/account/security")}>
+          Security
+        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={async () => {
             await authClient.signOut();

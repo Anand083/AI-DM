@@ -51,6 +51,7 @@ export const jobIds = {
   auditRun: (auditId: string) => `audit_${safe(auditId)}_run`,
   auditPoll: (auditId: string, attempt: number) => `audit_${safe(auditId)}_poll_${attempt}`,
   auditAuto: (projectId: string, month: string) => `audit_auto_${safe(projectId)}_${month}`,
+  agencyExport: (exportId: string) => `export_${safe(exportId)}`,
   report: (reportId: string) => `report_${safe(reportId)}`,
   maintenance: (name: string, date: string) => `maintenance_${safe(name)}_${date}`,
 };

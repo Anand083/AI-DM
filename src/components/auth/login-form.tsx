@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { loginSchema, type LoginValues } from "@/lib/auth-schemas";
 import { zodResolver } from "@/lib/form";
+import { TwoFactorStep } from "./two-factor-step";
 
 export function LoginForm({
   next,
@@ -21,6 +22,7 @@ export function LoginForm({
   forgotHref?: string | null;
 }) {
   const router = useRouter();
+  const [needsCode, setNeedsCode] = useState(false);
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(
     notice ? { kind: "success", text: notice } : null,
   );
@@ -32,8 +34,13 @@ export function LoginForm({
 
   async function onSubmit(values: LoginValues) {
     setMessage(null);
-    const { error } = await authClient.signIn.email({ ...values, callbackURL: next });
+    const { data, error } = await authClient.signIn.email({ ...values, callbackURL: next });
     if (!error) {
+      // With 2FA on, the password is only the first step.
+      if ((data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
+        setNeedsCode(true);
+        return;
+      }
       router.push(next);
       router.refresh();
       return;
@@ -51,6 +58,10 @@ export function LoginForm({
     } else {
       setMessage({ kind: "error", text: "Wrong email or password." });
     }
+  }
+
+  if (needsCode) {
+    return <TwoFactorStep next={next} />;
   }
 
   return (

@@ -1,3 +1,4 @@
+import { limitRequest } from "@/server/request-limit";
 import { getEnv } from "@/env";
 import { normalizeHost } from "@/lib/custom-domain";
 import { findAgencySlugByDomain } from "@/server/services/custom-domain";
@@ -7,6 +8,8 @@ import { findAgencySlugByDomain } from "@/server/services/custom-domain";
  * active agency has verified, 404 for everything else. Gives no details.
  */
 export async function GET(request: Request): Promise<Response> {
+  const limited = await limitRequest(request, "domain-allowed", 300);
+  if (limited) return limited;
   if (!getEnv().CUSTOM_DOMAINS_ENABLED) return new Response("Not found", { status: 404 });
   const domain = normalizeHost(new URL(request.url).searchParams.get("domain") ?? "");
   const slug = domain ? await findAgencySlugByDomain(domain) : null;

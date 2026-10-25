@@ -1,9 +1,12 @@
+import { limitRequest } from "@/server/request-limit";
 import { getSharedReport, readSharedLogo } from "@/server/services/shared-reports";
 
 type Params = { params: Promise<{ token: string }> };
 
 /** The agency logo for a public report page. Only works while the share link works. */
-export async function GET(_request: Request, { params }: Params): Promise<Response> {
+export async function GET(request: Request, { params }: Params): Promise<Response> {
+  const limited = await limitRequest(request, "share", 60);
+  if (limited) return limited;
   const shared = await getSharedReport((await params).token);
   const logo = shared ? await readSharedLogo(shared) : null;
   if (!logo) return new Response("Not found", { status: 404 });

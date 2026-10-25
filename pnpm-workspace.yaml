@@ -6,3 +6,6 @@ onlyBuiltDependencies:
   - "@prisma/engines"
   - prisma
   - esbuild
+overrides:
+  # Fixes a known problem (GHSA-ggr8-5vv4-36mx) in a package Prisma's command line tool uses.
+  deepmerge-ts: ">=8.0.0"

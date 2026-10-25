@@ -34,6 +34,11 @@ async function main() {
     }
     await prisma.user.update({ where: { id: user.id }, data: { isSuperAdmin: !remove } });
     console.log(remove ? `${email} is no longer a super admin.` : `${email} is now a super admin.`);
+    if (!remove && user.twoFactorEnabled !== true) {
+      console.log(
+        "Next step: sign in and turn on two-step sign in (Account > Security). The admin area stays closed until then.",
+      );
+    }
   } finally {
     await prisma.$disconnect();
   }

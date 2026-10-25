@@ -68,20 +68,23 @@ enum BillingProvider {
 // ---------------------------------------------------------------------------
 
 model User {
-  id            String   @id @default(cuid(2))
-  name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  image         String?
-  isSuperAdmin  Boolean  @default(false)
-  timezone      String   @default("UTC")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(cuid(2))
+  name             String
+  email            String   @unique
+  emailVerified    Boolean  @default(false)
+  image            String?
+  isSuperAdmin     Boolean  @default(false)
+  timezone         String   @default("UTC")
+  /// Set by the two factor plugin once an authenticator app is confirmed.
+  twoFactorEnabled Boolean? @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   sessions    Session[]
   accounts    Account[]
   memberships AgencyMember[]
   clientUsers ClientUser[]
+  twoFactors  TwoFactor[]
 }
 
 model Session {
@@ -170,6 +173,7 @@ model Agency {
   alerts           Alert[]
   branding         Branding?
   reports          Report[]
+  dataExports      DataExport[]
   impersonations   Impersonation[]
   usageBonuses     UsageBonus[]
   invoices         Invoice[]
@@ -871,4 +875,45 @@ model UsageBonus {
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
   @@index([agencyId, metric, createdAt])
+}
+
+/// Authenticator app secret and backup codes (written by the Better Auth two factor plugin).
+model TwoFactor {
+  id                      String    @id @default(cuid(2))
+  userId                  String
+  secret                  String
+  backupCodes             String
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([secret])
+}
+
+enum ExportStatus {
+  QUEUED
+  READY
+  FAILED
+}
+
+/// A zip with all of an agency's data, made in the worker for the owner to download.
+model DataExport {
+  id            String       @id @default(cuid(2))
+  agencyId      String
+  status        ExportStatus @default(QUEUED)
+  storageKey    String?
+  bytes         Int?
+  error         String?
+  requestedById String?
+  createdAt     DateTime     @default(now())
+  readyAt       DateTime?
+  expiresAt     DateTime
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, createdAt])
+  @@index([expiresAt])
 }
