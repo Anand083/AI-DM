@@ -12,6 +12,7 @@ export const RESERVED_SLUGS = new Set([
   "static",
   "assets",
   "onboarding",
+  "suspended",
   "settings",
   "pricing",
   "features",

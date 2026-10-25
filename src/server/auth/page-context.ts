@@ -1,9 +1,9 @@
 import "server-only";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { can, type Action } from "./permissions";
 import { requireUser } from "./session";
-import { loadTenantContext, type TenantContext } from "./tenant-context";
+import { isSuspendedMember, loadTenantContext, type TenantContext } from "./tenant-context";
 
 /**
  * For pages and layouts under `/app/[agencySlug]`: the signed-in user and the tenant context.
@@ -11,8 +11,14 @@ import { loadTenantContext, type TenantContext } from "./tenant-context";
  */
 export const getPageContext = cache(async (agencySlug: string) => {
   const user = await requireUser();
-  const ctx = await loadTenantContext(user.id, agencySlug);
-  if (!ctx) notFound();
+  const found = await loadTenantContext(user.id, agencySlug);
+  if (!found) {
+    if (await isSuspendedMember(user.id, agencySlug)) redirect("/app/suspended");
+    notFound();
+  }
+  // A support session only reaches the agency it was started for.
+  if (user.impersonation && user.impersonation.agencyId !== found.agencyId) notFound();
+  const ctx: TenantContext = { ...found, impersonatorUserId: user.impersonatorUserId };
   return { user, ctx };
 });
 

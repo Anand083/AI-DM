@@ -32,6 +32,14 @@ export default async function BillingPage({
   const sp = await searchParams;
   const { ctx } = await getPageContext(agencySlug);
   requirePermission(ctx, "billing.manage");
+  if (ctx.impersonatorUserId) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold">Billing</h1>
+        <p className="text-sm">Billing is not available during a support session.</p>
+      </div>
+    );
+  }
   const page = pageFromParams(sp.page);
   const [summary, invoices, agency] = await Promise.all([
     getBillingSummary(ctx),

@@ -19,6 +19,7 @@
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
     "worker": "tsx --tsconfig tsconfig.worker.json src/worker/index.ts",
+    "admin:create": "tsx --tsconfig tsconfig.worker.json scripts/admin-create.ts",
     "queues:stats": "tsx --tsconfig tsconfig.worker.json scripts/queue-stats.ts",
     "mock:backfill": "tsx --tsconfig tsconfig.worker.json scripts/mock-backfill.ts"
   },

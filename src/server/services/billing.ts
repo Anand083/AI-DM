@@ -28,6 +28,10 @@ type Tx = Prisma.TransactionClient;
 
 function requireBilling(ctx: TenantContext): void {
   if (!can(ctx.role, "billing.manage")) throw new ForbiddenError();
+  // Support staff looking at an account can never see or change its billing.
+  if (ctx.impersonatorUserId) {
+    throw new ForbiddenError("Billing is not available during a support session.");
+  }
 }
 
 export async function loadPlans(client: Pick<Tx, "plan"> = rawDb): Promise<

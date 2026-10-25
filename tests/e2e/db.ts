@@ -111,3 +111,22 @@ export async function markDomainVerified(agencySlug: string) {
     });
   });
 }
+
+/** Makes a signed-up user a super admin, like `pnpm admin:create`. */
+export async function makeSuperAdmin(email: string) {
+  return withDb((prisma) => prisma.user.update({ where: { email }, data: { isSuperAdmin: true } }));
+}
+
+export async function activityActions(
+  agencySlug: string,
+): Promise<{ action: string; impersonated: boolean }[]> {
+  return withDb(async (prisma) => {
+    const agency = await prisma.agency.findUniqueOrThrow({ where: { slug: agencySlug } });
+    const rows = await prisma.activityLog.findMany({
+      where: { agencyId: agency.id },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+    });
+    return rows.map((r) => ({ action: r.action, impersonated: r.impersonatorUserId !== null }));
+  });
+}

@@ -76,6 +76,19 @@ export async function getUsageByMetric(
   return Object.fromEntries(rows.map((r) => [r.metric, r._sum.quantity ?? 0]));
 }
 
+/** Extra units a super admin gave this agency during the period. */
+export async function getBonusByMetric(
+  agency: AgencyRef,
+  period: UsagePeriod,
+): Promise<Partial<Record<UsageMetric, number>>> {
+  const rows = await db.usageBonus.groupBy({
+    by: ["metric"],
+    where: { agencyId: agency.agencyId, createdAt: { gte: period.start, lt: period.end } },
+    _sum: { quantity: true },
+  });
+  return Object.fromEntries(rows.map((r) => [r.metric, r._sum.quantity ?? 0]));
+}
+
 const formatDate = (d: Date) =>
   d.toLocaleDateString("en-US", {
     year: "numeric",
@@ -99,8 +112,9 @@ export async function assertWithinLimit(
     throw new LimitExceededError("Your subscription has ended. Choose a plan to continue.");
   }
   if (!isLimitedMetric(metric)) return;
-  const limit = plan.limits[METRIC_LIMIT_KEY[metric]];
-  if (limit === UNLIMITED) return;
+  const planLimit = plan.limits[METRIC_LIMIT_KEY[metric]];
+  if (planLimit === UNLIMITED) return;
+  const limit = planLimit + ((await getBonusByMetric(agency, plan.period))[metric] ?? 0);
   const used = (await getUsageByMetric(agency, plan.period))[metric] ?? 0;
   if (used + quantity > limit) {
     const label = METRIC_LABEL[metric].plural;
@@ -153,16 +167,20 @@ export async function getUsageSummary(
 ): Promise<UsageSummary> {
   if (!can(ctx.role, "branding.edit")) throw new ForbiddenError();
   const plan = await getAgencyPlan(ctx, now);
-  const usage = await getUsageByMetric(ctx, plan.period);
+  const [usage, bonus] = await Promise.all([
+    getUsageByMetric(ctx, plan.period),
+    getBonusByMetric(ctx, plan.period),
+  ]);
 
-  const monthly = (Object.keys(METRIC_LIMIT_KEY) as LimitedMetric[]).map((metric) =>
-    line(
+  const monthly = (Object.keys(METRIC_LIMIT_KEY) as LimitedMetric[]).map((metric) => {
+    const planLimit = plan.limits[METRIC_LIMIT_KEY[metric]];
+    return line(
       metric,
       capitalize(METRIC_LABEL[metric].plural),
       usage[metric] ?? 0,
-      plan.limits[METRIC_LIMIT_KEY[metric]],
-    ),
-  );
+      planLimit === UNLIMITED ? UNLIMITED : planLimit + (bonus[metric] ?? 0),
+    );
+  });
 
   const [clients, projects, members, pendingInvites, clientUsers] = await Promise.all([
     db.client.count({ where: { agencyId: ctx.agencyId, deletedAt: null, status: "ACTIVE" } }),

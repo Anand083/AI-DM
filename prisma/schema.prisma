@@ -170,6 +170,8 @@ model Agency {
   alerts           Alert[]
   branding         Branding?
   reports          Report[]
+  impersonations   Impersonation[]
+  usageBonuses     UsageBonus[]
   invoices         Invoice[]
   checkoutSessions CheckoutSession[]
   billingEvents    BillingEvent[]
@@ -834,4 +836,39 @@ model CheckoutSession {
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
   @@index([agencyId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Super admin
+// ---------------------------------------------------------------------------
+
+/// A super admin looking at an agency as one of its members. Ends after 30 minutes.
+model Impersonation {
+  id           String    @id @default(cuid(2))
+  adminUserId  String
+  targetUserId String
+  agencyId     String
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime
+  endedAt      DateTime?
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, createdAt])
+  @@index([agencyId, createdAt])
+}
+
+/// Extra units of a usage metric given to an agency for the month it was created in.
+model UsageBonus {
+  id        String      @id @default(cuid(2))
+  agencyId  String
+  metric    UsageMetric
+  quantity  Int
+  note      String?
+  createdBy String?
+  createdAt DateTime    @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, metric, createdAt])
 }

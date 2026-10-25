@@ -9,6 +9,8 @@ export type TenantContext = {
   role: Role;
   /** For CLIENT users: the clients they may see. */
   clientIds?: string[];
+  /** Set during a support session: the super admin who is looking at this agency. */
+  impersonatorUserId?: string;
 };
 
 /**
@@ -89,4 +91,25 @@ export async function listUserPortals(userId: string): Promise<{ slug: string }[
     take: 20,
   });
   return rows.map((r) => ({ slug: r.agency.slug }));
+}
+
+/**
+ * True when the user belongs to the agency with this slug and that agency is suspended. Those
+ * people see a "suspended" page instead of a 404.
+ */
+export async function isSuspendedMember(userId: string, agencySlug: string): Promise<boolean> {
+  const member = await rawDb.agencyMember.findFirst({
+    where: { userId, agency: { slug: agencySlug, status: "SUSPENDED", deletedAt: null } },
+    select: { id: true },
+  });
+  return member !== null;
+}
+
+/** Agencies that are suspended and where this user is a member. */
+export async function hasSuspendedAgency(userId: string): Promise<boolean> {
+  const member = await rawDb.agencyMember.findFirst({
+    where: { userId, agency: { status: "SUSPENDED", deletedAt: null } },
+    select: { id: true },
+  });
+  return member !== null;
 }

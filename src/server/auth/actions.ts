@@ -37,8 +37,13 @@ export function withTenantAction<S extends z.ZodType, R = undefined>(
       const user = await deps.getUser();
       if (!user || !user.emailVerified) return { ok: false, error: "Please sign in again." };
 
-      const ctx = await deps.loadContext(user.id, agencySlug);
-      if (!ctx) return { ok: false, error: "Not found." };
+      const found = await deps.loadContext(user.id, agencySlug);
+      if (!found) return { ok: false, error: "Not found." };
+      // A support session only reaches the agency it was started for.
+      if (user.impersonation && user.impersonation.agencyId !== found.agencyId) {
+        return { ok: false, error: "Not found." };
+      }
+      const ctx: TenantContext = { ...found, impersonatorUserId: user.impersonatorUserId };
 
       if (!can(ctx.role, config.permission)) {
         return { ok: false, error: "You do not have permission to do this." };
