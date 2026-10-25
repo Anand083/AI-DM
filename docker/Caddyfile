@@ -1,0 +1,37 @@
+# Caddy is the only thing the internet can reach. It gets and renews HTTPS certificates by itself.
+#
+# SITE_ADDRESS:
+#   ":80"                          plain HTTP (local tests, or an IP address with no domain yet)
+#   "1-2-3-4.sslip.io"             a free name for an IP address; Caddy gets a real certificate
+#   "app.example.com"              your own domain
+{
+	email {$ACME_EMAIL:admin@localhost}
+}
+
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	header {
+		-Server
+	}
+
+	reverse_proxy web:3000 {
+		# Tell the app the real visitor address (used for rate limits).
+		header_up X-Forwarded-For {remote_host}
+		health_uri /api/health
+		health_interval 30s
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
+
+# Test mailbox (only when the "testing" profile is on). Needs a user name and password.
+:8025 {
+	basicauth {
+		{$MAILPIT_USER:mail} {$MAILPIT_PASSWORD_HASH}
+	}
+	reverse_proxy mailpit:8025
+}

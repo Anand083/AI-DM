@@ -48,6 +48,8 @@ describe("parseEnv", () => {
       NODE_ENV: "production",
       BETTER_AUTH_SECRET: "a-real-secret-that-is-long-enough-1234",
       ENCRYPTION_KEY: "a-real-encryption-key-32-bytes!!",
+      MOCK_BILLING_WEBHOOK_SECRET: "a-real-webhook-secret-1234",
+      DATAFORSEO_CALLBACK_SECRET: "a-real-callback-secret-1234",
     };
 
     it("refuses the mock SEO provider unless allowed", () => {
@@ -63,6 +65,26 @@ describe("parseEnv", () => {
       expect(() => parseEnv({ ...env, ENCRYPTION_KEY: "change-me-32-bytes" })).toThrow(
         /ENCRYPTION_KEY/,
       );
+    });
+
+    it("refuses placeholder webhook and callback secrets", () => {
+      const env = { ...prod, ALLOW_MOCK_IN_PROD: "true" };
+      expect(() => parseEnv({ ...env, MOCK_BILLING_WEBHOOK_SECRET: "change-me" })).toThrow(
+        /MOCK_BILLING_WEBHOOK_SECRET/,
+      );
+      expect(() => parseEnv({ ...env, MOCK_BILLING_WEBHOOK_SECRET: "short" })).toThrow(
+        /MOCK_BILLING_WEBHOOK_SECRET/,
+      );
+      const real = {
+        ...prod,
+        SEO_PROVIDER: "dataforseo",
+        DATAFORSEO_LOGIN: "a",
+        DATAFORSEO_PASSWORD: "b",
+      };
+      expect(() => parseEnv({ ...real, DATAFORSEO_CALLBACK_SECRET: "change-me" })).toThrow(
+        /DATAFORSEO_CALLBACK_SECRET/,
+      );
+      expect(() => parseEnv(real)).not.toThrow();
     });
 
     it("looks at overrides too: a mock override needs the flag, a DataForSEO override needs credentials", () => {

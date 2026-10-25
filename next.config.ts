@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import { NON_FRAMEABLE_SOURCE, securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
+  // A small self-contained server for the Docker image.
+  output: "standalone",
   // Public report links must never be indexed or stored by shared caches.
   async headers() {
     return [

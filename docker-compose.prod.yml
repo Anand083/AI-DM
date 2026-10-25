@@ -1,0 +1,207 @@
+# Production stack for one small server.
+#
+#   cp .env.prod.example .env      (then fill it in)
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Add the test mailbox (testing only) with:  --profile testing
+#
+# IMAGE_TAG picks the version of the app images (a git SHA in real deployments).
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app-env: &app-env
+  NODE_ENV: production
+  APP_NAME: ${APP_NAME:-SEO Platform}
+  APP_URL: ${APP_URL:?set APP_URL in .env}
+  BETTER_AUTH_URL: ${APP_URL}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY in .env}
+  COOKIE_SECURE: ${COOKIE_SECURE:-true}
+  DATABASE_URL: postgresql://app:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/app
+  REDIS_URL: redis://redis:6379
+  SEO_PROVIDER: ${SEO_PROVIDER:-mock}
+  SEO_PROVIDER_OVERRIDES: ${SEO_PROVIDER_OVERRIDES:-}
+  ALLOW_MOCK_IN_PROD: ${ALLOW_MOCK_IN_PROD:-false}
+  MONTHLY_PROVIDER_BUDGET_USD: ${MONTHLY_PROVIDER_BUDGET_USD:-50}
+  DATAFORSEO_LOGIN: ${DATAFORSEO_LOGIN:-}
+  DATAFORSEO_PASSWORD: ${DATAFORSEO_PASSWORD:-}
+  DATAFORSEO_BASE_URL: ${DATAFORSEO_BASE_URL:-https://sandbox.dataforseo.com}
+  DATAFORSEO_CALLBACK_MODE: ${DATAFORSEO_CALLBACK_MODE:-poll}
+  DATAFORSEO_CALLBACK_SECRET: ${DATAFORSEO_CALLBACK_SECRET:-}
+  BILLING_PROVIDER: ${BILLING_PROVIDER:-mock}
+  MOCK_BILLING_WEBHOOK_SECRET: ${MOCK_BILLING_WEBHOOK_SECRET:?set MOCK_BILLING_WEBHOOK_SECRET in .env}
+  EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  EMAIL_FROM: ${EMAIL_FROM:-SEO Platform <no-reply@localhost>}
+  STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+  STORAGE_LOCAL_DIR: /data/storage
+  S3_BUCKET: ${S3_BUCKET:-}
+  AWS_REGION: ${AWS_REGION:-}
+  CUSTOM_DOMAINS_ENABLED: ${CUSTOM_DOMAINS_ENABLED:-false}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+      - "${MAILPIT_PORT:-127.0.0.1:8025}:8025"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@localhost}
+      MAILPIT_USER: ${MAILPIT_USER:-mail}
+      MAILPIT_PASSWORD_HASH: ${MAILPIT_PASSWORD_HASH:-$$2a$$14$$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidinv}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    mem_limit: 96m
+    logging: *logging
+
+  web:
+    image: ${WEB_IMAGE:-app-web}:${IMAGE_TAG:-latest}
+    build: { context: ., target: web }
+    restart: unless-stopped
+    environment: *app-env
+    volumes:
+      - storage:/data/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    mem_limit: 640m
+    logging: *logging
+
+  worker:
+    image: ${WORKER_IMAGE:-app-worker}:${IMAGE_TAG:-latest}
+    build: { context: ., target: worker }
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+    volumes:
+      - storage:/data/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # The worker keeps a connection to Redis open. If its process is gone this fails.
+      test: ["CMD-SHELL", "pgrep -f 'src/worker/index.ts' >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    mem_limit: 512m
+    logging: *logging
+
+  # Runs the database migrations and adds the plans once, then stops. web and worker wait for it.
+  # Both steps are safe to run again: nothing is changed that is already there.
+  migrate:
+    image: ${WORKER_IMAGE:-app-worker}:${IMAGE_TAG:-latest}
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - node_modules/.bin/prisma migrate deploy && node_modules/.bin/tsx --tsconfig tsconfig.worker.json prisma/seed.ts
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://app:${POSTGRES_PASSWORD}@postgres:5432/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+    logging: *logging
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: app
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres.conf:/etc/postgresql/postgresql.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # BullMQ needs "noeviction": a job queue must never lose jobs to make room.
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory",
+        "128mb",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 192m
+    logging: *logging
+
+  # Test mailbox. Emails sent by the app land here instead of going out. Testing only.
+  mailpit:
+    image: axllent/mailpit:latest
+    profiles: ["testing"]
+    restart: unless-stopped
+    mem_limit: 64m
+    logging: *logging
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: app
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: app
+      BACKUP_KEEP: ${BACKUP_KEEP:-3}
+      BACKUP_HOUR_UTC: ${BACKUP_HOUR_UTC:-2}
+    volumes:
+      - ./docker/backup.sh:/backup.sh:ro
+      - backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 64m
+    logging: *logging
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:
+  backups:
+  caddy_data:
+  caddy_config:

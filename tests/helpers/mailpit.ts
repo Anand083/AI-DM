@@ -1,5 +1,10 @@
 /** Reads emails from Mailpit (or scripts/mail-sink.ts, which has the same API). */
 const base = process.env.MAILPIT_URL ?? "http://localhost:8025";
+// For a mailbox behind a password ("user:password"), as on the server.
+const auth = process.env.MAILPIT_AUTH
+  ? { Authorization: `Basic ${Buffer.from(process.env.MAILPIT_AUTH).toString("base64")}` }
+  : undefined;
+const get = (url: string) => fetch(url, { headers: auth });
 
 export type MailMessage = {
   ID: string;
@@ -13,7 +18,7 @@ export type MailMessage = {
 };
 
 export async function clearMail(): Promise<void> {
-  await fetch(`${base}/api/v1/messages`, { method: "DELETE" });
+  await fetch(`${base}/api/v1/messages`, { method: "DELETE", headers: auth });
 }
 
 /** Waits until an email to `to` with a matching subject arrives, then returns its full content. */
@@ -24,7 +29,7 @@ export async function waitForEmail(
 ): Promise<MailMessage> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const list = (await (await fetch(`${base}/api/v1/messages`)).json()) as {
+    const list = (await (await get(`${base}/api/v1/messages`)).json()) as {
       messages: { ID: string; Subject: string; To: { Address: string }[] }[];
     };
     const hit = list.messages.find(
@@ -32,7 +37,7 @@ export async function waitForEmail(
         m.To.some((t) => t.Address.toLowerCase() === to.toLowerCase()) &&
         (typeof subject === "string" ? m.Subject.includes(subject) : subject.test(m.Subject)),
     );
-    if (hit) return (await (await fetch(`${base}/api/v1/message/${hit.ID}`)).json()) as MailMessage;
+    if (hit) return (await (await get(`${base}/api/v1/message/${hit.ID}`)).json()) as MailMessage;
     await new Promise((r) => setTimeout(r, 300));
   }
   throw new Error(`No email to ${to} matching ${String(subject)} within ${timeoutMs}ms`);

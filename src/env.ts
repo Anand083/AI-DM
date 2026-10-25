@@ -72,6 +72,8 @@ const baseSchema = z.object({
 
 export type Env = z.infer<typeof baseSchema>;
 
+const strongSecret = (value: string) => value.length >= 16 && !value.startsWith("change-me");
+
 /** Extra rules that only apply in production. Returns one message per problem. */
 function productionProblems(env: Env): [string, string][] {
   const problems: [string, string][] = [];
@@ -93,6 +95,19 @@ function productionProblems(env: Env): [string, string][] {
   }
   if (env.ENCRYPTION_KEY.startsWith("change-me")) {
     problems.push(["ENCRYPTION_KEY", "must not be the placeholder value"]);
+  }
+  // Anyone who knows these can pretend to be the payment or data provider, so they must be set.
+  if (env.BILLING_PROVIDER === "mock" && !strongSecret(env.MOCK_BILLING_WEBHOOK_SECRET)) {
+    problems.push([
+      "MOCK_BILLING_WEBHOOK_SECRET",
+      "must be a real secret of at least 16 characters",
+    ]);
+  }
+  if (used.has("dataforseo") && !strongSecret(env.DATAFORSEO_CALLBACK_SECRET)) {
+    problems.push([
+      "DATAFORSEO_CALLBACK_SECRET",
+      "must be a real secret of at least 16 characters",
+    ]);
   }
   if (env.STORAGE_PROVIDER === "s3" && (!env.S3_BUCKET || !env.AWS_REGION)) {
     problems.push(["S3_BUCKET", "S3_BUCKET and AWS_REGION are required when STORAGE_PROVIDER=s3"]);
