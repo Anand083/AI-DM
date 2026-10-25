@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { buildMentionLostAlert } from "@/lib/alert-rules";
 import {
   competitorsMentioned,
@@ -7,7 +8,12 @@ import {
   lostMentions,
 } from "@/lib/ai-visibility";
 import type { Db } from "@/server/db/client";
-import type { AiEngine, AiVisibilityResult } from "@/server/providers/seo/types";
+import type {
+  AiEngine,
+  AiTopic,
+  AiVisibilityResult,
+  LlmMentionsSummary,
+} from "@/server/providers/seo/types";
 import { createAlerts } from "./alert-store";
 import { AppError } from "./errors";
 import type { GatewayCaller, GatewayResult } from "./seo-gateway";
@@ -17,6 +23,14 @@ export type AiGateway = {
     caller: GatewayCaller,
     input: { prompt: string; brand: string; domain: string; engine: AiEngine },
   ): Promise<GatewayResult<AiVisibilityResult>>;
+  getAiTopicDemand(
+    caller: GatewayCaller,
+    input: { seed: string; locationCode: number; languageCode: string; limit: number },
+  ): Promise<GatewayResult<AiTopic[]>>;
+  getLlmMentions(
+    caller: GatewayCaller,
+    input: { domain: string; locationCode: number; languageCode: string },
+  ): Promise<GatewayResult<LlmMentionsSummary[]>>;
 };
 
 export type AiRun = {
@@ -36,6 +50,8 @@ export type AiRunResult =
       /** Why the run stopped early, in plain words (plan limit or budget). */
       reason?: string;
       alerted: boolean;
+      /** True when the day's market snapshot (topic demand and mentions) was saved by this run. */
+      marketSaved: boolean;
     };
 
 const day = (value: string) => new Date(`${value}T00:00:00Z`);
@@ -57,7 +73,14 @@ export async function runAiVisibility(
       deletedAt: null,
       client: { deletedAt: null, status: "ACTIVE" },
     },
-    select: { id: true, name: true, domain: true, client: { select: { name: true } } },
+    select: {
+      id: true,
+      name: true,
+      domain: true,
+      locationCode: true,
+      languageCode: true,
+      client: { select: { name: true } },
+    },
   });
   if (!project) return { status: "inactive" };
 
@@ -162,6 +185,47 @@ export async function runAiVisibility(
     }
   }
 
+  let marketSaved = false;
+  if (!reason) {
+    const haveMarket = await db.aiMarketSnapshot.findFirst({
+      where: { agencyId: run.agencyId, projectId: project.id, takenOn: checkedOn },
+      select: { id: true },
+    });
+    if (!haveMarket) {
+      try {
+        const topics = await gateway.getAiTopicDemand(caller, {
+          seed: brand,
+          locationCode: project.locationCode,
+          languageCode: project.languageCode,
+          limit: 12,
+        });
+        const mentions = await gateway.getLlmMentions(caller, {
+          domain: project.domain,
+          locationCode: project.locationCode,
+          languageCode: project.languageCode,
+        });
+        const saved = await db.aiMarketSnapshot.createMany({
+          data: [
+            {
+              agencyId: run.agencyId,
+              projectId: project.id,
+              takenOn: checkedOn,
+              topics: topics.data as unknown as Prisma.InputJsonValue,
+              mentions: mentions.data as unknown as Prisma.InputJsonValue,
+              provider: mentions.provider,
+            },
+          ],
+          skipDuplicates: true,
+        });
+        marketSaved = saved.count > 0;
+      } catch (error) {
+        // Plan limit or budget pause: the answers above are kept, the market view waits.
+        if (!(error instanceof AppError)) throw error;
+        reason = error.message;
+      }
+    }
+  }
+
   let alerted = false;
   const lost = lostMentions(previous, fresh);
   if (lost.length > 0) {
@@ -174,5 +238,5 @@ export async function runAiVisibility(
     });
     if (draft) alerted = (await createAlerts(db, run.agencyId, [draft])) > 0;
   }
-  return { status: reason ? "stopped" : "done", checked, skipped, reason, alerted };
+  return { status: reason ? "stopped" : "done", checked, skipped, reason, alerted, marketSaved };
 }

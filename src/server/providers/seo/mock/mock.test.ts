@@ -351,6 +351,28 @@ describe("backlinks, ranked keywords, AI and reviews", () => {
     if (a.brandMentioned) expect(a.mentionPosition).toBeGreaterThanOrEqual(1);
   });
 
+  it("returns AI topic demand, biggest first, the same every time, and respects the limit", async () => {
+    const input = { seed: "Dental Care", locationCode: 2840, languageCode: "en", limit: 5 };
+    const a = (await p.getAiTopicDemand(input)).data;
+    expect(a).toEqual((await p.getAiTopicDemand(input)).data);
+    expect(a).toHaveLength(5);
+    expect(a.every((t) => t.topic.includes("dental care"))).toBe(true);
+    expect(a.map((t) => t.aiSearchVolume)).toEqual(
+      [...a.map((t) => t.aiSearchVolume)].sort((x, y) => y - x),
+    );
+  });
+
+  it("returns LLM mentions for the two engines the vendor covers", async () => {
+    const input = { domain: "BrightDental.com", locationCode: 2840, languageCode: "en" };
+    const a = (await p.getLlmMentions(input)).data;
+    expect(a.map((m) => m.engine)).toEqual(["google_ai_overview", "chatgpt"]);
+    for (const m of a) {
+      expect(m.mentions).toBe(m.topQuestions.reduce((sum, q) => sum + q.mentions, 0));
+      expect(m.topQuestions[0]!.mentions).toBeGreaterThanOrEqual(m.topQuestions[1]!.mentions);
+    }
+    expect(a).toEqual((await p.getLlmMentions(input)).data);
+  });
+
   it("returns reviews with ratings from 1 to 5", async () => {
     const { data } = await p.getReviews({ businessName: "Bright Dental", locationCode: 2840 });
     expect(data.rating).toBeGreaterThanOrEqual(1);

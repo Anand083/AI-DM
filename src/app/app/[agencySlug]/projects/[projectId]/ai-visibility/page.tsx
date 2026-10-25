@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AiCoverageBanner, AiInsightsPanels } from "@/components/app/ai-insights-panels";
 import { AiSetupPanel } from "@/components/app/ai-setup-panel";
 import { StatCard } from "@/components/app/rank-widgets";
 import { RunAiCheckButton } from "@/components/app/run-ai-check-button";
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { engineLabel, MAX_AI_PROMPTS, sortByEngine } from "@/lib/ai-visibility";
+import { getAiInsights } from "@/server/services/ai-insights";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import {
@@ -35,11 +37,12 @@ export default async function AiVisibilityPage({
   const sp = await searchParams;
   const { ctx } = await getPageContext(agencySlug);
   const page = pageFromParams(sp.page);
-  const [settings, prompts, overview, answers] = await Promise.all([
+  const [settings, prompts, overview, answers, insights] = await Promise.all([
     getAiSettings(ctx, projectId),
     listPrompts(ctx, projectId),
     getAiOverview(ctx, projectId),
     listLatestAnswers(ctx, projectId, { page, pageSize: PAGE_SIZE }),
+    getAiInsights(ctx, projectId),
   ]);
   const base = `/app/${agencySlug}/projects/${projectId}/ai-visibility`;
   const canEdit = can(ctx.role, "content.edit");
@@ -79,6 +82,8 @@ export default async function AiVisibilityPage({
         engines={settings.engines}
         canEdit={canEdit}
       />
+
+      <AiCoverageBanner insights={insights} />
 
       {!latest ? (
         <EmptyState
@@ -145,6 +150,8 @@ export default async function AiVisibilityPage({
               </table>
             </div>
           </section>
+
+          <AiInsightsPanels insights={insights} />
 
           {Object.keys(latest.competitorMentions).length > 0 ? (
             <section aria-labelledby="rivals-heading" className="space-y-2">

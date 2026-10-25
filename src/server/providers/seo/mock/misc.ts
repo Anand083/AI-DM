@@ -1,4 +1,10 @@
-import type { AiEngine, AiVisibilityResult, ReviewSummary } from "../types";
+import type {
+  AiEngine,
+  AiTopic,
+  AiVisibilityResult,
+  LlmMentionsSummary,
+  ReviewSummary,
+} from "../types";
 import { makeRng } from "./prng";
 
 export function buildAiVisibility(input: {
@@ -78,4 +84,56 @@ export function buildReviews(businessName: string, locationCode: number, now: Da
     reviewCount: Math.max(5, Math.round(Math.exp(base.normal(4.5, 1.2)))),
     recent: [...weekly, ...stable],
   };
+}
+
+const TOPIC_PATTERNS = [
+  "best {seed}",
+  "{seed} near me",
+  "how to choose {seed}",
+  "{seed} cost",
+  "{seed} reviews",
+  "is {seed} worth it",
+  "{seed} vs alternatives",
+  "top rated {seed}",
+  "{seed} for small business",
+  "affordable {seed}",
+  "{seed} checklist",
+  "{seed} tips",
+];
+
+/** Pretend AI search demand for topics around a seed. Biggest first. */
+export function buildAiTopics(input: { seed: string; limit: number; day: number }): AiTopic[] {
+  const seed = input.seed.trim().toLowerCase();
+  return TOPIC_PATTERNS.slice(0, input.limit)
+    .map((pattern) => {
+      const topic = pattern.replace("{seed}", seed);
+      const rng = makeRng(topic, "ai-topic", Math.floor(input.day / 30));
+      return {
+        topic,
+        aiSearchVolume: rng.int(40, 4000),
+        changePercent: rng.int(-30, 90),
+      };
+    })
+    .sort((a, b) => b.aiSearchVolume - a.aiSearchVolume || a.topic.localeCompare(b.topic));
+}
+
+/** Pretend counts of AI answers that name a domain, for the two engines the real vendor covers. */
+export function buildLlmMentions(input: { domain: string; day: number }): LlmMentionsSummary[] {
+  return (["google_ai_overview", "chatgpt"] as const).map((engine) => {
+    const rng = makeRng(input.domain, engine, "llm-mentions", Math.floor(input.day / 7));
+    const questions = [
+      `what is the best ${input.domain.split(".")[0]} alternative`,
+      `is ${input.domain} legit`,
+      `${input.domain.split(".")[0]} pricing`,
+      `who are the top providers like ${input.domain.split(".")[0]}`,
+    ];
+    const top = questions.map((question) => ({ question, mentions: rng.int(1, 40) }));
+    top.sort((a, b) => b.mentions - a.mentions || a.question.localeCompare(b.question));
+    return {
+      engine,
+      mentions: top.reduce((sum, q) => sum + q.mentions, 0),
+      aiSearchVolume: rng.int(200, 9000),
+      topQuestions: top,
+    };
+  });
 }

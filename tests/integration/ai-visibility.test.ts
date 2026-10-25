@@ -63,6 +63,23 @@ function fakeGateway(
   const calls: { prompt: string; engine: string; brand: string }[] = [];
   const gateway = {
     calls,
+    getAiTopicDemand: async () => ({
+      data: [{ topic: "best dentist", aiSearchVolume: 900, changePercent: 40 }],
+      provider: "mock",
+      cached: false,
+    }),
+    getLlmMentions: async () => ({
+      data: [
+        {
+          engine: "chatgpt" as const,
+          mentions: 7,
+          aiSearchVolume: 1200,
+          topQuestions: [{ question: "is acmedental legit", mentions: 4 }],
+        },
+      ],
+      provider: "mock",
+      cached: false,
+    }),
     checkAiVisibility: async (
       _caller: unknown,
       input: { prompt: string; engine: AiEngine; brand: string },

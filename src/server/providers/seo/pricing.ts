@@ -25,6 +25,10 @@ export const UNIT_COST_MICROS = {
   rankedKeywordRow: 100,
   /** per AI visibility check */
   aiVisibility: 10_000,
+  /** per AI topic demand request */
+  aiTopics: 8000,
+  /** per LLM mentions request */
+  llmMentions: 12_000,
   /** per reviews request */
   reviews: 1500,
 } as const;
@@ -52,6 +56,10 @@ export function estimateCostMicros(
       return UNIT_COST_MICROS.rankedKeywords + n * UNIT_COST_MICROS.rankedKeywordRow;
     case "ai_visibility":
       return n * UNIT_COST_MICROS.aiVisibility;
+    case "ai_topics":
+      return UNIT_COST_MICROS.aiTopics;
+    case "llm_mentions":
+      return UNIT_COST_MICROS.llmMentions;
     case "reviews":
       return UNIT_COST_MICROS.reviews;
   }

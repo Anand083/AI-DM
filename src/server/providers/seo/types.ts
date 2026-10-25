@@ -120,6 +120,25 @@ export type AiVisibilityResult = {
   citedUrls: string[];
 };
 
+/** How much people ask AI assistants about a topic. Estimated by the vendor, not exact. */
+export type AiTopic = {
+  topic: string;
+  /** Estimated AI searches a month. */
+  aiSearchVolume: number;
+  /** Change over the last 3 months, in percent. */
+  changePercent: number;
+};
+
+/** How often AI answers about the field name a domain. Only some engines are covered. */
+export type LlmMentionsSummary = {
+  engine: "google_ai_overview" | "chatgpt";
+  /** Answers that mention or link to the domain. */
+  mentions: number;
+  /** Estimated AI searches a month of the questions that led to those mentions. */
+  aiSearchVolume: number;
+  topQuestions: { question: string; mentions: number }[];
+};
+
 export type Review = {
   author: string;
   rating: number;
@@ -142,6 +161,8 @@ export type SeoOperation =
   | "backlinks"
   | "ranked_keywords"
   | "ai_visibility"
+  | "ai_topics"
+  | "llm_mentions"
   | "reviews";
 
 /** Modules that can each use a different provider (`SEO_PROVIDER_OVERRIDES`). */
@@ -197,6 +218,17 @@ export interface SeoDataProvider {
     domain: string;
     engine: AiEngine;
   }): Promise<ProviderResult<AiVisibilityResult>>;
+  getAiTopicDemand(i: {
+    seed: string;
+    locationCode: number;
+    languageCode: string;
+    limit: number;
+  }): Promise<ProviderResult<AiTopic[]>>;
+  getLlmMentions(i: {
+    domain: string;
+    locationCode: number;
+    languageCode: string;
+  }): Promise<ProviderResult<LlmMentionsSummary[]>>;
   getReviews(i: {
     businessName: string;
     locationCode: number;

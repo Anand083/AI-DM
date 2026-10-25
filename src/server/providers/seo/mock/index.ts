@@ -2,7 +2,9 @@ import { estimateCostMicros } from "../pricing";
 import { ProviderError } from "../errors";
 import type {
   AiEngine,
+  AiTopic,
   AiVisibilityResult,
+  LlmMentionsSummary,
   AuditResult,
   AuditStatus,
   Backlink,
@@ -20,7 +22,7 @@ import type {
 import { auditStatusAt, buildAuditResult, makeAuditTaskId, parseAuditTaskId } from "./audit";
 import { buildBacklink, buildBacklinkSummary, buildRankedKeywords } from "./backlinks";
 import { buildKeywordIdeas } from "./keywords";
-import { buildAiVisibility, buildReviews } from "./misc";
+import { buildAiTopics, buildAiVisibility, buildLlmMentions, buildReviews } from "./misc";
 import { dayNumber } from "./prng";
 import { buildRankResult } from "./rankings";
 
@@ -178,6 +180,27 @@ export class MockSeoProvider implements SeoDataProvider {
   }): Promise<ProviderResult<AiVisibilityResult>> {
     return this.call(() =>
       buildAiVisibility({ ...i, domain: i.domain.toLowerCase(), day: dayNumber(this.now()) }),
+    );
+  }
+
+  getAiTopicDemand(i: {
+    seed: string;
+    locationCode: number;
+    languageCode: string;
+    limit: number;
+  }): Promise<ProviderResult<AiTopic[]>> {
+    return this.call(() =>
+      buildAiTopics({ seed: i.seed, limit: i.limit, day: dayNumber(this.now()) }),
+    );
+  }
+
+  getLlmMentions(i: {
+    domain: string;
+    locationCode: number;
+    languageCode: string;
+  }): Promise<ProviderResult<LlmMentionsSummary[]>> {
+    return this.call(() =>
+      buildLlmMentions({ domain: i.domain.toLowerCase(), day: dayNumber(this.now()) }),
     );
   }
 

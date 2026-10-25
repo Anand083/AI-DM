@@ -208,6 +208,7 @@ model Agency {
   goalPoints         GoalPoint[]
   searchBreakdowns   SearchBreakdown[]
   ga4Pages           Ga4Page[]
+  aiMarketSnapshots  AiMarketSnapshot[]
 
   @@index([status, deletedAt])
 }
@@ -323,6 +324,7 @@ model Project {
   reportSchedule     ReportSchedule?
   searchBreakdowns   SearchBreakdown[]
   ga4Pages           Ga4Page[]
+  aiMarketSnapshots  AiMarketSnapshot[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -1529,4 +1531,24 @@ model Ga4Page {
 
   @@unique([projectId, path])
   @@index([agencyId, projectId, sessions])
+}
+
+/// What the vendor says about AI demand around the brand and how often AI answers name the domain. One row per project per day.
+model AiMarketSnapshot {
+  id        String   @id @default(cuid(2))
+  agencyId  String
+  projectId String
+  takenOn   DateTime @db.Date
+  /// AiTopic[] from the provider.
+  topics    Json
+  /// LlmMentionsSummary[] from the provider.
+  mentions  Json
+  provider  String
+  createdAt DateTime @default(now())
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, takenOn])
+  @@index([agencyId, projectId, takenOn])
 }

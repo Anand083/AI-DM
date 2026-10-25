@@ -48,6 +48,17 @@ test("add questions, run an AI check, read the results", async ({ page }) => {
   await page.getByRole("button", { name: "Run first check" }).click();
   await expect(page.getByText("Brand mentioned")).toBeVisible({ timeout: 90_000 });
   await expect(page.getByText("Already checked today.")).toBeVisible();
+
+  // Coverage, method, market view and the cited websites.
+  const coverage = page.getByRole("note", { name: "Data coverage" });
+  await expect(coverage).toContainText("checked today");
+  await expect(coverage).toContainText("sample data");
+  await expect(coverage).toContainText("AI visibility is an estimate");
+  await expect(page.getByRole("heading", { name: "Market view" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "AI topic demand" })).toContainText("near me");
+  await expect(page.getByRole("table", { name: "Mentions of your site by AI" })).toContainText(
+    "ChatGPT",
+  );
   const engines = page.getByRole("table", { name: "By AI engine" });
   await expect(engines).toContainText("ChatGPT");
   await expect(engines).toContainText("Gemini");

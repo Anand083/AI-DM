@@ -468,6 +468,11 @@ export function exportFiles(
       rows: allRows((a) => rawDb.ga4Page.findMany({ where, ...order, ...a })),
     },
     {
+      name: "ai-market.jsonl",
+      model: "AiMarketSnapshot",
+      rows: allRows((a) => rawDb.aiMarketSnapshot.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),

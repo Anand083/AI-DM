@@ -4,7 +4,9 @@ import type { LockStore } from "@/server/locks";
 import { ProviderError } from "@/server/providers/seo/errors";
 import type {
   AiEngine,
+  AiTopic,
   AiVisibilityResult,
+  LlmMentionsSummary,
   AuditResult,
   AuditStatus,
   Backlink,
@@ -384,6 +386,44 @@ export class SeoGateway {
       units: 1,
       caller,
       run: (p) => p.checkAiVisibility(normalized),
+    });
+  }
+
+  getAiTopicDemand(
+    caller: GatewayCaller,
+    input: { seed: string; locationCode: number; languageCode: string; limit: number },
+  ): Promise<GatewayResult<AiTopic[]>> {
+    const normalized = { ...input, seed: input.seed.trim().toLowerCase() };
+    return this.cachedCall({
+      module: "ai",
+      operation: "ai_topics",
+      costOperation: "ai_topics",
+      input: normalized,
+      perDay: true,
+      expiresAt: endOfUtcDay,
+      metric: "AI_CHECK",
+      units: 1,
+      caller,
+      run: (p) => p.getAiTopicDemand(normalized),
+    });
+  }
+
+  getLlmMentions(
+    caller: GatewayCaller,
+    input: { domain: string; locationCode: number; languageCode: string },
+  ): Promise<GatewayResult<LlmMentionsSummary[]>> {
+    const normalized = { ...input, domain: input.domain.toLowerCase() };
+    return this.cachedCall({
+      module: "ai",
+      operation: "llm_mentions",
+      costOperation: "llm_mentions",
+      input: normalized,
+      perDay: true,
+      expiresAt: endOfUtcDay,
+      metric: "AI_CHECK",
+      units: 1,
+      caller,
+      run: (p) => p.getLlmMentions(normalized),
     });
   }
 

@@ -5,7 +5,9 @@ import { DataForSeoClient } from "./client";
 import { mapTasksReady, mapUserData } from "./mappers";
 import type {
   AiEngine,
+  AiTopic,
   AiVisibilityResult,
+  LlmMentionsSummary,
   AuditResult,
   AuditStatus,
   Backlink,
@@ -126,6 +128,21 @@ export class DataForSeoProvider implements SeoDataProvider {
     engine: AiEngine;
   }): Promise<ProviderResult<AiVisibilityResult>> {
     throw new NotImplementedError("DataForSEO checkAiVisibility");
+  }
+  getAiTopicDemand(_i: {
+    seed: string;
+    locationCode: number;
+    languageCode: string;
+    limit: number;
+  }): Promise<ProviderResult<AiTopic[]>> {
+    throw new NotImplementedError("DataForSEO getAiTopicDemand");
+  }
+  getLlmMentions(_i: {
+    domain: string;
+    locationCode: number;
+    languageCode: string;
+  }): Promise<ProviderResult<LlmMentionsSummary[]>> {
+    throw new NotImplementedError("DataForSEO getLlmMentions");
   }
   getReviews(_i: {
     businessName: string;
