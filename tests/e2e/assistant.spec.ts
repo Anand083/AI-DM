@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { createAgencyInUi, newEmail, signUpAndVerify } from "./helpers";
+import { createAgencyInUi, newEmail, signUpAndVerify, waitForHydration } from "./helpers";
 
 test("ask the assistant, read the evidence, approve one suggestion", async ({ page }) => {
   test.setTimeout(180_000);
@@ -24,6 +24,7 @@ test("ask the assistant, read the evidence, approve one suggestion", async ({ pa
   // With no data the assistant says so and suggests nothing.
   await page.goto(`${projectUrl}/assistant`);
   await expect(page.getByText("No questions yet.")).toBeVisible();
+  await waitForHydration(page, "form");
   await page.getByLabel("Ask about this website").fill("hi");
   await expect(page.getByRole("button", { name: "Ask", exact: true })).toBeDisabled();
   await page.getByLabel("Ask about this website").fill("What should I work on first?");
@@ -41,6 +42,7 @@ test("ask the assistant, read the evidence, approve one suggestion", async ({ pa
     timeout: 90_000,
   });
   await page.goto(`${projectUrl}/assistant`);
+  await waitForHydration(page, "form");
   await page.getByLabel("Ask about this website").fill("What is wrong with the site audit?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   const evidence = page.getByRole("list", { name: "Evidence" });
