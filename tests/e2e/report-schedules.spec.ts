@@ -46,6 +46,21 @@ test("create, pause, resume and delete a report schedule", async ({ page }) => {
     serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
   ).toEqual([]);
 
+  // Change it: the form opens filled in, and the project cannot be changed.
+  await table.getByRole("link", { name: /Edit/ }).click();
+  await expect(page.getByRole("heading", { name: /Edit schedule for Shop/ })).toBeVisible();
+  await expect(page.getByLabel("Project")).toBeDisabled();
+  await expect(page.getByLabel("Send to (email addresses)")).toHaveValue(
+    "client@example.com, boss@example.com",
+  );
+  await page.getByLabel("How often").selectOption("MONTHLY");
+  await page.getByLabel("Day of the month").selectOption("15");
+  await page.getByLabel("Send to (email addresses)").fill("owner@example.com");
+  await page.getByRole("button", { name: "Save schedule" }).click();
+  await expect(table.getByText("owner@example.com")).toBeVisible();
+  await expect(table.getByText(/15/).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Edit schedule for/ })).toHaveCount(0);
+
   await table.getByRole("button", { name: /Pause/ }).click();
   await expect(table.getByText("Paused")).toBeVisible();
   await table.getByRole("button", { name: /Resume/ }).click();

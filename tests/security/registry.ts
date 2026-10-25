@@ -41,6 +41,8 @@ export const ROUTES: Record<string, RouteGuard> = {
   "src/app/api/providers/dataforseo/postback/route.ts": "provider-secret",
   "src/app/api/webhooks/billing/route.ts": "billing-signature",
   "src/app/app/[agencySlug]/branding/logo/route.ts": "tenant",
+  "src/app/app/[agencySlug]/tasks/[taskId]/attachments/route.ts": "tenant",
+  "src/app/app/[agencySlug]/tasks/[taskId]/attachments/[attachmentId]/route.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/rankings/export/route.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/backlinks/export/route.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/content/export/route.ts": "tenant",

@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { forgotPasswordSchema, type ForgotPasswordValues } from "@/lib/auth-schemas";
 import { zodResolver } from "@/lib/form";
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({ redirectTo = "/reset-password" }: { redirectTo?: string }) {
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
   const {
     register,
@@ -20,7 +20,7 @@ export function ForgotPasswordForm() {
     setMessage(null);
     const { error } = await authClient.requestPasswordReset({
       email: values.email,
-      redirectTo: "/reset-password",
+      redirectTo,
     });
     if (error?.status === 429) {
       setMessage({

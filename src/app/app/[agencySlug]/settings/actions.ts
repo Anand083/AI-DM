@@ -9,7 +9,7 @@ import {
   updateAgencySchema,
   updateAgencySettings,
 } from "@/server/services/agency";
-import { setMyDigest } from "@/server/services/notifications";
+import { setMyNotifications } from "@/server/services/notifications";
 import { requestExport } from "@/server/services/data-export";
 
 const update = withTenantAction(
@@ -47,13 +47,19 @@ export async function deleteAgencyAction(slug: string, input: unknown) {
   return result;
 }
 
-const myDigest = withTenantAction(
-  { permission: "data.view", schema: z.object({ on: z.boolean() }) },
-  (ctx, input) => setMyDigest(ctx, input.on),
+const myNotifications = withTenantAction(
+  {
+    permission: "data.view",
+    schema: z.object({ digest: z.boolean().optional(), taskAssigned: z.boolean().optional() }),
+  },
+  (ctx, input) => setMyNotifications(ctx, input),
 );
 
-export async function setMyDigestAction(slug: string, on: boolean) {
-  const result = await myDigest(slug, { on });
+export async function setMyNotificationsAction(
+  slug: string,
+  change: { digest?: boolean; taskAssigned?: boolean },
+) {
+  const result = await myNotifications(slug, change);
   if (result.ok) revalidatePath(`/app/${slug}/settings`);
   return result;
 }

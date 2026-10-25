@@ -11,7 +11,8 @@ import { can } from "@/server/auth/permissions";
 import { db } from "@/server/db/client";
 import { getAgency } from "@/server/services/agency";
 import { listProjects } from "@/server/services/projects";
-import { listSchedules } from "@/server/services/report-schedules";
+import { getSchedule, listSchedules } from "@/server/services/report-schedules";
+import { NotFoundError } from "@/server/services/errors";
 
 export const metadata: Metadata = { title: "Report schedules" };
 export const dynamic = "force-dynamic";
@@ -35,6 +36,14 @@ export default async function SchedulesPage({
     listProjects(ctx, { pageSize: 100 }),
   ]);
   const canManage = can(ctx.role, "reports.create");
+  const editId = typeof sp.edit === "string" ? sp.edit : undefined;
+  const editing =
+    canManage && editId
+      ? await getSchedule(ctx, editId).catch((error) => {
+          if (error instanceof NotFoundError) return null;
+          throw error;
+        })
+      : null;
   const taken = new Set(
     (
       await db.reportSchedule.findMany({
@@ -69,6 +78,41 @@ export default async function SchedulesPage({
           {agency.timezone}.
         </p>
       </div>
+
+      {editing ? (
+        <section aria-labelledby="edit-schedule" className="space-y-3">
+          <h2 id="edit-schedule" className="text-lg font-semibold">
+            Edit schedule for {editing.project.name}
+          </h2>
+          <ScheduleForm
+            agencySlug={agencySlug}
+            projects={[
+              {
+                id: editing.projectId,
+                name: editing.project.name,
+                clientName: editing.project.client.name,
+              },
+            ]}
+            timezone={agency.timezone}
+            edit={{
+              scheduleId: editing.id,
+              enabled: editing.enabled,
+              frequency: editing.frequency,
+              dayOfWeek: editing.dayOfWeek,
+              dayOfMonth: editing.dayOfMonth,
+              hour: editing.hour,
+              recipients: editing.recipients,
+              sections: editing.sections,
+            }}
+          />
+          <Link
+            href={`/app/${agencySlug}/reports/schedules`}
+            className="text-sm underline underline-offset-4"
+          >
+            Cancel
+          </Link>
+        </section>
+      ) : null}
 
       {items.length === 0 ? (
         <EmptyState
@@ -106,6 +150,14 @@ export default async function SchedulesPage({
                       </Badge>
                     </td>
                     <td className="px-3 py-2">
+                      {canManage ? (
+                        <Link
+                          href={`/app/${agencySlug}/reports/schedules?edit=${s.id}`}
+                          className="mr-3 text-sm underline underline-offset-4"
+                        >
+                          Edit<span className="sr-only"> schedule for {s.project.name}</span>
+                        </Link>
+                      ) : null}
                       {canManage ? (
                         <ScheduleRowActions
                           agencySlug={agencySlug}

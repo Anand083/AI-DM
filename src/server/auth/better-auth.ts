@@ -76,7 +76,7 @@ function createAuth() {
       resetPasswordTokenExpiresIn: 60 * 60,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
-        await sendResetPasswordEmail(user, url);
+        await sendResetPasswordEmail({ id: user.id, email: user.email, name: user.name }, url);
       },
     },
     emailVerification: {

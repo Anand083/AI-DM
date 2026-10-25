@@ -552,6 +552,13 @@ export function exportFiles(
       rows: allRows((a) => rawDb.dashboardPref.findMany({ where, ...order, ...a })),
     },
     {
+      name: "task-attachments.jsonl",
+      model: "TaskAttachment",
+      rows: allRows((a) =>
+        rawDb.taskAttachment.findMany({ where, ...order, omit: { storageKey: true }, ...a }),
+      ),
+    },
+    {
       name: "add-ons.jsonl",
       model: "AgencyAddOn",
       rows: allRows((a) => rawDb.agencyAddOn.findMany({ where, ...order, ...a })),

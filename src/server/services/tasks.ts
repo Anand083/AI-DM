@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { getEnv } from "@/env";
 import {
   nextDueDay,
   priorityForSeverity,
@@ -12,8 +13,11 @@ import {
 import { can } from "@/server/auth/permissions";
 import type { TenantContext } from "@/server/auth/tenant-context";
 import { db } from "@/server/db/client";
+import { logger } from "@/server/logger";
 import { issueInfo } from "@/server/audit/issue-catalog";
 import { logActivity } from "./activity";
+import { sendTaskAssignedEmail } from "./email";
+import { removeTaskFiles } from "./task-attachments";
 import { ForbiddenError, NotFoundError, ValidationError } from "./errors";
 import { paging, type Page } from "./paging";
 import { getAudit, getIssueGroups } from "./audits";
@@ -177,6 +181,40 @@ export async function listAssignees(ctx: TenantContext) {
   return rows.map((r) => ({ id: r.userId, name: r.user.name }));
 }
 
+/**
+ * Emails the new assignee, unless they gave the task to themselves or turned these emails off.
+ * A failed email never fails the task change.
+ */
+async function notifyAssigned(
+  ctx: TenantContext,
+  task: { id: string; title: string },
+  assigneeId: string | null | undefined,
+): Promise<void> {
+  if (!assigneeId || assigneeId === ctx.userId) return;
+  try {
+    const [member, agency, actor] = await Promise.all([
+      db.agencyMember.findFirst({
+        where: { agencyId: ctx.agencyId, userId: assigneeId, emailTaskAssigned: true },
+        select: { user: { select: { email: true } } },
+      }),
+      db.agency.findFirst({ where: { id: ctx.agencyId }, select: { slug: true } }),
+      db.user.findFirst({ where: { id: ctx.userId }, select: { name: true } }),
+    ]);
+    if (!member || !agency) return;
+    await sendTaskAssignedEmail(
+      member.user.email,
+      {
+        assigner: actor?.name ?? "A teammate",
+        title: task.title,
+        url: `${getEnv().APP_URL}/app/${agency.slug}/tasks/${task.id}`,
+      },
+      `task_assigned_${task.id}_${assigneeId}`,
+    );
+  } catch (error) {
+    logger.warn({ err: error, taskId: task.id }, "task assignment email failed");
+  }
+}
+
 export async function createTask(ctx: TenantContext, raw: unknown) {
   requireEdit(ctx);
   const input = parseInput(createTaskSchema, raw);
@@ -198,8 +236,9 @@ export async function createTask(ctx: TenantContext, raw: unknown) {
       milestoneId: input.milestoneId,
       createdById: ctx.userId,
     },
-    select: { id: true },
+    select: { id: true, title: true },
   });
+  await notifyAssigned(ctx, task, input.assigneeId);
   await logActivity({
     agencyId: ctx.agencyId,
     actorUserId: ctx.userId,
@@ -350,6 +389,13 @@ export async function updateTask(
     data.completedAt = patch.status === "DONE" ? (current.completedAt ?? now) : null;
   }
   await db.task.updateMany({ where: { id: taskId, agencyId: ctx.agencyId }, data });
+  if (patch.assigneeId && patch.assigneeId !== current.assigneeId) {
+    await notifyAssigned(
+      ctx,
+      { id: taskId, title: patch.title ?? current.title },
+      patch.assigneeId,
+    );
+  }
 
   let next: { id: string } | null = null;
   const recurrence = (patch.recurrence ?? current.recurrence) as TaskRecurrence;
@@ -416,6 +462,7 @@ export async function addTaskComment(ctx: TenantContext, taskId: string, raw: un
 
 export async function deleteTask(ctx: TenantContext, taskId: string) {
   if (!can(ctx.role, "content.delete")) throw new ForbiddenError();
+  await removeTaskFiles(ctx.agencyId, taskId);
   const result = await db.task.deleteMany({ where: { id: taskId, agencyId: ctx.agencyId } });
   if (result.count === 0) throw new NotFoundError("Task not found.");
   await logActivity({

@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { extractLink, waitForEmail } from "../helpers/mailpit";
 import { seedRankings } from "./db";
-import { createAgencyInUi, newEmail, PASSWORD, signUpAndVerify } from "./helpers";
+import { createAgencyInUi, newEmail, PASSWORD, signUpAndVerify, waitForHydration } from "./helpers";
 
 const APP_NAME = "SEO Platform";
 
@@ -130,6 +130,35 @@ test("a client user sees only their own client, in the agency's branding", async
   expect((await guest.request.get(pdfUrl, { maxRedirects: 0 })).status()).toBe(401);
   await client.getByLabel("Email").fill(clientEmail);
   await client.getByLabel("Password").fill(PASSWORD);
+  await client.getByRole("button", { name: "Sign in" }).click();
+  await expect(client).toHaveURL(new RegExp(`/portal/${slug}$`));
+
+  // Forgot password: the whole flow shows only the agency.
+  await waitForHydration(client, "button");
+  await client.getByRole("button", { name: "Sign out" }).click();
+  await expect(client).toHaveURL(new RegExp(`/portal/${slug}/login`));
+  await client.getByRole("link", { name: "Forgot your password?" }).click();
+  await expect(client).toHaveURL(new RegExp(`/portal/${slug}/forgot-password`));
+  expect(await client.title()).toContain("Bright Studio");
+  expect(await client.locator("body").innerText()).not.toContain(APP_NAME);
+  await client.getByLabel("Email").fill(clientEmail);
+  await client.getByRole("button", { name: "Send reset link" }).click();
+  await expect(client.getByText("If an account exists for that email")).toBeVisible();
+  const resetMail = await waitForEmail(clientEmail, /Reset your password/);
+  expect(resetMail.FromName).toBe("Bright Studio");
+  expect(resetMail.HTML + resetMail.Text).not.toContain(APP_NAME);
+  const resetLink = extractLink(resetMail, /reset-password/);
+  await client.goto(resetLink);
+  await expect(client).toHaveURL(new RegExp(`/portal/${slug}/reset-password`));
+  expect(await client.locator("body").innerText()).not.toContain(APP_NAME);
+  const newPassword = `${PASSWORD}-new1`;
+  await client.getByLabel("New password", { exact: true }).fill(newPassword);
+  await client.getByLabel("Repeat new password").fill(newPassword);
+  await client.getByRole("button", { name: "Save new password" }).click();
+  await expect(client).toHaveURL(new RegExp(`/portal/${slug}/login\\?reset=1`));
+  await expect(client.getByText("Your password was changed.")).toBeVisible();
+  await client.getByLabel("Email").fill(clientEmail);
+  await client.getByLabel("Password").fill(newPassword);
   await client.getByRole("button", { name: "Sign in" }).click();
   await expect(client).toHaveURL(new RegExp(`/portal/${slug}$`));
 

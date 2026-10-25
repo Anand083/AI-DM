@@ -2,7 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createScheduleAction } from "@/app/app/[agencySlug]/reports/schedules/actions";
+import {
+  createScheduleAction,
+  updateScheduleAction,
+} from "@/app/app/[agencySlug]/reports/schedules/actions";
 import { FormMessage } from "@/components/auth/field";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,27 +20,43 @@ export function ScheduleForm({
   agencySlug,
   projects,
   timezone,
+  edit,
 }: {
   agencySlug: string;
   /** Projects that do not have a schedule yet. */
   projects: { id: string; name: string; clientName: string }[];
   timezone: string;
+  /** Set to change an existing schedule. The project cannot be changed. */
+  edit?: {
+    scheduleId: string;
+    enabled: boolean;
+    frequency: "WEEKLY" | "MONTHLY";
+    dayOfWeek: number;
+    dayOfMonth: number;
+    hour: number;
+    recipients: string[];
+    sections: string[];
+  };
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
-  const [frequency, setFrequency] = useState<"WEEKLY" | "MONTHLY">("WEEKLY");
-  const [dayOfWeek, setDayOfWeek] = useState(1);
-  const [dayOfMonth, setDayOfMonth] = useState(1);
-  const [hour, setHour] = useState(8);
-  const [recipients, setRecipients] = useState("");
+  const [frequency, setFrequency] = useState<"WEEKLY" | "MONTHLY">(edit?.frequency ?? "WEEKLY");
+  const [dayOfWeek, setDayOfWeek] = useState(edit?.dayOfWeek ?? 1);
+  const [dayOfMonth, setDayOfMonth] = useState(edit?.dayOfMonth ?? 1);
+  const [hour, setHour] = useState(edit?.hour ?? 8);
+  const [recipients, setRecipients] = useState(edit?.recipients.join(", ") ?? "");
   const [sections, setSections] = useState<Set<ReportSectionKey>>(
-    new Set(DEFAULT_SECTIONS.filter((s) => s !== "rankings")),
+    new Set(
+      edit
+        ? (edit.sections as ReportSectionKey[])
+        : DEFAULT_SECTIONS.filter((s) => s !== "rankings"),
+    ),
   );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (projects.length === 0) {
+  if (!edit && projects.length === 0) {
     return (
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Every project already has a schedule, or there are no projects yet.
@@ -49,7 +68,7 @@ export function ScheduleForm({
     event.preventDefault();
     setError(null);
     setBusy(true);
-    const result = await createScheduleAction(agencySlug, {
+    const values = {
       projectId,
       frequency,
       dayOfWeek,
@@ -57,23 +76,41 @@ export function ScheduleForm({
       hour,
       recipients: parseRecipients(recipients),
       sections: REPORT_SECTIONS.map((s) => s.key).filter((k) => sections.has(k)),
-    });
+      ...(edit ? { enabled: edit.enabled } : {}),
+    };
+    const result = edit
+      ? await updateScheduleAction(agencySlug, edit.scheduleId, values)
+      : await createScheduleAction(agencySlug, values);
     setBusy(false);
     if (!result.ok) {
       setError(result.fieldErrors ? Object.values(result.fieldErrors)[0]! : result.error);
       return;
     }
     toast("success", "Schedule saved.");
+    if (edit) {
+      router.push(`/app/${agencySlug}/reports/schedules`);
+      return;
+    }
     setRecipients("");
     router.refresh();
   }
 
   return (
-    <form onSubmit={submit} className="max-w-2xl space-y-4" noValidate aria-label="New schedule">
+    <form
+      onSubmit={submit}
+      className="max-w-2xl space-y-4"
+      noValidate
+      aria-label={edit ? "Edit schedule" : "New schedule"}
+    >
       {error ? <FormMessage kind="error">{error}</FormMessage> : null}
       <div className="space-y-1.5">
         <Label htmlFor="sch-project">Project</Label>
-        <Select id="sch-project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+        <Select
+          id="sch-project"
+          value={projectId}
+          disabled={Boolean(edit)}
+          onChange={(e) => setProjectId(e.target.value)}
+        >
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name} ({p.clientName})

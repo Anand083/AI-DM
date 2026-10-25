@@ -9,12 +9,7 @@ import {
   listContentUpdates,
   logContentUpdate,
 } from "@/server/services/content";
-import {
-  ForbiddenError,
-  LimitExceededError,
-  NotFoundError,
-  ValidationError,
-} from "@/server/services/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/server/services/errors";
 import { createAgencyWithMembers, seedPlans } from "../factories";
 import { createTestClient, resetDb } from "../helpers/db";
 

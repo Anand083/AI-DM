@@ -9,7 +9,13 @@ import { authClient } from "@/lib/auth-client";
 import { resetPasswordSchema, type ResetPasswordValues } from "@/lib/auth-schemas";
 import { zodResolver } from "@/lib/form";
 
-export function ResetPasswordForm({ token }: { token: string }) {
+export function ResetPasswordForm({
+  token,
+  loginHref = "/login?reset=1",
+}: {
+  token: string;
+  loginHref?: string;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const {
@@ -28,7 +34,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       setError("This link is not valid or has expired. Please ask for a new one.");
       return;
     }
-    router.push("/login?reset=1");
+    router.push(loginHref);
   }
 
   return (

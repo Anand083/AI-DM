@@ -230,18 +230,21 @@ model Agency {
   webhookDeliveries  WebhookDelivery[]
   savedViews         SavedView[]
   dashboardPrefs     DashboardPref[]
+  taskAttachments    TaskAttachment[]
 
   @@index([status, deletedAt])
 }
 
 model AgencyMember {
-  id          String     @id @default(cuid(2))
-  agencyId    String
-  userId      String
-  role        MemberRole
+  id                String     @id @default(cuid(2))
+  agencyId          String
+  userId            String
+  role              MemberRole
   /// Gets the email summary of new alerts when the agency has the daily digest on.
-  emailDigest Boolean    @default(true)
-  createdAt   DateTime   @default(now())
+  emailDigest       Boolean    @default(true)
+  /// Gets an email when a task is assigned to them by someone else.
+  emailTaskAssigned Boolean    @default(true)
+  createdAt         DateTime   @default(now())
 
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1417,9 +1420,10 @@ model Task {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  agency   Agency        @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  project  Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  comments TaskComment[]
+  agency      Agency           @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project     Project?         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments    TaskComment[]
+  attachments TaskAttachment[]
 
   @@index([agencyId, status, dueOn])
   @@index([agencyId, projectId, status])
@@ -1959,4 +1963,22 @@ model DashboardPref {
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
   @@unique([agencyId, userId])
+}
+
+/// A file added to a task. The bytes live in storage under `storageKey`.
+model TaskAttachment {
+  id           String   @id @default(cuid(2))
+  agencyId     String
+  taskId       String
+  name         String
+  contentType  String
+  bytes        Int
+  storageKey   String
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, taskId, createdAt])
 }

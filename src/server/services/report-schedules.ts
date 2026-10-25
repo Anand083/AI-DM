@@ -54,6 +54,16 @@ export async function listSchedules(ctx: TenantContext, p: Page = {}) {
   return { items, total, page: Math.floor(skip / take) + 1, pageSize: take };
 }
 
+export async function getSchedule(ctx: TenantContext, id: string) {
+  requireView(ctx);
+  const row = await db.reportSchedule.findFirst({
+    where: { id, agencyId: ctx.agencyId },
+    select: scheduleSelect,
+  });
+  if (!row) throw new NotFoundError("Schedule not found.");
+  return row;
+}
+
 async function projectTimezone(ctx: TenantContext, projectId: string): Promise<string> {
   const project = await db.project.findFirst({
     where: { id: projectId, agencyId: ctx.agencyId, deletedAt: null, client: { deletedAt: null } },

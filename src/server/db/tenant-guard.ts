@@ -78,6 +78,7 @@ export const TENANT_MODELS = new Set([
   "WebhookDelivery",
   "SavedView",
   "DashboardPref",
+  "TaskAttachment",
 ]);
 
 const WHERE_OPERATIONS = new Set([

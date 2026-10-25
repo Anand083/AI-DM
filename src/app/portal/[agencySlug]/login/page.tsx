@@ -33,12 +33,13 @@ export default async function PortalLoginPage({
       title="Sign in"
       description={`See your reports from ${brand.displayName}.`}
     >
-      <LoginForm next={next} forgotHref={null} />
-      <p className="mt-4 text-xs text-zinc-600 dark:text-zinc-400">
-        Forgot your password?{" "}
-        {brand.supportEmail ? `Write to ${brand.supportEmail}` : `Ask ${brand.displayName}`} and
-        they will send you a new invitation.
-      </p>
+      <LoginForm
+        next={next}
+        forgotHref={`/portal/${agencySlug}/forgot-password`}
+        notice={
+          (await searchParams).reset ? "Your password was changed. Sign in with it." : undefined
+        }
+      />
     </PortalCard>
   );
 }

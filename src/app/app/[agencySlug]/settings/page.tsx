@@ -59,6 +59,7 @@ export default async function SettingsPage({
           <MyNotifications
             agencySlug={agencySlug}
             digest={mine.emailDigest}
+            taskAssigned={mine.emailTaskAssigned}
             digestAvailable={agency.dailyDigest}
           />
         </div>

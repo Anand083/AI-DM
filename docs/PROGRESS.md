@@ -15,6 +15,7 @@
 | 8 Background jobs | Done | 7 BullMQ queues, worker with graceful shutdown, retries, scheduler (15 min), purge job, emails via queue; integration tests with real Redis pass |
 | 8b DataForSEO wiring | Done | HTTP client (msw tests), pingback/postback routes, poll job, overrides, provider health; mock stays default |
 | 8c DataForSEO sandbox (optional) | Skipped | Needs a free DataForSEO account (credentials). Waiting for the founder. |
+| Small gaps | Done except 2 | portal forgot-password (agency branded), report schedule edit screen, task assignment emails with a personal switch, task file attachments; 2FA QR code and Sentry wait for an approved dependency |
 | 9 Usage metering and limits | Done | usage period math, assertWithinLimit, gateway guard, team size limit, budget guard (80%/100%), usage page; all tests pass |
 | 10 Rank tracker | Done | keywords, scheduled + live checks, rankings table, chart, summary, CSV, mock backfill; unit + integration + E2E pass |
 | 11 Site audit | Done | catalog of 23 issues, delayed polling jobs, results with fix text, comparison, monthly auto audit; tests pass |

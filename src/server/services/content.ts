@@ -382,21 +382,6 @@ export async function createContentTasks(
   const project = await getProject(ctx, projectId);
   const l = await load(ctx, projectId);
   const todayText = day(today);
-  const pages = l
-    ? await db.auditPage.findMany({
-        where: { agencyId: ctx.agencyId, auditId: l.auditId },
-        select: {
-          url: true,
-          title: true,
-          statusCode: true,
-          wordCount: true,
-          issueCount: true,
-          inlinks: true,
-          lastModified: true,
-        },
-        take: 500,
-      })
-    : [];
   let created = 0;
   let existing = 0;
   for (const raw of [...new Set(input.urls)]) {

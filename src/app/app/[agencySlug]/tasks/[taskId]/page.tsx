@@ -3,11 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ApprovalPanel, TeamCommentForm } from "@/components/app/task-collab";
 import { TaskDelete } from "@/components/app/task-extras";
+import { TaskFiles } from "@/components/app/task-files";
 import { TaskForm } from "@/components/app/task-form";
+import { formatBytes } from "@/lib/attachments";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { NotFoundError } from "@/server/services/errors";
 import { listMilestones } from "@/server/services/milestones";
+import { listAttachments } from "@/server/services/task-attachments";
 import { getTask, listAssignees } from "@/server/services/tasks";
 
 export const metadata: Metadata = { title: "Task" };
@@ -20,12 +23,13 @@ export default async function TaskPage({
 }) {
   const { agencySlug, taskId } = await params;
   const { ctx } = await getPageContext(agencySlug);
-  const [task, assignees] = await Promise.all([
+  const [task, assignees, files] = await Promise.all([
     getTask(ctx, taskId).catch((error) => {
       if (error instanceof NotFoundError) notFound();
       throw error;
     }),
     listAssignees(ctx),
+    listAttachments(ctx, taskId),
   ]);
   const milestones = task.project ? await listMilestones(ctx, task.project.id) : [];
   const canEdit = can(ctx.role, "content.edit");
@@ -114,6 +118,18 @@ export default async function TaskPage({
           hasProject={!!task.project}
         />
       </section>
+
+      <TaskFiles
+        agencySlug={agencySlug}
+        taskId={task.id}
+        canEdit={canEdit}
+        files={files.map((f) => ({
+          id: f.id,
+          name: f.name,
+          size: formatBytes(f.bytes),
+          added: stamp.format(f.createdAt),
+        }))}
+      />
 
       <section aria-labelledby="comments-heading" className="space-y-3">
         <h2 id="comments-heading" className="text-lg font-semibold">
