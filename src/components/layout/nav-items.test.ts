@@ -11,6 +11,7 @@ describe("navItemsFor", () => {
       "projects",
       "research",
       "reports",
+      "tasks",
       "leads",
       "team",
       "branding",

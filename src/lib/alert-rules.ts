@@ -52,7 +52,8 @@ export type AlertDraft = {
     | "AUDIT_CRITICAL"
     | "BACKLINKS_LOST"
     | "AI_MENTION_LOST"
-    | "NEW_REVIEW";
+    | "NEW_REVIEW"
+    | "TASK_DUE";
   severity: "INFO" | "WARNING" | "CRITICAL";
   title: string;
   body: string;
@@ -229,5 +230,32 @@ export function buildReviewAlert(input: {
         .map((r) => ({ author: r.author, rating: r.rating, text: r.text.slice(0, 300) })),
     },
     dedupeKey: `new_review:${input.projectId}:${input.date}`,
+  };
+}
+
+/** One alert a day for an agency that has overdue tasks or tasks due today. */
+export function buildTaskDueAlert(input: {
+  agencyId: string;
+  date: string;
+  overdue: number;
+  dueToday: number;
+}): AlertDraft | null {
+  const { overdue, dueToday } = input;
+  if (overdue + dueToday === 0) return null;
+  const parts = [
+    overdue > 0 ? `${plural(overdue, "task is", "tasks are")} overdue` : "",
+    dueToday > 0 ? `${plural(dueToday, "task is", "tasks are")} due today` : "",
+  ].filter(Boolean);
+  return {
+    projectId: null,
+    type: "TASK_DUE",
+    severity: overdue > 0 ? "WARNING" : "INFO",
+    title:
+      overdue > 0
+        ? `${plural(overdue, "task", "tasks")} overdue`
+        : `${plural(dueToday, "task", "tasks")} due today`,
+    body: `${parts.join(" and ")}.`,
+    data: { date: input.date, overdue, dueToday },
+    dedupeKey: `tasks_due:${input.agencyId}:${input.date}`,
   };
 }

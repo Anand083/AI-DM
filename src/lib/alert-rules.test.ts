@@ -4,6 +4,7 @@ import {
   buildBacklinkLossAlert,
   buildMentionLostAlert,
   buildReviewAlert,
+  buildTaskDueAlert,
   buildRankAlerts,
   DEFAULT_ALERT_SETTINGS as S,
   isEnteredTop,
@@ -223,5 +224,31 @@ describe("buildReviewAlert", () => {
     });
     expect(alert).toMatchObject({ severity: "WARNING", title: "1 new low review for Shop" });
     expect(alert?.body).toBe('Lee gave 1 star: "Terrible wait" (2 new reviews in total).');
+  });
+});
+
+describe("buildTaskDueAlert", () => {
+  const base = { agencyId: "a1", date: "2026-03-10" };
+
+  it("gives nothing without due tasks", () => {
+    expect(buildTaskDueAlert({ ...base, overdue: 0, dueToday: 0 })).toBeNull();
+  });
+
+  it("warns about overdue tasks and mentions tasks due today", () => {
+    expect(buildTaskDueAlert({ ...base, overdue: 2, dueToday: 1 })).toMatchObject({
+      type: "TASK_DUE",
+      severity: "WARNING",
+      projectId: null,
+      title: "2 tasks overdue",
+      body: "2 tasks are overdue and 1 task is due today.",
+      dedupeKey: "tasks_due:a1:2026-03-10",
+    });
+  });
+
+  it("is only informational when nothing is overdue", () => {
+    expect(buildTaskDueAlert({ ...base, overdue: 0, dueToday: 1 })).toMatchObject({
+      severity: "INFO",
+      title: "1 task due today",
+    });
   });
 });

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuditProgress } from "@/components/app/audit-progress";
 import { AuditStatusBadge, ScoreBadge, SeverityBadge } from "@/components/app/audit-widgets";
+import { CreateTaskFromIssueButton } from "@/components/app/task-extras";
 import { RunAuditButton } from "@/components/app/run-audit-button";
 import { StatCard } from "@/components/app/rank-widgets";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -181,6 +182,7 @@ export default async function AuditResultPage({
         />
       ) : (
         <IssuesView
+          agencySlug={agencySlug}
           ctx={ctx}
           projectId={projectId}
           auditId={auditId}
@@ -195,12 +197,14 @@ export default async function AuditResultPage({
 type Ctx = Awaited<ReturnType<typeof getPageContext>>["ctx"];
 
 async function IssuesView({
+  agencySlug,
   ctx,
   projectId,
   auditId,
   here,
   comparison,
 }: {
+  agencySlug: string;
   ctx: Ctx;
   projectId: string;
   auditId: string;
@@ -242,6 +246,14 @@ async function IssuesView({
                   <h4 className="font-semibold">How to fix it</h4>
                   <p className="mt-1">{g.fix}</p>
                 </div>
+                {can(ctx.role, "content.edit") ? (
+                  <CreateTaskFromIssueButton
+                    agencySlug={agencySlug}
+                    projectId={projectId}
+                    auditId={auditId}
+                    code={g.code}
+                  />
+                ) : null}
                 <div>
                   <h4 className="font-semibold">Pages affected</h4>
                   <ul className="mt-1 list-disc space-y-0.5 pl-5">

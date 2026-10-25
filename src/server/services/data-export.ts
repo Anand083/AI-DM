@@ -413,6 +413,16 @@ export function exportFiles(
       ),
     },
     {
+      name: "tasks.jsonl",
+      model: "Task",
+      rows: allRows((a) => rawDb.task.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "task-comments.jsonl",
+      model: "TaskComment",
+      rows: allRows((a) => rawDb.taskComment.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),

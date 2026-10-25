@@ -43,3 +43,9 @@
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).
 
 **Phase F (Steps 27 to 32) is complete.** Phase G (Steps 33 to 36) needs real accounts and paid services, so it is waiting for the founder. Step 25 (server) is also waiting for the founder.
+
+## Phase H (extra features from the founder's list)
+
+| Step     | Status | Notes                                                                                                                                                            |
+| -------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H1 Tasks | Done   | tasks with owner, priority, due day, estimate, repeat; create from audit issues; comments; overdue alert; Tasks pages; unit + integration + isolation + E2E pass |

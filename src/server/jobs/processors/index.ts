@@ -50,6 +50,7 @@ import { runGoogleSync } from "@/server/services/google-sync";
 import { runReviewScheduler } from "@/server/jobs/system/review-scheduler";
 import { getSummaryProvider } from "@/server/providers/summary";
 import { runReviewRefresh } from "@/server/services/review-runner";
+import { runTaskReminders } from "@/server/jobs/system/task-reminders";
 import { runAiScheduler } from "@/server/jobs/system/ai-scheduler";
 import { runBacklinkScheduler } from "@/server/jobs/system/backlink-scheduler";
 import { runBillingTick } from "@/server/jobs/system/billing-tick";
@@ -108,6 +109,12 @@ export const processors: JobProcessors = {
           enqueue: enqueueGoogleSync,
         });
         if (googleSyncs.queued > 0) logger.info(googleSyncs, "daily Google syncs queued");
+        const taskReminders = await runTaskReminders({
+          db: rawDb,
+          alertDb: db,
+          now: new Date(),
+        });
+        if (taskReminders.alerts > 0) logger.info(taskReminders, "task reminders");
         const digests = await runDigestScheduler({
           db: rawDb,
           now: new Date(),
@@ -129,6 +136,7 @@ export const processors: JobProcessors = {
           aiChecks,
           reviewChecks,
           googleSyncs,
+          taskReminders,
           digests,
           reports,
           billing,

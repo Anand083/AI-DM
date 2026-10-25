@@ -369,3 +369,17 @@
 - The visitor reads the result with a long random id (`Lead.publicId`) at `/api/widget/lead/<id>`, limited by IP, which returns the status, score and issues only: never the email or anything about the agency. The same visitor asking again for the same website within a day gets the earlier result (no second audit).
 - The agency gets the lead by email (owners and admins, once each, through the normal email queue) and on the Leads page (20 per page, newest first, score, status and the problems found). Leads can be deleted by owners and admins, for example when a visitor asks to be forgotten, and they are part of the data export (without the secret public id). We never email the visitor: sending mail to an address typed by a stranger would let anyone use the platform to send mail to someone else. The email text says that the agency will see the address and may contact them.
 - The registry test got two new route kinds: `public-lead-token` and `public-static`.
+
+## Phase H (added after the founder's feature list, `seo_agency_features_to_add.txt`)
+
+These steps are not in `docs/PLAN.md` (which is not edited without asking). They are numbered H1, H2 and so on. The AI provider stays on the mock until the founder adds the keys; nothing in Phase H needs a key to be built or tested.
+
+### H1: Tasks
+
+- Two tables with `agencyId`, in the tenant guard list and the data export: `Task` and `TaskComment`. A task has a title, description, status (To do, In progress, Blocked, Done), priority, an assignee who must be a member of the same agency, a due day, an estimate in minutes, an optional project, and a repeat setting (none, weekly, monthly). It can remember the audit and issue it came from.
+- Making a task from an audit issue copies the catalog text (why it matters, how to fix it, example pages), maps severity to priority (critical gives high), and does not make a second task while an open one for the same issue exists on the project (the existing one is returned). Once it is done, a new one may be made.
+- Finishing a repeating task creates the next copy, due on the next week or month after the old due day. If it was finished late, the next due day is the first one after today, so it never starts in the past. Finishing it again does not make a third copy.
+- Dates must be real: the date check rejects 31 February (the JavaScript parser would roll it into March).
+- Team members (member, admin, owner) can create, change and comment on tasks. Only owners and admins can delete. Client users have no access in this step; client approvals, client comments, milestones, templates and attachments are H2.
+- Reminders: the 15-minute tick makes at most one alert a day per agency (`TASK_DUE`) that counts open tasks past their day and tasks due today. It is an agency alert, not a message to the assignee; emails to the assignee come with the notification preferences step.
+- Pages: Tasks (views Open, Mine, Overdue, Done, 25 per page, quick Done button) and a task page with the edit form and comments. The audit results page has a Create task button on every issue.

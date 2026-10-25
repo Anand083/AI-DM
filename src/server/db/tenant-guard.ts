@@ -49,6 +49,8 @@ export const TENANT_MODELS = new Set([
   "SearchConsoleDay",
   "Ga4Day",
   "Lead",
+  "Task",
+  "TaskComment",
 ]);
 
 const WHERE_OPERATIONS = new Set([
