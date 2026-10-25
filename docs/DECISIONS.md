@@ -283,3 +283,12 @@
 - `scripts/smoke-test.sh BASE_URL` checks health, home, login, security headers, that `/admin` and the dev endpoint return 404 for anonymous users, and that API sign-up works. When `MAILPIT_URL` is set it also runs a short Playwright flow (sign up, verify email, create an agency, open clients). It is the check the deploy workflow will run in Step 24.
 - Building images in this sandbox needs extra flags (host network, a CA file passed as a build secret through `docker/with-ca.sh`, and the proxy as build args). These are optional and do nothing on a normal machine.
 - Tested locally: both images build, the full prod stack starts healthy, migrations and plan seed run, the smoke test passes, and after `docker compose down` and `up` the agency and users are still there (data lives in named volumes).
+
+## Step 24
+
+- CI: the existing `CI` workflow gets an `images` job that needs `checks` and `security` and runs only on pushes to `main`. It builds `web` and `worker` as a matrix with Buildx (layer cache in GitHub Actions) and pushes `ghcr.io/<owner>/<repo>-<target>` tagged with the full git SHA and `latest`, using the built-in `GITHUB_TOKEN`. Pull requests never push images.
+- The deploy logic is a script in the repo, `scripts/deploy.sh`, not inline workflow text, so it can be tested on a laptop. The workflow only copies files over SSH and calls it. It sets `IMAGE_TAG`, pulls, starts the stack (the migrate container runs first), runs `scripts/smoke-test.sh` against `APP_URL`, writes the good SHA to `.deployed-sha`, and on failure restarts the previous SHA. The first ever deploy has nothing to go back to and only reports the failure.
+- Secrets live in a GitHub `production` environment. The server pulls with a read-only token (`read:packages`). The server `.env` is never written by the workflow, except two image name lines (`WEB_IMAGE`, `WORKER_IMAGE`).
+- Only one deploy runs at a time (`concurrency` group). The deploy is manual on purpose.
+- Rollback does not undo migrations. The rule (add first, remove later) is written in `docs/DEPLOY.md`.
+- Test done: with the prod stack locally, deploy of `v1` passed, then deploy of `v2` with `DEPLOY_FORCE_SMOKE_FAIL=1` rolled back to `v1` and the smoke test passed on it. The pipeline itself (GitHub runs, GHCR push, SSH deploy) cannot be run from here, because it needs the real repository secrets and a server. It runs for the first time after Step 25.

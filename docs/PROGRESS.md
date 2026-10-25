@@ -30,5 +30,6 @@
 | 21 Security hardening | Done | security headers + CSP, rate limits (actions, public routes, provider callbacks), 2FA (authenticator app, required for admins), sessions page, data export zip, agency deletion, login activity log, CI audit + secret scan, route and action registry test; unit + integration + E2E pass |
 | 22 Marketing site and onboarding | Done | home, features, pricing (from the plan table), about, contact form (limited, bot trap), terms and privacy placeholders, robots and sitemap; get-started checklist on the dashboard; in-app help; unit + integration + E2E pass |
 | 23 Production Docker | Done | web and worker images, prod compose (caddy, postgres, redis, migrate + seed, backup, optional mailpit), prod env checks, smoke test script and browser check; stack runs locally and data survives a restart |
+| 24 CI/CD | Done (pipeline untested) | CI builds and pushes web and worker images to GHCR (SHA + latest) after all checks; manual Deploy workflow over SSH; `scripts/deploy.sh` migrates, smoke tests and rolls back on failure (rollback proven locally); docs/DEPLOY.md lists the GitHub secrets. Real run needs the server from Step 25. |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).

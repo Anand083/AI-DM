@@ -1,0 +1,66 @@
+name: Deploy
+
+# Manual only. Pulls images that CI already built, so nothing is built on the server.
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Git SHA to deploy (the full 40 characters). Empty means the latest commit on main."
+        required: false
+        default: ""
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || 'app' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+      - id: version
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host deploy\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  StrictHostKeyChecking yes\n' \
+            "$DEPLOY_HOST" "$DEPLOY_USER" > ~/.ssh/config
+
+      # The compose file and scripts come from the same commit as the images.
+      - name: Copy deploy files
+        run: |
+          ssh deploy "mkdir -p '$DEPLOY_PATH/scripts' '$DEPLOY_PATH/docker'"
+          scp docker-compose.prod.yml deploy:"$DEPLOY_PATH/"
+          scp docker/Caddyfile docker/postgres.conf docker/backup.sh docker/with-ca.sh deploy:"$DEPLOY_PATH/docker/"
+          scp scripts/deploy.sh scripts/smoke-test.sh deploy:"$DEPLOY_PATH/scripts/"
+
+      - name: Log in to the registry on the server
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          GHCR_USER: ${{ secrets.GHCR_READ_USER }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh deploy "docker login ghcr.io -u '$GHCR_USER' --password-stdin"
+
+      - name: Deploy (rolls back by itself if the smoke test fails)
+        run: |
+          IMAGE_PREFIX="ghcr.io/${GITHUB_REPOSITORY,,}"
+          ssh deploy "cd '$DEPLOY_PATH' \
+            && sed -i '/^WEB_IMAGE=/d;/^WORKER_IMAGE=/d' .env \
+            && printf 'WEB_IMAGE=%s\nWORKER_IMAGE=%s\n' '${IMAGE_PREFIX}-web' '${IMAGE_PREFIX}-worker' >> .env \
+            && scripts/deploy.sh '${{ steps.version.outputs.sha }}'"
