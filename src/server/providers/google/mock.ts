@@ -3,6 +3,9 @@ import {
   GOOGLE_SCOPES,
   GoogleAuthError,
   type AnalyticsDay,
+  type AnalyticsPageRow,
+  type BreakdownDimension,
+  type SearchBreakdownRow,
   type Ga4Property,
   type GoogleProvider,
   type GoogleTokens,
@@ -14,6 +17,41 @@ export const MOCK_CODE = "mock-code";
 export const MOCK_REVOKED_REFRESH_TOKEN = "mock-refresh-revoked";
 
 const DAY_MS = 86_400_000;
+
+const MOCK_PATHS = [
+  "/",
+  "/services",
+  "/blog/seo-checklist",
+  "/contact",
+  "/about",
+  "/pricing",
+  "/blog/local-seo-guide",
+  "/blog/link-building",
+  "/case-studies",
+  "/faq",
+];
+const BREAKDOWN_NAMES: Record<BreakdownDimension, (site: string) => string[]> = {
+  QUERY: () => [
+    "seo agency",
+    "local seo services",
+    "seo checklist",
+    "how to rank higher",
+    "link building tips",
+    "keyword research tool",
+    "technical seo audit",
+    "seo for small business",
+    "backlink checker",
+    "google ranking factors",
+  ],
+  PAGE: (site) => {
+    const base = site.startsWith("sc-domain:")
+      ? `https://${site.slice("sc-domain:".length)}`
+      : site.replace(/\/$/, "");
+    return MOCK_PATHS.map((p) => `${base}${p}`);
+  },
+  COUNTRY: () => ["usa", "gbr", "ind", "can", "aus", "deu"],
+  DEVICE: () => ["MOBILE", "DESKTOP", "TABLET"],
+};
 
 /** Every date from `start` to `end`, both included (YYYY-MM-DD). */
 export function datesBetween(start: string, end: string): string[] {
@@ -118,6 +156,55 @@ export class MockGoogleProvider implements GoogleProvider {
       const factor = weekday === 0 || weekday === 6 ? 0.55 : 1;
       const sessions = Math.max(1, Math.round(level * factor * (0.8 + rng.next() * 0.4)));
       return { date, sessions, conversions: Math.round(sessions * (0.02 + rng.next() * 0.05)) };
+    });
+  }
+
+  async getSearchBreakdown(
+    _token: string,
+    input: {
+      siteUrl: string;
+      startDate: string;
+      endDate: string;
+      dimension: BreakdownDimension;
+      limit: number;
+    },
+  ): Promise<SearchBreakdownRow[]> {
+    const names = BREAKDOWN_NAMES[input.dimension](input.siteUrl);
+    const days = datesBetween(input.startDate, input.endDate).length;
+    return names
+      .slice(0, input.limit)
+      .map((key, i) => {
+        const rng = makeRng(input.siteUrl, "gsc-breakdown", input.dimension, key, input.startDate);
+        const share = 1 / (i + 1.5);
+        const impressions = Math.max(5, Math.round(days * 40 * share * (0.8 + rng.next() * 0.4)));
+        const clicks = Math.round(impressions * (0.02 + rng.next() * 0.06));
+        return {
+          key,
+          clicks,
+          impressions,
+          position: Math.round((3 + i * 1.3 + rng.next() * 3) * 10) / 10,
+        };
+      })
+      .sort((a, b) => b.clicks - a.clicks || a.key.localeCompare(b.key));
+  }
+
+  async getGa4Pages(
+    _token: string,
+    input: { propertyId: string; startDate: string; endDate: string; limit: number },
+  ): Promise<AnalyticsPageRow[]> {
+    const days = datesBetween(input.startDate, input.endDate).length;
+    return MOCK_PATHS.slice(0, input.limit).map((path, i) => {
+      const rng = makeRng(input.propertyId, "ga4-page", path, input.startDate);
+      const sessions = Math.max(
+        2,
+        Math.round(days * 14 * (1 / (i + 1.3)) * (0.8 + rng.next() * 0.4)),
+      );
+      return {
+        path,
+        sessions,
+        engagedSessions: Math.round(sessions * (0.45 + rng.next() * 0.35)),
+        conversions: Math.round(sessions * (0.01 + rng.next() * 0.05)),
+      };
     });
   }
 

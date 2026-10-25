@@ -83,3 +83,39 @@ describe("datesBetween", () => {
     expect(datesBetween("2026-03-02", "2026-03-01")).toEqual([]);
   });
 });
+
+describe("mock breakdowns", () => {
+  const mock = new MockGoogleProvider();
+  const range = {
+    siteUrl: "sc-domain:example.com",
+    startDate: "2026-02-01",
+    endDate: "2026-02-28",
+  };
+
+  it("gives the same answer twice, biggest clicks first, and respects the limit", async () => {
+    const a = await mock.getSearchBreakdown("t", { ...range, dimension: "QUERY", limit: 5 });
+    const b = await mock.getSearchBreakdown("t", { ...range, dimension: "QUERY", limit: 5 });
+    expect(a).toEqual(b);
+    expect(a).toHaveLength(5);
+    expect(a.map((r) => r.clicks)).toEqual([...a.map((r) => r.clicks)].sort((x, y) => y - x));
+  });
+
+  it("builds page addresses from the site and has fixed devices and landing pages", async () => {
+    const pages = await mock.getSearchBreakdown("t", { ...range, dimension: "PAGE", limit: 3 });
+    expect(pages.every((p) => p.key.startsWith("https://example.com/"))).toBe(true);
+    const devices = await mock.getSearchBreakdown("t", {
+      ...range,
+      dimension: "DEVICE",
+      limit: 10,
+    });
+    expect(devices.map((d) => d.key).sort()).toEqual(["DESKTOP", "MOBILE", "TABLET"]);
+    const landing = await mock.getGa4Pages("t", {
+      propertyId: "1",
+      startDate: "2026-02-01",
+      endDate: "2026-02-28",
+      limit: 4,
+    });
+    expect(landing).toHaveLength(4);
+    expect(landing.every((p) => p.engagedSessions <= p.sessions)).toBe(true);
+  });
+});

@@ -458,6 +458,16 @@ export function exportFiles(
       rows: allRows((a) => rawDb.goalPoint.findMany({ where, ...order, ...a })),
     },
     {
+      name: "search-breakdowns.jsonl",
+      model: "SearchBreakdown",
+      rows: allRows((a) => rawDb.searchBreakdown.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "analytics-pages.jsonl",
+      model: "Ga4Page",
+      rows: allRows((a) => rawDb.ga4Page.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),

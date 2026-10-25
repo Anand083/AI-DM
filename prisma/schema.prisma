@@ -206,6 +206,8 @@ model Agency {
   annotations        Annotation[]
   goals              Goal[]
   goalPoints         GoalPoint[]
+  searchBreakdowns   SearchBreakdown[]
+  ga4Pages           Ga4Page[]
 
   @@index([status, deletedAt])
 }
@@ -319,6 +321,8 @@ model Project {
   backlinkSnapshots  BacklinkSnapshot[]
   reports            Report[]
   reportSchedule     ReportSchedule?
+  searchBreakdowns   SearchBreakdown[]
+  ga4Pages           Ga4Page[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -490,6 +494,8 @@ enum AlertType {
   NEW_REVIEW
   TASK_DUE
   CLIENT_RESPONSE
+  GOOGLE_ANOMALY
+  GOOGLE_RECONNECT
 }
 
 enum AlertSeverity {
@@ -1485,4 +1491,42 @@ model GoalPoint {
 
   @@unique([goalId, on])
   @@index([agencyId, goalId, on])
+}
+
+/// A top list from Search Console for the last 28 days (NOW) or the 28 days before (BEFORE). Replaced on every sync.
+model SearchBreakdown {
+  id             String @id @default(cuid(2))
+  agencyId       String
+  projectId      String
+  /// QUERY, PAGE, COUNTRY or DEVICE.
+  dimension      String
+  /// NOW or BEFORE.
+  period         String
+  key            String
+  clicks         Int
+  impressions    Int
+  positionTenths Int
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, dimension, period, key])
+  @@index([agencyId, projectId, dimension, period, clicks])
+}
+
+/// Landing pages from Google Analytics for the last 28 days. Replaced on every sync.
+model Ga4Page {
+  id              String @id @default(cuid(2))
+  agencyId        String
+  projectId       String
+  path            String
+  sessions        Int
+  engagedSessions Int
+  conversions     Int
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, path])
+  @@index([agencyId, projectId, sessions])
 }

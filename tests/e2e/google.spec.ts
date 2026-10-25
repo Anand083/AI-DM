@@ -82,6 +82,26 @@ test("connect Google, choose a site and a property, read the numbers", async ({ 
   await expect(page.getByRole("table", { name: "Search by day" }).getByRole("row")).toHaveCount(15);
   await expect(page.getByText("Already updated today.")).toBeVisible();
 
+  // Breakdowns, landing pages and the combined day table.
+  await expect(page.getByRole("table", { name: "Search by queries" })).toContainText("seo agency");
+  await page
+    .getByRole("navigation", { name: "Search breakdown" })
+    .getByRole("link", { name: "Devices" })
+    .click();
+  await expect(page).toHaveURL(/by=device/);
+  await expect(page.getByRole("table", { name: "Search by devices" })).toContainText("Phone");
+  await page
+    .getByRole("navigation", { name: "Search breakdown" })
+    .getByRole("link", { name: "Countries" })
+    .click();
+  await expect(page.getByRole("table", { name: "Search by countries" })).toContainText(
+    "United States",
+  );
+  await expect(page.getByRole("table", { name: "Landing pages" })).toContainText("/pricing");
+  await expect(page.getByRole("table", { name: "Combined by day" }).getByRole("row")).toHaveCount(
+    29,
+  );
+
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   const serious = results.violations.filter(
     (v) => v.impact === "serious" || v.impact === "critical",

@@ -58,6 +58,8 @@ export const TENANT_MODELS = new Set([
   "Annotation",
   "Goal",
   "GoalPoint",
+  "SearchBreakdown",
+  "Ga4Page",
 ]);
 
 const WHERE_OPERATIONS = new Set([

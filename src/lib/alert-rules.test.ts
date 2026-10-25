@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildAuditAlert,
   buildBacklinkLossAlert,
+  buildGoogleAnomalyAlert,
+  buildGoogleReconnectAlert,
+  detectDrop,
   buildMentionLostAlert,
   buildReviewAlert,
   buildTaskDueAlert,
@@ -249,6 +252,37 @@ describe("buildTaskDueAlert", () => {
     expect(buildTaskDueAlert({ ...base, overdue: 0, dueToday: 1 })).toMatchObject({
       severity: "INFO",
       title: "1 task due today",
+    });
+  });
+});
+
+describe("Google alerts", () => {
+  it("only flags a big fall on a site with enough traffic", () => {
+    expect(detectDrop(100, 200)).toBe(50);
+    expect(detectDrop(130, 200)).toBeNull();
+    expect(detectDrop(120, 200)).toBe(40);
+    expect(detectDrop(10, 40)).toBeNull();
+    expect(detectDrop(300, 200)).toBeNull();
+  });
+
+  it("writes the anomaly alert with a severity and a key per day and source", () => {
+    const base = { projectId: "p1", projectName: "Shop", date: "2026-03-10", before: 200 };
+    const warn = buildGoogleAnomalyAlert({ ...base, source: "clicks", recent: 100 })!;
+    expect(warn).toMatchObject({ type: "GOOGLE_ANOMALY", severity: "WARNING" });
+    expect(warn.title).toBe("Shop: Google Search clicks fell 50%");
+    const crit = buildGoogleAnomalyAlert({ ...base, source: "sessions", recent: 40 })!;
+    expect(crit.severity).toBe("CRITICAL");
+    expect(crit.dedupeKey).toBe("google_anomaly:p1:sessions:2026-03-10");
+    expect(buildGoogleAnomalyAlert({ ...base, source: "clicks", recent: 190 })).toBeNull();
+  });
+
+  it("writes the reconnect alert", () => {
+    expect(
+      buildGoogleReconnectAlert({ projectId: "p1", projectName: "Shop", date: "2026-03-10" }),
+    ).toMatchObject({
+      type: "GOOGLE_RECONNECT",
+      title: "Reconnect Google for Shop",
+      dedupeKey: "google_reconnect:p1:2026-03-10",
     });
   });
 });

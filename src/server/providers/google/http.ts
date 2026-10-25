@@ -3,6 +3,9 @@ import {
   GoogleAuthError,
   GoogleTemporaryError,
   type AnalyticsDay,
+  type AnalyticsPageRow,
+  type BreakdownDimension,
+  type SearchBreakdownRow,
   type Ga4Property,
   type GoogleProvider,
   type GoogleTokens,
@@ -167,6 +170,68 @@ export class GoogleHttpProvider implements GoogleProvider {
       date: ga4Date(r.dimensionValues[0]!.value),
       sessions: Math.round(Number(r.metricValues[0]!.value)),
       conversions: Math.round(Number(r.metricValues[1]!.value)),
+    }));
+  }
+
+  async getSearchBreakdown(
+    accessToken: string,
+    input: {
+      siteUrl: string;
+      startDate: string;
+      endDate: string;
+      dimension: BreakdownDimension;
+      limit: number;
+    },
+  ): Promise<SearchBreakdownRow[]> {
+    const body = await this.api(
+      accessToken,
+      `${SEARCH_CONSOLE}/sites/${encodeURIComponent(input.siteUrl)}/searchAnalytics/query`,
+      {
+        startDate: input.startDate,
+        endDate: input.endDate,
+        dimensions: [input.dimension.toLowerCase()],
+        rowLimit: input.limit,
+        dataState: "final",
+      },
+    );
+    const rows = (body.rows ?? []) as {
+      keys: string[];
+      clicks: number;
+      impressions: number;
+      position: number;
+    }[];
+    return rows.map((r) => ({
+      key: r.keys[0]!,
+      clicks: Math.round(r.clicks),
+      impressions: Math.round(r.impressions),
+      position: r.position,
+    }));
+  }
+
+  async getGa4Pages(
+    accessToken: string,
+    input: { propertyId: string; startDate: string; endDate: string; limit: number },
+  ): Promise<AnalyticsPageRow[]> {
+    const body = await this.api(
+      accessToken,
+      `${ANALYTICS_DATA}/properties/${encodeURIComponent(input.propertyId)}:runReport`,
+      {
+        dateRanges: [{ startDate: input.startDate, endDate: input.endDate }],
+        dimensions: [{ name: "landingPagePlusQueryString" }],
+        metrics: [{ name: "sessions" }, { name: "engagedSessions" }, { name: "conversions" }],
+        orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+        limit: input.limit,
+      },
+    );
+    const rows = (body.rows ?? []) as {
+      dimensionValues: { value: string }[];
+      metricValues: { value: string }[];
+    }[];
+    return rows.map((r) => ({
+      path: r.dimensionValues[0]!.value,
+      sessions: Math.round(Number(r.metricValues[0]!.value)),
+      engagedSessions: Math.round(Number(r.metricValues[1]!.value)),
+      conversions: Math.round(Number(r.metricValues[2]!.value)),
     }));
   }
 

@@ -29,6 +29,25 @@ export type SearchDay = {
 /** One day of Google Analytics numbers. */
 export type AnalyticsDay = { date: string; sessions: number; conversions: number };
 
+export const BREAKDOWN_DIMENSIONS = ["QUERY", "PAGE", "COUNTRY", "DEVICE"] as const;
+export type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number];
+
+/** One row of a Search Console top list. `key` is the query, page URL, country code or device. */
+export type SearchBreakdownRow = {
+  key: string;
+  clicks: number;
+  impressions: number;
+  position: number;
+};
+
+/** One landing page from Google Analytics. */
+export type AnalyticsPageRow = {
+  path: string;
+  sessions: number;
+  engagedSessions: number;
+  conversions: number;
+};
+
 /**
  * The person took back access, the token is not valid any more, or Google refused the request.
  * `needsReconnect` means asking Google again will not help: the person must connect again.
@@ -68,6 +87,20 @@ export interface GoogleProvider {
     accessToken: string,
     input: { propertyId: string; startDate: string; endDate: string },
   ): Promise<AnalyticsDay[]>;
+  getSearchBreakdown(
+    accessToken: string,
+    input: {
+      siteUrl: string;
+      startDate: string;
+      endDate: string;
+      dimension: BreakdownDimension;
+      limit: number;
+    },
+  ): Promise<SearchBreakdownRow[]>;
+  getGa4Pages(
+    accessToken: string,
+    input: { propertyId: string; startDate: string; endDate: string; limit: number },
+  ): Promise<AnalyticsPageRow[]>;
   /** Tells Google to forget the token. Failing is fine: the connection is removed here anyway. */
   revoke(token: string): Promise<void>;
 }

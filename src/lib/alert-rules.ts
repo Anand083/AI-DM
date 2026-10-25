@@ -54,7 +54,9 @@ export type AlertDraft = {
     | "AI_MENTION_LOST"
     | "NEW_REVIEW"
     | "TASK_DUE"
-    | "CLIENT_RESPONSE";
+    | "CLIENT_RESPONSE"
+    | "GOOGLE_ANOMALY"
+    | "GOOGLE_RECONNECT";
   severity: "INFO" | "WARNING" | "CRITICAL";
   title: string;
   body: string;
@@ -258,5 +260,68 @@ export function buildTaskDueAlert(input: {
     body: `${parts.join(" and ")}.`,
     data: { date: input.date, overdue, dueToday },
     dedupeKey: `tasks_due:${input.agencyId}:${input.date}`,
+  };
+}
+
+/** Share of the way down, in whole percent, when the last 7 days fell far below the 7 days before. */
+export const ANOMALY_MIN_BEFORE = 50;
+export const ANOMALY_WARN_PERCENT = 40;
+export const ANOMALY_CRITICAL_PERCENT = 60;
+
+/**
+ * Looks for a sudden fall. `recent` and `before` are the sums of two weeks in a row. Small sites
+ * (under 50 in the week before) are ignored because their numbers jump around by chance.
+ * Returns the fall in percent, or null when there is nothing to report.
+ */
+export function detectDrop(recent: number, before: number): number | null {
+  if (before < ANOMALY_MIN_BEFORE || recent >= before) return null;
+  const percent = Math.round(((before - recent) / before) * 100);
+  return percent >= ANOMALY_WARN_PERCENT ? percent : null;
+}
+
+/** An alert when Google Search clicks or Analytics sessions fell sharply from one week to the next. */
+export function buildGoogleAnomalyAlert(input: {
+  projectId: string;
+  projectName: string;
+  source: "clicks" | "sessions";
+  /** Newest day of the recent week (YYYY-MM-DD). */
+  date: string;
+  recent: number;
+  before: number;
+}): AlertDraft | null {
+  const percent = detectDrop(input.recent, input.before);
+  if (percent === null) return null;
+  const what = input.source === "clicks" ? "Google Search clicks" : "website sessions";
+  return {
+    projectId: input.projectId,
+    type: "GOOGLE_ANOMALY",
+    severity: percent >= ANOMALY_CRITICAL_PERCENT ? "CRITICAL" : "WARNING",
+    title: `${input.projectName}: ${what} fell ${percent}%`,
+    body: `${input.recent} in the last 7 days against ${input.before} in the 7 days before. Check for a site change, a Google update or a tracking problem.`,
+    data: {
+      date: input.date,
+      source: input.source,
+      recent: input.recent,
+      before: input.before,
+      percent,
+    },
+    dedupeKey: `google_anomaly:${input.projectId}:${input.source}:${input.date}`,
+  };
+}
+
+/** An alert when Google no longer lets us read a project's data. */
+export function buildGoogleReconnectAlert(input: {
+  projectId: string;
+  projectName: string;
+  date: string;
+}): AlertDraft {
+  return {
+    projectId: input.projectId,
+    type: "GOOGLE_RECONNECT",
+    severity: "WARNING",
+    title: `Reconnect Google for ${input.projectName}`,
+    body: "Google no longer lets us read the data. Open the Analytics tab and connect again.",
+    data: { date: input.date },
+    dedupeKey: `google_reconnect:${input.projectId}:${input.date}`,
   };
 }

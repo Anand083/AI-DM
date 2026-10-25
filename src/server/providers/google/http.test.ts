@@ -207,6 +207,60 @@ describe("daily numbers", () => {
     ).toEqual([{ date: "2026-03-01", sessions: 120, conversions: 3 }]);
   });
 
+  it("asks Search Console for one dimension and reads the top rows", async () => {
+    let sent: { dimensions?: string[]; rowLimit?: number } = {};
+    server.use(
+      http.post(
+        "https://www.googleapis.com/webmasters/v3/sites/:site/searchAnalytics/query",
+        async ({ request }) => {
+          sent = (await request.json()) as typeof sent;
+          return HttpResponse.json({
+            rows: [
+              { keys: ["seo agency"], clicks: 12.4, impressions: 300, ctr: 0.04, position: 7.25 },
+            ],
+          });
+        },
+      ),
+    );
+    const rows = await provider.getSearchBreakdown("at", {
+      siteUrl: "sc-domain:example.com",
+      startDate: "2026-02-01",
+      endDate: "2026-02-28",
+      dimension: "QUERY",
+      limit: 250,
+    });
+    expect(sent).toMatchObject({ dimensions: ["query"], rowLimit: 250 });
+    expect(rows).toEqual([{ key: "seo agency", clicks: 12, impressions: 300, position: 7.25 }]);
+  });
+
+  it("reads landing pages from Analytics, biggest first", async () => {
+    let sent: { dimensions?: { name: string }[]; limit?: number } = {};
+    server.use(
+      http.post(
+        "https://analyticsdata.googleapis.com/v1beta/properties/:id\\:runReport",
+        async ({ request }) => {
+          sent = (await request.json()) as typeof sent;
+          return HttpResponse.json({
+            rows: [
+              {
+                dimensionValues: [{ value: "/pricing" }],
+                metricValues: [{ value: "90" }, { value: "60" }, { value: "4" }],
+              },
+            ],
+          });
+        },
+      ),
+    );
+    const rows = await provider.getGa4Pages("at", {
+      propertyId: "111",
+      startDate: "2026-02-01",
+      endDate: "2026-02-28",
+      limit: 250,
+    });
+    expect(sent.dimensions).toEqual([{ name: "landingPagePlusQueryString" }]);
+    expect(rows).toEqual([{ path: "/pricing", sessions: 90, engagedSessions: 60, conversions: 4 }]);
+  });
+
   it("returns an empty list when Google has no rows", async () => {
     server.use(
       http.post("https://www.googleapis.com/webmasters/v3/sites/:site/searchAnalytics/query", () =>
