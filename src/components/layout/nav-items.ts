@@ -7,6 +7,7 @@ export type NavKey =
   | "research"
   | "reports"
   | "performance"
+  | "profitability"
   | "leads"
   | "tasks"
   | "team"
@@ -26,6 +27,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: "research", label: "Keyword research", path: "/research", permission: "tools.run" },
   { key: "reports", label: "Reports", path: "/reports", permission: "data.view" },
   { key: "performance", label: "Performance", path: "/performance", permission: "data.view" },
+  {
+    key: "profitability",
+    label: "Profitability",
+    path: "/profitability",
+    permission: "billing.manage",
+  },
   { key: "tasks", label: "Tasks", path: "/tasks", permission: "data.view" },
   { key: "leads", label: "Leads", path: "/leads", permission: "data.view" },
   { key: "team", label: "Team", path: "/team", permission: "data.view" },

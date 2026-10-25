@@ -518,6 +518,16 @@ export function exportFiles(
       rows: allRows((a) => rawDb.assistantMessage.findMany({ where, ...order, ...a })),
     },
     {
+      name: "currency-rates.jsonl",
+      model: "CurrencyRate",
+      rows: allRows((a) => rawDb.currencyRate.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "add-ons.jsonl",
+      model: "AgencyAddOn",
+      rows: allRows((a) => rawDb.agencyAddOn.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "assistant-actions.jsonl",
       model: "AssistantAction",
       rows: allRows((a) => rawDb.assistantAction.findMany({ where, ...order, ...a })),

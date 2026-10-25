@@ -5,6 +5,7 @@ import {
   METRIC_LABEL,
   METRIC_LIMIT_KEY,
   UNLIMITED,
+  applyAddOns,
   type LimitedMetric,
   type PlanLimits,
 } from "@/lib/plan-limits";
@@ -55,9 +56,14 @@ export async function getAgencyPlan(
     },
   });
   if (!sub) throw new Error(`Agency ${agency.agencyId} has no subscription`);
+  const addOns = await db.agencyAddOn.findMany({
+    where: { agencyId: agency.agencyId },
+    select: { limitKey: true, amount: true },
+    take: 200,
+  });
   return {
     planName: sub.plan.name,
-    limits: sub.plan.limits as unknown as PlanLimits,
+    limits: applyAddOns(sub.plan.limits as unknown as PlanLimits, addOns),
     status: sub.status,
     period: subscriptionUsagePeriod(sub, now),
   };

@@ -11,6 +11,7 @@ import {
   setClientArchived,
   updateClient,
 } from "@/server/services/clients";
+import { clientImportSchema, importClientsCsv } from "@/server/services/client-import";
 import { createProject, deleteProject, updateProject } from "@/server/services/projects";
 
 const idSchema = z.string().min(1).max(100);
@@ -81,5 +82,16 @@ export async function updateProjectAction(slug: string, id: string, values: unkn
 export async function deleteProjectAction(slug: string, id: string) {
   const result = await removeProj(slug, { id });
   if (result.ok) refresh(slug);
+  return result;
+}
+
+const importClients = withTenantAction(
+  { permission: "content.edit", schema: clientImportSchema },
+  (ctx, input) => importClientsCsv(ctx, input),
+);
+
+export async function importClientsAction(slug: string, values: unknown) {
+  const result = await importClients(slug, values);
+  if (result.ok) revalidatePath(`/app/${slug}/clients`);
   return result;
 }

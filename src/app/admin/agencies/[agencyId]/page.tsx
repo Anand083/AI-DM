@@ -69,6 +69,7 @@ export default async function AdminAgency({ params }: { params: Promise<{ agency
         }
         planCode={sub?.plan.code ?? null}
         plans={plans.map((p) => ({ code: p.code, name: p.name }))}
+        addOns={agency.addOns}
         owners={owners.map((m) => ({
           userId: m.user.id,
           label: `${m.user.name} (${m.role.toLowerCase()})`,

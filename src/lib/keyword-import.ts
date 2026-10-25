@@ -1,9 +1,9 @@
 import { MAX_KEYWORD_LENGTH, MAX_PASTE_LINES, normalizePhrase, parseTags } from "./keyword-input";
 
-type CsvLine = { cells: string[]; line: number };
+export type CsvLine = { cells: string[]; line: number };
 
 /** Reads CSV text into rows with the line each row starts on. Blank rows are left out. */
-function parseCsvLines(text: string): CsvLine[] {
+export function parseCsvLines(text: string): CsvLine[] {
   const rows: CsvLine[] = [];
   let row: string[] = [];
   let cell = "";

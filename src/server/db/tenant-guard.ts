@@ -71,6 +71,8 @@ export const TENANT_MODELS = new Set([
   "ContentUpdate",
   "AssistantMessage",
   "AssistantAction",
+  "CurrencyRate",
+  "AgencyAddOn",
 ]);
 
 const WHERE_OPERATIONS = new Set([

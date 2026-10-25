@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { ADDON_LABEL, type AddOnKey } from "@/lib/plan-limits";
 import { PlanBadge, UsageBars } from "@/components/app/usage-bars";
 import { getPageContext, requirePermission } from "@/server/auth/page-context";
 import { getAgency } from "@/server/services/agency";
+import { listAddOns } from "@/server/services/plan";
 import { getUsageSummary } from "@/server/services/usage";
 
 export const metadata: Metadata = { title: "Usage" };
@@ -11,7 +13,11 @@ export default async function UsagePage({ params }: { params: Promise<{ agencySl
   const { agencySlug } = await params;
   const { ctx } = await getPageContext(agencySlug);
   requirePermission(ctx, "branding.edit");
-  const [summary, agency] = await Promise.all([getUsageSummary(ctx), getAgency(ctx)]);
+  const [summary, agency, addOns] = await Promise.all([
+    getUsageSummary(ctx),
+    getAgency(ctx),
+    listAddOns(ctx),
+  ]);
 
   // Times are stored in UTC and shown in the agency's time zone.
   const date = (d: Date) =>
@@ -33,6 +39,25 @@ export default async function UsagePage({ params }: { params: Promise<{ agencySl
         </h2>
         <UsageBars lines={summary.monthly} />
       </section>
+
+      {addOns.length > 0 ? (
+        <section aria-labelledby="addons-heading" className="space-y-3">
+          <h2 id="addons-heading" className="text-lg font-semibold">
+            Add-ons
+          </h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Extra room added to your plan. It is already counted in the limits on this page.
+          </p>
+          <ul className="list-disc pl-5 text-sm">
+            {addOns.map((a) => (
+              <li key={a.id}>
+                +{a.amount} {ADDON_LABEL[a.limitKey as AddOnKey] ?? a.limitKey}
+                {a.note ? ` (${a.note})` : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section aria-labelledby="totals-heading" className="space-y-4">
         <h2 id="totals-heading" className="text-lg font-semibold">

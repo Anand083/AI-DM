@@ -153,6 +153,10 @@ model Agency {
   /// A keyword that moves into the top `alertTopPosition` gives an alert.
   alertTopPosition     Int       @default(10)
   alertOnCriticalAudit Boolean   @default(true)
+  /// Currency the agency reports money in. Retainers in other currencies are converted with the rates below.
+  baseCurrency         String    @default("USD")
+  /// What one hour of team time costs the agency, in cents of the base currency.
+  hourlyCostCents      Int       @default(0)
   /// Email a summary of new alerts to owners and admins every morning (agency time).
   dailyDigest          Boolean   @default(false)
   lastDigestOn         DateTime? @db.Date
@@ -219,6 +223,8 @@ model Agency {
   contentUpdates     ContentUpdate[]
   assistantMessages  AssistantMessage[]
   assistantActions   AssistantAction[]
+  currencyRates      CurrencyRate[]
+  addOns             AgencyAddOn[]
 
   @@index([status, deletedAt])
 }
@@ -256,17 +262,20 @@ model Invitation {
 }
 
 model Client {
-  id           String       @id @default(cuid(2))
-  agencyId     String
-  name         String
-  website      String?
-  contactName  String?
-  contactEmail String?
-  notes        String?
-  status       ClientStatus @default(ACTIVE)
-  deletedAt    DateTime?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id               String       @id @default(cuid(2))
+  agencyId         String
+  name             String
+  website          String?
+  contactName      String?
+  contactEmail     String?
+  notes            String?
+  /// Monthly fee in cents of `retainerCurrency`. Null means no retainer is set.
+  retainerCents    Int?
+  retainerCurrency String       @default("USD")
+  status           ClientStatus @default(ACTIVE)
+  deletedAt        DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   agency      Agency       @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   projects    Project[]
@@ -1822,4 +1831,33 @@ model AssistantAction {
   message AssistantMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@index([agencyId, projectId, status])
+}
+
+/// One exchange rate typed in by the agency: base-currency micro-units per 1 unit of `currency`.
+model CurrencyRate {
+  id                String   @id @default(cuid(2))
+  agencyId          String
+  currency          String
+  ratePerUnitMicros Int
+  updatedAt         DateTime @updatedAt
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, currency])
+}
+
+/// Extra plan room granted by the platform team (for example 5 more clients). Adds to the plan limit.
+model AgencyAddOn {
+  id          String   @id @default(cuid(2))
+  agencyId    String
+  /// A count or monthly limit key from the plan, for example maxClients.
+  limitKey    String
+  amount      Int
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, limitKey])
 }

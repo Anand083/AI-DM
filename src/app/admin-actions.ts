@@ -8,9 +8,12 @@ import { getEnv } from "@/env";
 import { withAdminAction } from "@/server/admin/actions";
 import {
   addBonusUsage,
+  addOnSchema,
   bonusSchema,
   changeAgencyPlan,
   extendTrial,
+  grantAddOn,
+  removeAddOn,
   setAgencySuspended,
 } from "@/server/admin/agencies";
 import { requireSuperAdmin } from "@/server/admin/guard";
@@ -84,6 +87,20 @@ export const addBonusAction = withAdminAction(
   z.object({ agencyId: id, bonus: bonusSchema }),
   async (admin, input) => {
     await addBonusUsage(admin, input.agencyId, input.bonus);
+    done();
+  },
+);
+export const grantAddOnAction = withAdminAction(
+  z.object({ agencyId: id, addOn: addOnSchema }),
+  async (admin, input) => {
+    await grantAddOn(admin, input.agencyId, input.addOn);
+    done();
+  },
+);
+export const removeAddOnAction = withAdminAction(
+  z.object({ agencyId: id, addOnId: id }),
+  async (admin, input) => {
+    await removeAddOn(admin, input.agencyId, input.addOnId);
     done();
   },
 );

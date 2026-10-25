@@ -6,6 +6,8 @@ import {
   addBonusAction,
   changeAgencyPlanAction,
   extendTrialAction,
+  grantAddOnAction,
+  removeAddOnAction,
   setSuspendedAction,
   startSupportSessionAction,
 } from "@/app/admin-actions";
@@ -15,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { ADDON_KEYS, ADDON_LABEL, type AddOnKey } from "@/lib/plan-limits";
 
 const METRICS = [
   ["LIVE_CHECK", "Live rank checks"],
@@ -32,6 +35,7 @@ export function AgencyActions({
   planCode,
   plans,
   owners,
+  addOns,
 }: {
   agencyId: string;
   suspended: boolean;
@@ -39,6 +43,7 @@ export function AgencyActions({
   planCode: string | null;
   plans: { code: string; name: string }[];
   owners: { userId: string; label: string }[];
+  addOns: { id: string; limitKey: string; amount: number; note: string | null }[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -48,6 +53,9 @@ export function AgencyActions({
   const [quantity, setQuantity] = useState("100");
   const [note, setNote] = useState("");
   const [target, setTarget] = useState(owners[0]?.userId ?? "");
+  const [addKey, setAddKey] = useState<AddOnKey>("maxClients");
+  const [addAmount, setAddAmount] = useState("5");
+  const [addNote, setAddNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function addBonus(event: React.FormEvent) {
@@ -59,6 +67,18 @@ export function AgencyActions({
     });
     if (!result.ok) return setError(result.error);
     toast("success", "Bonus added for this month.");
+    router.refresh();
+  }
+
+  async function grantAddOn(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    const result = await grantAddOnAction({
+      agencyId,
+      addOn: { limitKey: addKey, amount: Number(addAmount), note: addNote || undefined },
+    });
+    if (!result.ok) return setError(result.error);
+    toast("success", "Add-on granted.");
     router.refresh();
   }
 
@@ -183,6 +203,63 @@ export function AgencyActions({
           Add bonus
         </Button>
       </form>
+
+      <form
+        onSubmit={grantAddOn}
+        className="flex flex-wrap items-end gap-3"
+        aria-label="Grant add-on"
+      >
+        <div className="space-y-1.5">
+          <Label htmlFor="addon-key">Add-on (permanent extra room)</Label>
+          <Select
+            id="addon-key"
+            value={addKey}
+            onChange={(e) => setAddKey(e.target.value as AddOnKey)}
+          >
+            {ADDON_KEYS.map((k) => (
+              <option key={k} value={k}>
+                {ADDON_LABEL[k]}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Field
+          id="addon-amount"
+          label="Extra"
+          type="number"
+          min={1}
+          value={addAmount}
+          onChange={(e) => setAddAmount(e.target.value)}
+          className="w-28"
+        />
+        <Field
+          id="addon-note"
+          label="Note (optional)"
+          value={addNote}
+          onChange={(e) => setAddNote(e.target.value)}
+          maxLength={200}
+        />
+        <Button type="submit" variant="outline" className="h-10">
+          Grant add-on
+        </Button>
+      </form>
+      {addOns.length > 0 ? (
+        <ul aria-label="Add-ons" className="space-y-2 text-sm">
+          {addOns.map((a) => (
+            <li key={a.id} className="flex flex-wrap items-center gap-3">
+              <span>
+                +{a.amount} {ADDON_LABEL[a.limitKey as AddOnKey] ?? a.limitKey}
+                {a.note ? ` (${a.note})` : ""}
+              </span>
+              <AdminButton
+                label="Remove"
+                run={() => removeAddOnAction({ agencyId, addOnId: a.id })}
+                success="Add-on removed."
+              />
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

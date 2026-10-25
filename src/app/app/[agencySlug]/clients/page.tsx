@@ -38,12 +38,23 @@ export default async function ClientsPage({
       Add client
     </Link>
   ) : null;
+  const importLink = canEdit ? (
+    <Link
+      href={`${base}/import`}
+      className="inline-flex h-10 items-center justify-center rounded-md border border-zinc-300 px-4 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+    >
+      Import from CSV
+    </Link>
+  ) : null;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Clients</h1>
-        {addButton}
+        <div className="flex flex-wrap gap-2">
+          {importLink}
+          {addButton}
+        </div>
       </div>
 
       <SearchForm label="Search clients" placeholder="Search by name" q={q}>

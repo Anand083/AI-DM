@@ -1,5 +1,5 @@
 import "server-only";
-import { wouldExceed, type CountLimitKey, type PlanLimits } from "@/lib/plan-limits";
+import { applyAddOns, wouldExceed, type CountLimitKey, type PlanLimits } from "@/lib/plan-limits";
 import type { TenantContext } from "@/server/auth/tenant-context";
 import { db } from "@/server/db/client";
 import { LimitExceededError } from "./errors";
@@ -21,10 +21,25 @@ export async function getPlanLimits(
     select: { plan: { select: { name: true, limits: true } } },
   });
   if (!subscription) throw new Error(`Agency ${ctx.agencyId} has no subscription`);
+  const addOns = await db.agencyAddOn.findMany({
+    where: { agencyId: ctx.agencyId },
+    select: { limitKey: true, amount: true },
+    take: 200,
+  });
   return {
     planName: subscription.plan.name,
-    limits: subscription.plan.limits as unknown as PlanLimits,
+    limits: applyAddOns(subscription.plan.limits as unknown as PlanLimits, addOns),
   };
+}
+
+/** Extra room granted by the platform team. Shown to owners as read-only. */
+export async function listAddOns(ctx: TenantContext) {
+  return db.agencyAddOn.findMany({
+    where: { agencyId: ctx.agencyId },
+    select: { id: true, limitKey: true, amount: true, note: true, createdAt: true },
+    orderBy: [{ createdAt: "desc" }],
+    take: 100,
+  });
 }
 
 /** Throws LimitExceededError when adding `adding` more would go over the plan limit. */

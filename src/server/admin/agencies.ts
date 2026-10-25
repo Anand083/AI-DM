@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma, UsageMetric } from "@prisma/client";
 import { z } from "zod";
+import { ADDON_KEYS } from "@/lib/plan-limits";
 import { grossMargin, microsToCents, monthlyEquivalentCents } from "@/lib/admin-metrics";
 import { calendarMonth } from "@/lib/usage-period";
 import { adminDb } from "@/server/db/admin-client";
@@ -68,6 +69,11 @@ export async function getAgencyDetail(_admin: AdminContext, agencyId: string, no
         take: 100,
       },
       subscription: { include: { plan: true } },
+      addOns: {
+        select: { id: true, limitKey: true, amount: true, note: true, createdAt: true },
+        orderBy: [{ createdAt: "desc" }],
+        take: 100,
+      },
     },
   });
   if (!agency) throw new NotFoundError("Agency not found.");
@@ -247,5 +253,43 @@ export async function addBonusUsage(admin: AdminContext, agencyId: string, rawIn
   await log(admin, agencyId, "admin.bonus_added", {
     metric: input.metric,
     quantity: input.quantity,
+  });
+}
+
+export const addOnSchema = z.object({
+  limitKey: z.enum(ADDON_KEYS),
+  amount: z.number().int().min(1, "Enter at least 1.").max(1_000_000),
+  note: z.string().trim().max(200).optional(),
+});
+
+/** Gives an agency permanent extra room on one plan limit, for example 5 more clients. */
+export async function grantAddOn(admin: AdminContext, agencyId: string, rawInput: unknown) {
+  const input = addOnSchema.parse(rawInput);
+  await mustFind(agencyId);
+  await adminDb.agencyAddOn.create({
+    data: {
+      agencyId,
+      limitKey: input.limitKey,
+      amount: input.amount,
+      note: input.note,
+      createdById: admin.adminUserId,
+    },
+  });
+  await log(admin, agencyId, "admin.addon_granted", {
+    limitKey: input.limitKey,
+    amount: input.amount,
+  });
+}
+
+export async function removeAddOn(admin: AdminContext, agencyId: string, addOnId: string) {
+  const row = await adminDb.agencyAddOn.findFirst({
+    where: { id: addOnId, agencyId },
+    select: { id: true, limitKey: true, amount: true },
+  });
+  if (!row) throw new NotFoundError("Add-on not found.");
+  await adminDb.agencyAddOn.delete({ where: { id: row.id } });
+  await log(admin, agencyId, "admin.addon_removed", {
+    limitKey: row.limitKey,
+    amount: row.amount,
   });
 }

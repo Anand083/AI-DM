@@ -18,6 +18,54 @@ export type PlanLimits = {
 
 export const UNLIMITED = -1;
 
+/** The plan limits an add-on can raise: every number in `PlanLimits`. */
+export const ADDON_KEYS = [
+  "maxClients",
+  "maxProjects",
+  "maxKeywords",
+  "maxTeamMembers",
+  "maxClientUsers",
+  "reportSchedules",
+  "auditPagesPerMonth",
+  "keywordResearchPerMonth",
+  "liveChecksPerMonth",
+  "aiChecksPerMonth",
+  "backlinkQueriesPerMonth",
+  "leadAuditsPerMonth",
+] as const satisfies readonly (keyof PlanLimits)[];
+export type AddOnKey = (typeof ADDON_KEYS)[number];
+
+export const isAddOnKey = (v: string): v is AddOnKey =>
+  (ADDON_KEYS as readonly string[]).includes(v);
+
+export const ADDON_LABEL: Record<AddOnKey, string> = {
+  maxClients: "Clients",
+  maxProjects: "Projects",
+  maxKeywords: "Keywords",
+  maxTeamMembers: "Team members",
+  maxClientUsers: "Client logins",
+  reportSchedules: "Report schedules",
+  auditPagesPerMonth: "Audit pages a month",
+  keywordResearchPerMonth: "Keyword searches a month",
+  liveChecksPerMonth: "Live checks a month",
+  aiChecksPerMonth: "AI checks a month",
+  backlinkQueriesPerMonth: "Backlink lookups a month",
+  leadAuditsPerMonth: "Lead audits a month",
+};
+
+/** Adds granted room to the plan. Unlimited limits stay unlimited. */
+export function applyAddOns(
+  limits: PlanLimits,
+  addOns: readonly { limitKey: string; amount: number }[],
+): PlanLimits {
+  const next = { ...limits };
+  for (const a of addOns) {
+    if (!isAddOnKey(a.limitKey) || next[a.limitKey] === UNLIMITED) continue;
+    next[a.limitKey] += a.amount;
+  }
+  return next;
+}
+
 export type CountLimitKey =
   | "maxClients"
   | "maxProjects"
