@@ -209,6 +209,8 @@ model Agency {
   searchBreakdowns   SearchBreakdown[]
   ga4Pages           Ga4Page[]
   aiMarketSnapshots  AiMarketSnapshot[]
+  auditConfigs       AuditConfig[]
+  auditIssueStates   AuditIssueState[]
 
   @@index([status, deletedAt])
 }
@@ -325,6 +327,8 @@ model Project {
   searchBreakdowns   SearchBreakdown[]
   ga4Pages           Ga4Page[]
   aiMarketSnapshots  AiMarketSnapshot[]
+  auditConfig        AuditConfig?
+  auditIssueStates   AuditIssueState[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -602,6 +606,8 @@ model Audit {
   healthScore    Int?
   /// { critical, warning, notice, byCode: { code: count } }
   counts         Json?
+  /// robots.txt and sitemap findings from the crawl.
+  diagnostics    Json?
   requestedById  String?
   startedAt      DateTime?
   finishedAt     DateTime?
@@ -627,6 +633,10 @@ model AuditPage {
   loadTimeMs Int
   wordCount  Int
   issueCount Int
+  /// Core Web Vitals when measured: LCP and INP in ms, CLS times 1000.
+  lcpMs      Int?
+  cls        Int?
+  inpMs      Int?
 
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   audit  Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
@@ -1551,4 +1561,41 @@ model AiMarketSnapshot {
 
   @@unique([projectId, takenOn])
   @@index([agencyId, projectId, takenOn])
+}
+
+/// Crawl settings of a project. One row per project.
+model AuditConfig {
+  id            String   @id @default(cuid(2))
+  agencyId      String
+  projectId     String
+  /// Address starts to skip, for example /cart.
+  excludePaths  String[]
+  respectRobots Boolean  @default(true)
+  mobile        Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId])
+}
+
+/// What the team decided about one issue on one page. Kept across audits.
+model AuditIssueState {
+  id          String   @id @default(cuid(2))
+  agencyId    String
+  projectId   String
+  code        String
+  url         String
+  /// IGNORED (will not fix) or RESOLVED (fixed, to be confirmed by the next audit).
+  status      String
+  note        String?
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, code, url])
+  @@index([agencyId, projectId, status])
 }

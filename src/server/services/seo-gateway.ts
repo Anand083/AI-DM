@@ -5,6 +5,7 @@ import { ProviderError } from "@/server/providers/seo/errors";
 import type {
   AiEngine,
   AiTopic,
+  AuditCrawlConfig,
   AiVisibilityResult,
   LlmMentionsSummary,
   AuditResult,
@@ -268,7 +269,7 @@ export class SeoGateway {
 
   startAudit(
     _caller: GatewayCaller,
-    input: { domain: string; maxPages: number },
+    input: { domain: string; maxPages: number; config?: AuditCrawlConfig },
   ): Promise<{ taskId: string }> {
     return this.plain("audit", (p) => p.startAudit(input));
   }

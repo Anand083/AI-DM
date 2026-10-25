@@ -61,3 +61,80 @@ export function compareIssues(previous: IssueKey[], current: IssueKey[]): IssueC
 export function scoreBand(score: number): "good" | "fair" | "poor" {
   return score >= 80 ? "good" : score >= 50 ? "fair" : "poor";
 }
+
+export type PageSnapshot = {
+  url: string;
+  statusCode: number;
+  title: string | null;
+  wordCount: number;
+};
+
+export type PageChanges = {
+  /** Found now, not in the audit before. */
+  added: string[];
+  /** In the audit before, not found now. */
+  removed: string[];
+  statusChanged: { url: string; from: number; to: number }[];
+  titleChanged: { url: string; from: string | null; to: string | null }[];
+  /** Text length changed by 30% or more (and by at least 50 words). */
+  contentChanged: { url: string; from: number; to: number }[];
+};
+
+const PAGE_CHANGE_CAP = 50;
+
+/** What changed between two crawls of the same site, page by page. Each list shows at most 50. */
+export function diffPages(
+  before: readonly PageSnapshot[],
+  after: readonly PageSnapshot[],
+): PageChanges {
+  const old = new Map(before.map((p) => [p.url, p]));
+  const now = new Map(after.map((p) => [p.url, p]));
+  const out: PageChanges = {
+    added: [],
+    removed: [],
+    statusChanged: [],
+    titleChanged: [],
+    contentChanged: [],
+  };
+  for (const [url, page] of [...now].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const prev = old.get(url);
+    if (!prev) {
+      out.added.push(url);
+      continue;
+    }
+    if (prev.statusCode !== page.statusCode) {
+      out.statusChanged.push({ url, from: prev.statusCode, to: page.statusCode });
+    }
+    if ((prev.title ?? null) !== (page.title ?? null)) {
+      out.titleChanged.push({ url, from: prev.title, to: page.title });
+    }
+    const diff = Math.abs(page.wordCount - prev.wordCount);
+    if (diff >= 50 && diff >= 0.3 * Math.max(prev.wordCount, 1)) {
+      out.contentChanged.push({ url, from: prev.wordCount, to: page.wordCount });
+    }
+  }
+  for (const url of [...old.keys()].sort()) if (!now.has(url)) out.removed.push(url);
+  for (const key of Object.keys(out) as (keyof PageChanges)[]) {
+    out[key] = out[key].slice(0, PAGE_CHANGE_CAP) as never;
+  }
+  return out;
+}
+
+/** A Core Web Vitals reading as good, needs work or poor (Google's own limits). */
+export function vitalRating(
+  metric: "lcp" | "cls" | "inp",
+  value: number | null | undefined,
+): "good" | "needs work" | "poor" | null {
+  if (value === null || value === undefined) return null;
+  const [good, poor] = { lcp: [2500, 4000], cls: [100, 250], inp: [200, 500] }[metric];
+  return value <= good ? "good" : value <= poor ? "needs work" : "poor";
+}
+
+export const formatVital = (metric: "lcp" | "cls" | "inp", value: number | null | undefined) =>
+  value === null || value === undefined
+    ? "-"
+    : metric === "cls"
+      ? (value / 1000).toFixed(2)
+      : metric === "lcp"
+        ? `${(value / 1000).toFixed(1)} s`
+        : `${value} ms`;

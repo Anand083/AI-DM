@@ -128,6 +128,36 @@ const TEXT: Record<AuditIssueCode, Text> = {
     why: "Pages with no links from other pages are hard for visitors and Google to find.",
     fix: "Link to the page from related pages and from your menu or sitemap.",
   },
+  duplicate_content: {
+    title: "Same text on several pages",
+    why: "When pages share most of their text, Google has to pick one and may pick the wrong one.",
+    fix: "Rewrite the pages so each is unique, merge them, or point the copies to the main page with a canonical tag.",
+  },
+  poor_lcp: {
+    title: "Main content appears slowly (LCP)",
+    why: "Largest Contentful Paint is how long the biggest part of the page takes to show. Over 4 seconds is poor and is a Google ranking signal.",
+    fix: "Make the top image smaller, load it first, and speed up the server. Aim for under 2.5 seconds.",
+  },
+  poor_cls: {
+    title: "Page jumps while loading (CLS)",
+    why: "Cumulative Layout Shift measures content that moves as the page loads. Jumping buttons annoy visitors and hurt rankings.",
+    fix: "Set a width and height on images and ads, and do not insert content above what people are reading. Aim for under 0.1.",
+  },
+  poor_inp: {
+    title: "Page reacts slowly to taps and clicks (INP)",
+    why: "Interaction to Next Paint is how fast the page answers a click. Over 500 ms feels broken and is a Google ranking signal.",
+    fix: "Remove heavy scripts, split long tasks and delay tools you do not need straight away. Aim for under 200 ms.",
+  },
+  invalid_structured_data: {
+    title: "Structured data has errors",
+    why: "Google ignores markup it cannot read, so you lose rich results such as ratings and questions.",
+    fix: "Test the page in Google's Rich Results Test and fix the missing or wrong fields it lists.",
+  },
+  sitemap_errors: {
+    title: "Sitemap lists bad addresses",
+    why: "A sitemap that lists broken, redirected or blocked pages wastes Google's time and hides the good pages.",
+    fix: "Keep only live, indexable pages in the sitemap and rebuild it after changes.",
+  },
 };
 
 export const ISSUE_CATALOG: Record<AuditIssueCode, IssueInfo> = Object.fromEntries(

@@ -3,6 +3,7 @@ import { ProviderError } from "../errors";
 import type {
   AiEngine,
   AiTopic,
+  AuditCrawlConfig,
   AiVisibilityResult,
   LlmMentionsSummary,
   AuditResult,
@@ -121,9 +122,18 @@ export class MockSeoProvider implements SeoDataProvider {
     );
   }
 
-  startAudit(i: { domain: string; maxPages: number }): Promise<ProviderResult<{ taskId: string }>> {
+  startAudit(i: {
+    domain: string;
+    maxPages: number;
+    config?: AuditCrawlConfig;
+  }): Promise<ProviderResult<{ taskId: string }>> {
     return this.call(() => ({
-      taskId: makeAuditTaskId(i.domain.toLowerCase(), i.maxPages, this.now()),
+      taskId: makeAuditTaskId(
+        i.domain.toLowerCase(),
+        i.maxPages,
+        this.now(),
+        i.config?.excludePaths ?? [],
+      ),
     }));
   }
 
@@ -135,11 +145,11 @@ export class MockSeoProvider implements SeoDataProvider {
 
   getAuditResult(taskId: string): Promise<ProviderResult<AuditResult>> {
     return this.call(() => {
-      const { domain, maxPages, startedAt } = parseAuditTaskId(taskId);
+      const { domain, maxPages, startedAt, excludePaths } = parseAuditTaskId(taskId);
       if (auditStatusAt(startedAt, this.now(), this.auditSeconds).status !== "completed") {
         throw new ProviderError("The audit is not finished yet.", true, "NOT_READY");
       }
-      return buildAuditResult(domain, maxPages, startedAt);
+      return buildAuditResult(domain, maxPages, startedAt, excludePaths);
     });
   }
 

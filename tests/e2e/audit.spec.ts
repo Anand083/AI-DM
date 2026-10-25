@@ -19,6 +19,12 @@ test("start an audit, wait, and read the score and the issues", async ({ page })
 
   await page.getByRole("link", { name: "Audit", exact: true }).click();
   await expect(page.getByText("No audits yet")).toBeVisible();
+
+  // Crawl settings.
+  await page.getByText("Crawl settings", { exact: true }).click();
+  await page.getByLabel("Skip these paths (one per line)").fill("/cart\n/account");
+  await page.getByRole("button", { name: "Save crawl settings" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Crawl settings saved." })).toBeVisible();
   await page.getByRole("button", { name: "Run first audit" }).click();
 
   // The worker runs it; the page shows progress and then the result.
@@ -40,9 +46,20 @@ test("start an audit, wait, and read the score and the issues", async ({ page })
   await expect(first.getByText("How to fix it")).toBeVisible();
   await expect(first.getByText("Pages affected")).toBeVisible();
 
-  // Pages tab.
+  // robots.txt and sitemap findings.
+  await expect(page.getByRole("heading", { name: "robots.txt and sitemap" })).toBeVisible();
+
+  // Ignore a whole issue type, then put it back (the issue is still open from above).
+  await first.getByRole("button", { name: "Ignore" }).click();
+  await expect(first.getByText(/Ignored: \d+ pages?\./)).toBeVisible();
+  await expect(first.locator("summary")).toContainText("ignored");
+  await first.getByRole("button", { name: "Put back on the list" }).click();
+  await expect(first.getByText(/Put back: \d+ pages?\./)).toBeVisible();
+
+  // Pages tab, with Core Web Vitals.
   await page.getByRole("link", { name: "Pages", exact: true }).click();
   await expect(page.getByRole("table", { name: "Pages checked" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "LCP" })).toBeVisible();
 
   // Accessibility.
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();

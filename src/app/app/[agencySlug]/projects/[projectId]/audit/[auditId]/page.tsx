@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuditProgress } from "@/components/app/audit-progress";
 import { AuditStatusBadge, ScoreBadge, SeverityBadge } from "@/components/app/audit-widgets";
+import { IssueStateButtons } from "@/components/app/issue-state-buttons";
 import { CreateTaskFromIssueButton } from "@/components/app/task-extras";
 import { RunAuditButton } from "@/components/app/run-audit-button";
 import { StatCard } from "@/components/app/rank-widgets";
@@ -11,10 +12,14 @@ import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { ISSUE_CATALOG } from "@/server/audit/issue-catalog";
+import { formatVital, vitalRating } from "@/lib/audit-math";
 import { getAgency } from "@/server/services/agency";
+import { loadUrlStates } from "@/server/services/audit-issue-state";
 import {
   compareWithPrevious,
   getAudit,
+  getAuditDiagnostics,
+  getPageChanges,
   getIssueGroups,
   listAuditPages,
   listIssueUrls,
@@ -106,7 +111,11 @@ export default async function AuditResultPage({
   const view = one(sp.view) === "pages" ? "pages" : "issues";
   const issueCode = one(sp.issue);
   const counts = audit.counts ?? { critical: 0, warning: 0, notice: 0, byCode: {} };
-  const comparison = await compareWithPrevious(ctx, projectId, auditId);
+  const [comparison, diagnostics, changes] = await Promise.all([
+    compareWithPrevious(ctx, projectId, auditId),
+    getAuditDiagnostics(ctx, projectId, auditId),
+    getPageChanges(ctx, projectId, auditId),
+  ]);
 
   const tabLink = (label: string, v: "issues" | "pages") => (
     <Link
@@ -162,6 +171,83 @@ export default async function AuditResultPage({
         </section>
       ) : null}
 
+      {diagnostics ? (
+        <section
+          aria-labelledby="diag-heading"
+          className="space-y-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+        >
+          <h3 id="diag-heading" className="font-semibold">
+            robots.txt and sitemap
+          </h3>
+          <ul className="space-y-1 text-sm">
+            <li>
+              robots.txt:{" "}
+              {!diagnostics.robots.found
+                ? "not found."
+                : diagnostics.robots.blocksAll
+                  ? "blocks the whole site from search engines. Fix this first."
+                  : `found, ${diagnostics.robots.disallowRules} ${diagnostics.robots.disallowRules === 1 ? "rule" : "rules"} that keep crawlers out of some paths.`}
+            </li>
+            <li>
+              Sitemap:{" "}
+              {!diagnostics.sitemap.found
+                ? "not found."
+                : `found, ${diagnostics.sitemap.urls} addresses listed${diagnostics.sitemap.badUrls > 0 ? `, ${diagnostics.sitemap.badUrls} of them broken, redirected or blocked` : ", none broken"}.`}
+            </li>
+            {diagnostics.robots.sitemapUrls.length > 0 ? (
+              <li className="break-all">
+                Listed in robots.txt: {diagnostics.robots.sitemapUrls.join(", ")}
+              </li>
+            ) : null}
+          </ul>
+        </section>
+      ) : null}
+
+      {changes &&
+      changes.added.length +
+        changes.removed.length +
+        changes.statusChanged.length +
+        changes.titleChanged.length +
+        changes.contentChanged.length >
+        0 ? (
+        <section
+          aria-labelledby="changes-heading"
+          className="space-y-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+        >
+          <h3 id="changes-heading" className="font-semibold">
+            Pages that changed since the last audit
+          </h3>
+          <ul aria-label="Page changes" className="space-y-1 text-sm">
+            {changes.statusChanged.map((c) => (
+              <li key={`s-${c.url}`} className="break-all">
+                {c.url}: status changed from {c.from} to {c.to}
+              </li>
+            ))}
+            {changes.titleChanged.map((c) => (
+              <li key={`t-${c.url}`} className="break-all">
+                {c.url}: title changed from &quot;{c.from ?? "none"}&quot; to &quot;
+                {c.to ?? "none"}&quot;
+              </li>
+            ))}
+            {changes.contentChanged.map((c) => (
+              <li key={`c-${c.url}`} className="break-all">
+                {c.url}: text length went from {c.from} to {c.to} words
+              </li>
+            ))}
+            {changes.added.map((u) => (
+              <li key={`a-${u}`} className="break-all">
+                New page found: {u}
+              </li>
+            ))}
+            {changes.removed.map((u) => (
+              <li key={`r-${u}`} className="break-all">
+                Page no longer found: {u}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <nav aria-label="Audit sections" className="border-b border-zinc-200 dark:border-zinc-800">
         <div className="-mb-px flex gap-4">
           {tabLink("Issues", "issues")}
@@ -173,6 +259,7 @@ export default async function AuditResultPage({
         <PagesView ctx={ctx} projectId={projectId} auditId={auditId} here={here} sp={sp} />
       ) : issueCode ? (
         <IssueUrlsView
+          agencySlug={agencySlug}
           ctx={ctx}
           projectId={projectId}
           auditId={auditId}
@@ -232,6 +319,8 @@ async function IssuesView({
                 <span className="font-medium">{g.title}</span>
                 <span className="ml-auto text-sm text-zinc-600 dark:text-zinc-400">
                   {g.count} {g.count === 1 ? "page" : "pages"}
+                  {g.ignored > 0 ? ` · ${g.ignored} ignored` : ""}
+                  {g.resolved > 0 ? ` · ${g.resolved} marked fixed` : ""}
                   {delta && (delta.new > 0 || delta.fixed > 0)
                     ? ` · ${delta.new} new, ${delta.fixed} fixed`
                     : ""}
@@ -246,6 +335,14 @@ async function IssuesView({
                   <h4 className="font-semibold">How to fix it</h4>
                   <p className="mt-1">{g.fix}</p>
                 </div>
+                {can(ctx.role, "content.edit") ? (
+                  <IssueStateButtons
+                    agencySlug={agencySlug}
+                    projectId={projectId}
+                    auditId={auditId}
+                    code={g.code}
+                  />
+                ) : null}
                 {can(ctx.role, "content.edit") ? (
                   <CreateTaskFromIssueButton
                     agencySlug={agencySlug}
@@ -282,6 +379,7 @@ async function IssuesView({
 }
 
 async function IssueUrlsView({
+  agencySlug,
   ctx,
   projectId,
   auditId,
@@ -289,6 +387,7 @@ async function IssueUrlsView({
   code,
   page,
 }: {
+  agencySlug: string;
   ctx: Ctx;
   projectId: string;
   auditId: string;
@@ -301,6 +400,7 @@ async function IssueUrlsView({
     page,
     pageSize: PAGE_SIZE,
   });
+  const states = await loadUrlStates(ctx.agencyId, projectId, code, urls);
   return (
     <div className="space-y-4">
       <p className="text-sm">
@@ -313,13 +413,24 @@ async function IssueUrlsView({
         <h3 className="text-lg font-semibold">{info.title}</h3>
       </div>
       <p className="text-sm">{info.fix}</p>
-      <ul className="list-disc space-y-0.5 pl-5 text-sm">
+      <ul aria-label="Affected pages" className="list-disc space-y-0.5 pl-5 text-sm">
         {urls.map((u) => (
           <li key={u} className="break-all">
             {u}
+            {states.get(u)?.status === "IGNORED" ? " (ignored)" : ""}
+            {states.get(u)?.status === "RESOLVED" ? " (marked fixed)" : ""}
           </li>
         ))}
       </ul>
+      {can(ctx.role, "content.edit") ? (
+        <IssueStateButtons
+          agencySlug={agencySlug}
+          projectId={projectId}
+          auditId={auditId}
+          code={code}
+          urls={urls}
+        />
+      ) : null}
       <Pagination
         basePath={here}
         page={page}
@@ -385,6 +496,15 @@ async function PagesView({
                 Words
               </th>
               <th scope="col" className="px-3 py-2 font-medium">
+                LCP
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                CLS
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                INP
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
                 Problems
               </th>
             </tr>
@@ -399,6 +519,21 @@ async function PagesView({
                 <td className="px-3 py-2 tabular-nums">{p.statusCode}</td>
                 <td className="px-3 py-2 tabular-nums">{(p.loadTimeMs / 1000).toFixed(1)} s</td>
                 <td className="px-3 py-2 tabular-nums">{p.wordCount}</td>
+                {(["lcp", "cls", "inp"] as const).map((metric) => {
+                  const value = { lcp: p.lcpMs, cls: p.cls, inp: p.inpMs }[metric];
+                  const rating = vitalRating(metric, value);
+                  return (
+                    <td key={metric} className="px-3 py-2 tabular-nums">
+                      {formatVital(metric, value)}
+                      {rating ? <span className="sr-only"> ({rating})</span> : null}
+                      {rating === "poor" ? (
+                        <span aria-hidden="true" className="ml-1 text-red-700 dark:text-red-400">
+                          !
+                        </span>
+                      ) : null}
+                    </td>
+                  );
+                })}
                 <td className="px-3 py-2 tabular-nums">{p.issueCount}</td>
               </tr>
             ))}

@@ -28,6 +28,12 @@ export const AUDIT_ISSUE_SEVERITY = {
   missing_sitemap: "WARNING",
   robots_blocking: "CRITICAL",
   orphan_page: "NOTICE",
+  duplicate_content: "WARNING",
+  poor_lcp: "WARNING",
+  poor_cls: "WARNING",
+  poor_inp: "WARNING",
+  invalid_structured_data: "WARNING",
+  sitemap_errors: "WARNING",
 } as const satisfies Record<string, AuditSeverity>;
 
 export type AuditIssueCode = keyof typeof AUDIT_ISSUE_SEVERITY;

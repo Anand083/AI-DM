@@ -473,6 +473,16 @@ export function exportFiles(
       rows: allRows((a) => rawDb.aiMarketSnapshot.findMany({ where, ...order, ...a })),
     },
     {
+      name: "audit-settings.jsonl",
+      model: "AuditConfig",
+      rows: allRows((a) => rawDb.auditConfig.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "audit-issue-states.jsonl",
+      model: "AuditIssueState",
+      rows: allRows((a) => rawDb.auditIssueState.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),

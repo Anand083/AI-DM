@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { compareIssues, countBySeverity, healthScore, scoreBand } from "./audit-math";
+import {
+  compareIssues,
+  countBySeverity,
+  diffPages,
+  formatVital,
+  healthScore,
+  scoreBand,
+  vitalRating,
+} from "./audit-math";
 
 describe("healthScore", () => {
   it("is 100 with no problems", () => {
@@ -79,5 +87,50 @@ describe("scoreBand", () => {
     expect(scoreBand(79)).toBe("fair");
     expect(scoreBand(50)).toBe("fair");
     expect(scoreBand(49)).toBe("poor");
+  });
+});
+
+describe("diffPages", () => {
+  const p = (url: string, statusCode = 200, title: string | null = "T", wordCount = 500) => ({
+    url,
+    statusCode,
+    title,
+    wordCount,
+  });
+  it("finds new, removed and changed pages", () => {
+    const changes = diffPages(
+      [p("/a"), p("/b"), p("/c", 200, "Old"), p("/d", 200, "T", 1000), p("/e")],
+      [p("/a"), p("/c", 200, "New"), p("/d", 200, "T", 300), p("/e", 404), p("/f")],
+    );
+    expect(changes.added).toEqual(["/f"]);
+    expect(changes.removed).toEqual(["/b"]);
+    expect(changes.titleChanged).toEqual([{ url: "/c", from: "Old", to: "New" }]);
+    expect(changes.contentChanged).toEqual([{ url: "/d", from: 1000, to: 300 }]);
+    expect(changes.statusChanged).toEqual([{ url: "/e", from: 200, to: 404 }]);
+  });
+  it("ignores small text changes and caps each list", () => {
+    expect(diffPages([p("/a", 200, "T", 100)], [p("/a", 200, "T", 140)]).contentChanged).toEqual(
+      [],
+    );
+    const many = Array.from({ length: 80 }, (_, i) => p(`/p${String(i).padStart(2, "0")}`));
+    expect(diffPages([], many).added).toHaveLength(50);
+  });
+});
+
+describe("Core Web Vitals", () => {
+  it("rates by Google's limits", () => {
+    expect(vitalRating("lcp", 2400)).toBe("good");
+    expect(vitalRating("lcp", 3000)).toBe("needs work");
+    expect(vitalRating("lcp", 4001)).toBe("poor");
+    expect(vitalRating("cls", 100)).toBe("good");
+    expect(vitalRating("cls", 260)).toBe("poor");
+    expect(vitalRating("inp", 500)).toBe("needs work");
+    expect(vitalRating("inp", null)).toBeNull();
+  });
+  it("writes the numbers for people", () => {
+    expect(formatVital("lcp", 2450)).toBe("2.5 s");
+    expect(formatVital("cls", 60)).toBe("0.06");
+    expect(formatVital("inp", 180)).toBe("180 ms");
+    expect(formatVital("inp", undefined)).toBe("-");
   });
 });

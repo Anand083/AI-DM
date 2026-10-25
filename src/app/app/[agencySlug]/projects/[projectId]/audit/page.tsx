@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AuditConfigForm } from "@/components/app/audit-config-form";
 import { AuditStatusBadge, ScoreBadge } from "@/components/app/audit-widgets";
 import { RunAuditButton } from "@/components/app/run-audit-button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -7,6 +8,7 @@ import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { getAgency } from "@/server/services/agency";
+import { getAuditConfig } from "@/server/services/audit-config";
 import { listAudits } from "@/server/services/audits";
 
 export const metadata: Metadata = { title: "Site audit" };
@@ -25,9 +27,10 @@ export default async function AuditPage({
   const sp = await searchParams;
   const { ctx } = await getPageContext(agencySlug);
   const page = pageFromParams(sp.page);
-  const [{ rows, total }, agency] = await Promise.all([
+  const [{ rows, total }, agency, config] = await Promise.all([
     listAudits(ctx, projectId, { page, pageSize: PAGE_SIZE }),
     getAgency(ctx),
+    getAuditConfig(ctx, projectId),
   ]);
   const base = `/app/${agencySlug}/projects/${projectId}/audit`;
   const running = rows.some((a) => a.status === "QUEUED" || a.status === "RUNNING");
@@ -57,6 +60,18 @@ export default async function AuditPage({
           />
         ) : null}
       </div>
+
+      <details className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Crawl settings</summary>
+        <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-800">
+          <AuditConfigForm
+            agencySlug={agencySlug}
+            projectId={projectId}
+            initial={config}
+            canEdit={can(ctx.role, "content.edit")}
+          />
+        </div>
+      </details>
 
       {rows.length === 0 ? (
         <EmptyState

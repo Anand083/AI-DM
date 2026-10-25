@@ -60,6 +60,35 @@ export type AuditPageResult = {
   loadTimeMs: number;
   wordCount: number;
   issueCount: number;
+  /** Core Web Vitals when the vendor measured them. LCP and INP in ms, CLS times 1000. */
+  lcpMs?: number | null;
+  cls?: number | null;
+  inpMs?: number | null;
+};
+
+/** What the crawl found out about robots.txt and the sitemap. */
+export type SiteDiagnostics = {
+  robots: {
+    found: boolean;
+    /** True when the file tells every crawler to stay away from the whole site. */
+    blocksAll: boolean;
+    disallowRules: number;
+    sitemapUrls: string[];
+  };
+  sitemap: {
+    found: boolean;
+    urls: number;
+    /** Listed addresses that were broken, redirected or blocked. */
+    badUrls: number;
+  };
+};
+
+/** Crawl settings of a project. */
+export type AuditCrawlConfig = {
+  /** Address paths to skip, for example /cart. */
+  excludePaths: string[];
+  respectRobots: boolean;
+  mobile: boolean;
 };
 
 export type AuditStatus = {
@@ -73,6 +102,7 @@ export type AuditResult = {
   pagesCrawled: number;
   pages: AuditPageResult[];
   issues: AuditIssueFound[];
+  diagnostics?: SiteDiagnostics | null;
 };
 
 export type BacklinkSummary = {
@@ -197,7 +227,11 @@ export interface SeoDataProvider {
     languageCode: string;
     limit: number;
   }): Promise<ProviderResult<KeywordIdea[]>>;
-  startAudit(i: { domain: string; maxPages: number }): Promise<ProviderResult<{ taskId: string }>>;
+  startAudit(i: {
+    domain: string;
+    maxPages: number;
+    config?: AuditCrawlConfig;
+  }): Promise<ProviderResult<{ taskId: string }>>;
   getAuditStatus(taskId: string): Promise<ProviderResult<AuditStatus>>;
   getAuditResult(taskId: string): Promise<ProviderResult<AuditResult>>;
   getBacklinkSummary(domain: string): Promise<ProviderResult<BacklinkSummary>>;

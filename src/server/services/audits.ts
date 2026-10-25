@@ -3,9 +3,12 @@ import { Prisma } from "@prisma/client";
 import {
   compareIssues,
   countBySeverity,
+  diffPages,
   healthScore,
   type IssueComparison,
+  type PageChanges,
 } from "@/lib/audit-math";
+import type { SiteDiagnostics } from "@/server/providers/seo/types";
 import { can } from "@/server/auth/permissions";
 import type { TenantContext } from "@/server/auth/tenant-context";
 import { db } from "@/server/db/client";
@@ -13,6 +16,7 @@ import { enqueueAuditRun } from "@/server/jobs/enqueue";
 import { ISSUE_CATALOG, issueInfo, severityRank } from "@/server/audit/issue-catalog";
 import { logActivity } from "./activity";
 import { ConflictError, ForbiddenError, LimitExceededError, NotFoundError } from "./errors";
+import { loadIssueStateCounts } from "./audit-issue-state";
 import { paging, type Page } from "./paging";
 import { getProject } from "./projects";
 import { getAgencyPlan, getUsageByMetric } from "./usage";
@@ -102,6 +106,7 @@ const auditSelect = {
   pagesCrawled: true,
   healthScore: true,
   counts: true,
+  diagnostics: true,
   startedAt: true,
   finishedAt: true,
   error: true,
@@ -150,6 +155,10 @@ export type IssueGroup = {
   fix: string;
   severity: "CRITICAL" | "WARNING" | "NOTICE";
   count: number;
+  /** Pages the team marked "will not fix". */
+  ignored: number;
+  /** Pages the team marked "fixed" that the next audit has to confirm. */
+  resolved: number;
   /** A few of the affected page addresses. */
   sampleUrls: string[];
 };
@@ -163,6 +172,7 @@ export async function getIssueGroups(
   auditId: string,
 ): Promise<IssueGroup[]> {
   await getAudit(ctx, projectId, auditId);
+  const marks = await loadIssueStateCounts(ctx.agencyId, projectId, auditId);
   const groups = await db.auditIssue.groupBy({
     by: ["code", "severity"],
     where: { agencyId: ctx.agencyId, auditId },
@@ -184,6 +194,8 @@ export async function getIssueGroups(
         fix: info.fix,
         severity: g.severity,
         count: g._count._all,
+        ignored: marks.get(g.code)?.ignored ?? 0,
+        resolved: marks.get(g.code)?.resolved ?? 0,
         sampleUrls: samples.map((s) => s.url),
       } satisfies IssueGroup;
     }),
@@ -252,6 +264,9 @@ export async function listAuditPages(
         loadTimeMs: true,
         wordCount: true,
         issueCount: true,
+        lcpMs: true,
+        cls: true,
+        inpMs: true,
       },
       orderBy,
       take,
@@ -305,6 +320,51 @@ export async function compareWithPrevious(
     previousDate: previous.createdAt,
     previousScore: previous.healthScore,
   };
+}
+
+/** robots.txt and sitemap findings of an audit. Null for audits that did not save any. */
+export async function getAuditDiagnostics(
+  ctx: TenantContext,
+  projectId: string,
+  auditId: string,
+): Promise<SiteDiagnostics | null> {
+  const audit = await getAudit(ctx, projectId, auditId);
+  return (audit.diagnostics ?? null) as SiteDiagnostics | null;
+}
+
+/** Page by page changes since the audit before (new or removed pages, status, title and text changes). */
+export async function getPageChanges(
+  ctx: TenantContext,
+  projectId: string,
+  auditId: string,
+): Promise<(PageChanges & { previousAuditId: string }) | null> {
+  const audit = await getAudit(ctx, projectId, auditId);
+  if (audit.status !== "COMPLETED") return null;
+  const previous = await db.audit.findFirst({
+    where: {
+      agencyId: ctx.agencyId,
+      projectId,
+      status: "COMPLETED",
+      createdAt: { lt: audit.createdAt },
+    },
+    select: { id: true },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!previous) return null;
+  const select = { url: true, statusCode: true, title: true, wordCount: true } as const;
+  const [before, now] = await Promise.all([
+    db.auditPage.findMany({
+      where: { agencyId: ctx.agencyId, auditId: previous.id },
+      select,
+      take: MAX_PAGES_PER_AUDIT,
+    }),
+    db.auditPage.findMany({
+      where: { agencyId: ctx.agencyId, auditId },
+      select,
+      take: MAX_PAGES_PER_AUDIT,
+    }),
+  ]);
+  return { ...diffPages(before, now), previousAuditId: previous.id };
 }
 
 /** The newest completed audit of a project, for dashboards. */

@@ -3,14 +3,14 @@ import { buildAuditAlert } from "@/lib/alert-rules";
 import { compareIssues, countBySeverity, healthScore } from "@/lib/audit-math";
 import { createAlerts, loadAlertSettings } from "./alert-store";
 import type { Db } from "@/server/db/client";
-import type { AuditResult, AuditStatus } from "@/server/providers/seo/types";
+import type { AuditCrawlConfig, AuditResult, AuditStatus } from "@/server/providers/seo/types";
 import type { GatewayCaller, GatewayResult } from "./seo-gateway";
 
 /** What the worker needs from the SEO gateway. */
 export type AuditGateway = {
   startAudit(
     caller: GatewayCaller,
-    input: { domain: string; maxPages: number },
+    input: { domain: string; maxPages: number; config?: AuditCrawlConfig },
   ): Promise<{ taskId: string }>;
   getAuditStatus(taskId: string): Promise<AuditStatus>;
   getAuditResult(caller: GatewayCaller, taskId: string): Promise<GatewayResult<AuditResult>>;
@@ -58,10 +58,22 @@ export async function runAuditStart(
     },
   });
   if (!audit || audit.status !== "QUEUED") return "skipped";
+  const config = await deps.db.auditConfig.findFirst({
+    where: { agencyId: input.agencyId, projectId: audit.projectId },
+    select: { excludePaths: true, respectRobots: true, mobile: true },
+  });
 
   const { taskId } = await deps.gateway.startAudit(
     { agencyId: input.agencyId, projectId: audit.projectId },
-    { domain: audit.project.domain, maxPages: audit.maxPages },
+    {
+      domain: audit.project.domain,
+      maxPages: audit.maxPages,
+      config: {
+        excludePaths: config?.excludePaths ?? [],
+        respectRobots: config?.respectRobots ?? true,
+        mobile: config?.mobile ?? false,
+      },
+    },
   );
   await deps.db.audit.update({
     where: { id: audit.id, agencyId: input.agencyId },
@@ -156,6 +168,9 @@ export async function pollAudit(
           loadTimeMs: p.loadTimeMs,
           wordCount: p.wordCount,
           issueCount: p.issueCount,
+          lcpMs: p.lcpMs ?? null,
+          cls: p.cls ?? null,
+          inpMs: p.inpMs ?? null,
         })),
       });
     }
@@ -179,14 +194,41 @@ export async function pollAudit(
         pagesCrawled: result.pagesCrawled,
         healthScore: healthScore(severity, result.pagesCrawled),
         counts: { ...severity, byCode },
+        diagnostics: (result.diagnostics ?? undefined) as Prisma.InputJsonValue | undefined,
         finishedAt: now(),
         error: null,
       },
     });
   });
 
+  await reopenResolved(db, input.agencyId, audit.projectId, issues);
   await raiseAuditAlert(db, input.agencyId, audit, issues);
   return "completed";
+}
+
+/**
+ * An issue the team marked "resolved" that this audit found again is open again, so its mark is
+ * removed. "Ignored" marks stay.
+ */
+async function reopenResolved(
+  db: Db,
+  agencyId: string,
+  projectId: string,
+  issues: { code: string; url: string }[],
+) {
+  const resolved = await db.auditIssueState.findMany({
+    where: { agencyId, projectId, status: "RESOLVED" },
+    select: { id: true, code: true, url: true },
+    take: 20_000,
+  });
+  if (resolved.length === 0) return;
+  const found = new Set(issues.map((i) => `${i.code}\u0000${i.url}`));
+  const again = resolved.filter((r) => found.has(`${r.code}\u0000${r.url}`)).map((r) => r.id);
+  for (let i = 0; i < again.length; i += CHUNK) {
+    await db.auditIssueState.deleteMany({
+      where: { agencyId, projectId, id: { in: again.slice(i, i + CHUNK) } },
+    });
+  }
 }
 
 /** An alert for critical issues that the audit before did not have (or any critical issue in a first audit). */
