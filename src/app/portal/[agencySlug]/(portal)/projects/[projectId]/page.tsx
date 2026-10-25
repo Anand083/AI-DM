@@ -6,6 +6,7 @@ import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { formatChange, formatPosition } from "@/lib/rank-math";
 import { getPortalPageContext } from "@/server/auth/portal-context";
 import { NotFoundError } from "@/server/services/errors";
+import { getPortalProgress } from "@/server/services/portal-tasks";
 import {
   getPortalAudit,
   getPortalProject,
@@ -33,10 +34,11 @@ export default async function PortalProjectPage({
     if (error instanceof NotFoundError) notFound();
     throw error;
   });
-  const [keywords, audit, reports] = await Promise.all([
+  const [keywords, audit, reports, progress] = await Promise.all([
     listPortalKeywords(ctx, projectId, { page, pageSize: PAGE_SIZE }),
     getPortalAudit(ctx, projectId),
     listPortalReports(ctx, { projectId, pageSize: 5 }),
+    getPortalProgress(ctx, projectId),
   ]);
   const base = `/portal/${agencySlug}`;
   const max = Math.max(1, ...project.distribution.map((d) => d.count));
@@ -52,6 +54,56 @@ export default async function PortalProjectPage({
         <h1 className="mt-1 text-2xl font-semibold">{project.name}</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{project.domain}</p>
       </div>
+
+      {progress.total > 0 || progress.milestones.length > 0 ? (
+        <section aria-labelledby="progress-h" className="space-y-3">
+          <h2 id="progress-h" className="text-lg font-semibold">
+            Progress
+          </h2>
+          {progress.total > 0 ? (
+            <p className="text-sm">
+              {progress.done} of {progress.total} tasks done ({progress.percent}%).{" "}
+              <Link href={`${base}/tasks`} className="underline underline-offset-4">
+                See the tasks
+              </Link>
+            </p>
+          ) : null}
+          {progress.milestones.length > 0 ? (
+            <ul aria-label="Milestones" className="space-y-2">
+              {progress.milestones.map((m) => (
+                <li
+                  key={m.id}
+                  className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+                >
+                  <p className="font-medium">
+                    {m.title}
+                    {m.reached ? " (reached)" : ""}
+                  </p>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    {m.dueOn ? `Due ${m.dueOn}. ` : ""}
+                    {m.percent === null ? "No tasks yet." : `${m.done} of ${m.total} tasks done.`}
+                  </p>
+                  {m.percent !== null ? (
+                    <div
+                      role="progressbar"
+                      aria-label={`${m.title} progress`}
+                      aria-valuenow={m.percent}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      className="mt-2 h-2 overflow-hidden rounded bg-zinc-200 dark:bg-zinc-800"
+                    >
+                      <div
+                        className="h-full"
+                        style={{ width: `${m.percent}%`, background: "var(--brand-accent)" }}
+                      />
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
 
       <section aria-labelledby="rank-h" className="space-y-3">
         <h2 id="rank-h" className="text-lg font-semibold">

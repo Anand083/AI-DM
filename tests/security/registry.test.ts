@@ -109,4 +109,23 @@ describe("pages call their own guard", () => {
       expect(read(file)).toContain(marker);
     });
   }
+
+  it("portal actions are wrapped before they are exported", () => {
+    for (const [file, guard] of Object.entries(ACTION_FILES)) {
+      if (guard !== "portal") continue;
+      const text = read(file);
+      expect(text, file).not.toMatch(/from "@\/server\/db/);
+      const wrapped = [...text.matchAll(/const (\w+) = withPortalAction\(/g)].map((m) => m[1]!);
+      expect(wrapped.length, file).toBeGreaterThan(0);
+      const exported = [
+        ...text.matchAll(/export async function (\w+)\(([^)]*)\)[^{]*\{([\s\S]*?)\n\}/g),
+      ];
+      for (const [, name, , body] of exported) {
+        expect(
+          wrapped.some((w) => body!.includes(`${w}(`)),
+          `${file}: ${name} must call a wrapped action`,
+        ).toBe(true);
+      }
+    }
+  });
 });

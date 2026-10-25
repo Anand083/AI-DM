@@ -68,6 +68,7 @@ export type ActionGuard =
   | "tenant" // every exported action goes through withTenantAction
   | "admin" // every exported action goes through withAdminAction (or requireSuperAdmin)
   | "own-account" // acts only on the signed-in person's own records
+  | "portal" // every exported action goes through withPortalAction (a client user of the agency)
   | "token" // proof is a secret token that was sent to the person
   | "public-limited"; // no sign-in on purpose; limited by IP address and validated
 
@@ -86,6 +87,7 @@ export const ACTION_FILES: Record<string, ActionGuard> = {
   "src/app/app/[agencySlug]/projects/[projectId]/ai-visibility/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/reviews/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/analytics/actions.ts": "tenant",
+  "src/app/app/[agencySlug]/projects/[projectId]/milestones/actions.ts": "tenant",
   "src/app/app/[agencySlug]/leads/actions.ts": "tenant",
   "src/app/app/[agencySlug]/tasks/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/rankings/actions.ts": "tenant",
@@ -99,11 +101,13 @@ export const ACTION_FILES: Record<string, ActionGuard> = {
   "src/app/widget/[agencySlug]/actions.ts": "public-limited",
   "src/app/invite-actions.ts": "token",
   "src/app/portal-actions.ts": "token",
+  "src/app/portal/[agencySlug]/(portal)/tasks/actions.ts": "portal",
 };
 
 /** Which wrapper or check each kind of action file must use. */
 export const ACTION_GUARD_MARKERS: Record<ActionGuard, string[]> = {
   tenant: ["withTenantAction("],
+  portal: ["withPortalAction("],
   admin: ["withAdminAction(", "requireSuperAdmin("],
   "own-account": ["getRealSessionUser(", "getSessionUser(", "requireUser("],
   token: ["getSessionUser(", "acceptInvitation(", "createClientAccount("],

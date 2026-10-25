@@ -21,6 +21,8 @@ export type TaskFormValues = {
   estimateMinutes: string;
   recurrence: string;
   projectId: string;
+  clientVisible: boolean;
+  milestoneId: string;
 };
 
 export const EMPTY_TASK: TaskFormValues = {
@@ -33,6 +35,8 @@ export const EMPTY_TASK: TaskFormValues = {
   estimateMinutes: "",
   recurrence: "NONE",
   projectId: "",
+  clientVisible: false,
+  milestoneId: "",
 };
 
 /** One form for adding a task and for changing one. */
@@ -42,6 +46,7 @@ export function TaskForm({
   initial = EMPTY_TASK,
   assignees,
   projects,
+  milestones = [],
 }: {
   agencySlug: string;
   /** Set when changing a task. Leave out when adding one. */
@@ -49,6 +54,8 @@ export function TaskForm({
   initial?: TaskFormValues;
   assignees: { id: string; name: string }[];
   projects: { id: string; name: string }[];
+  /** Milestones of the task's project (when changing a task). */
+  milestones?: { id: string; title: string }[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -56,8 +63,9 @@ export function TaskForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const set = (key: keyof TaskFormValues) => (e: { target: { value: string } }) =>
-    setV((current) => ({ ...current, [key]: e.target.value }));
+  const set =
+    (key: Exclude<keyof TaskFormValues, "clientVisible">) => (e: { target: { value: string } }) =>
+      setV((current) => ({ ...current, [key]: e.target.value }));
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -73,7 +81,10 @@ export function TaskForm({
       dueOn: v.dueOn || null,
       estimateMinutes: Number.isFinite(minutes) ? minutes : null,
       recurrence: v.recurrence,
-      ...(taskId ? { status: v.status } : { projectId: v.projectId || null }),
+      clientVisible: v.clientVisible,
+      ...(taskId
+        ? { status: v.status, milestoneId: v.milestoneId || null }
+        : { projectId: v.projectId || null }),
     };
     const result = taskId
       ? await updateTaskAction(agencySlug, taskId, values)
@@ -204,6 +215,34 @@ export function TaskForm({
           </Select>
         </div>
       </div>
+      {taskId && milestones.length > 0 ? (
+        <div className="max-w-sm space-y-1.5">
+          <Label htmlFor={`milestone-${taskId}`}>Milestone</Label>
+          <Select id={`milestone-${taskId}`} value={v.milestoneId} onChange={set("milestoneId")}>
+            <option value="">No milestone</option>
+            {milestones.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.title}
+              </option>
+            ))}
+          </Select>
+        </div>
+      ) : null}
+      {taskId || v.projectId ? (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={v.clientVisible}
+            onChange={(e) => setV((current) => ({ ...current, clientVisible: e.target.checked }))}
+          />
+          Show this task to the client in their portal
+        </label>
+      ) : null}
+      {fieldErrors.clientVisible ? (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {fieldErrors.clientVisible}
+        </p>
+      ) : null}
       <Button type="submit" disabled={busy || !v.title.trim()}>
         {busy ? "Saving..." : taskId ? "Save task" : "Add task"}
       </Button>

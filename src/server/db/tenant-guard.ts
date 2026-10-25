@@ -51,6 +51,9 @@ export const TENANT_MODELS = new Set([
   "Lead",
   "Task",
   "TaskComment",
+  "Milestone",
+  "TaskTemplate",
+  "ReportComment",
 ]);
 
 const WHERE_OPERATIONS = new Set([

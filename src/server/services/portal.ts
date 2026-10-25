@@ -14,7 +14,7 @@ import { paging, type Page } from "./paging";
  * Read-only data for client users. Every query is limited to the agency AND to the clients
  * this person was invited to, so another client's project or report is simply "not found".
  */
-function projectWhere(ctx: PortalContext, id?: string): Prisma.ProjectWhereInput {
+export function projectWhere(ctx: PortalContext, id?: string): Prisma.ProjectWhereInput {
   return {
     ...(id ? { id } : {}),
     agencyId: ctx.agencyId,
@@ -192,7 +192,7 @@ const reportListSelect = {
   project: { select: { id: true, name: true } },
 } satisfies Prisma.ReportSelect;
 
-function reportWhere(
+export function reportWhere(
   ctx: PortalContext,
   extra: Prisma.ReportWhereInput = {},
 ): Prisma.ReportWhereInput {

@@ -46,7 +46,9 @@ export default async function AlertsPage({
 
   const link = (a: (typeof rows)[number]) => {
     const data = (a.data ?? {}) as { auditId?: string };
+    if (a.type === "TASK_DUE") return `/app/${agencySlug}/tasks?view=overdue`;
     if (!a.projectId) return null;
+    if (a.type === "CLIENT_RESPONSE") return `/app/${agencySlug}/tasks`;
     const project = `/app/${agencySlug}/projects/${a.projectId}`;
     if (a.type === "BACKLINKS_LOST") return `${project}/backlinks?filter=lost`;
     if (a.type === "AI_MENTION_LOST") return `${project}/ai-visibility`;

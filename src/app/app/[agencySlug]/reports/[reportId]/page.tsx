@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ReportCommentThread } from "@/components/app/report-comments";
 import { ReportDelete } from "@/components/app/report-delete";
 import { ReportRefresher } from "@/components/app/report-refresher";
 import { ReportSharePanel } from "@/components/app/report-share-panel";
@@ -13,6 +14,7 @@ import { can } from "@/server/auth/permissions";
 import { getAgency } from "@/server/services/agency";
 import { getBranding } from "@/server/services/branding";
 import { NotFoundError } from "@/server/services/errors";
+import { listReportComments } from "@/server/services/report-comments";
 import { getReport } from "@/server/services/reports";
 
 export const metadata: Metadata = { title: "Report" };
@@ -30,6 +32,7 @@ export default async function ReportPage({
     throw error;
   });
   const [branding, agency] = await Promise.all([getBranding(ctx), getAgency(ctx)]);
+  const comments = await listReportComments(ctx, reportId);
   const canCreate = can(ctx.role, "reports.create");
   const building = report.status === "QUEUED" || report.status === "GENERATING";
   const date = (d: Date) =>
@@ -99,6 +102,15 @@ export default async function ReportPage({
               ? `/app/${agencySlug}/branding/logo?v=${branding.logoVersion ?? "1"}`
               : null,
           }}
+        />
+      ) : null}
+      {report.status === "READY" ? (
+        <ReportCommentThread
+          kind="team"
+          agencySlug={agencySlug}
+          reportId={report.id}
+          canPost={can(ctx.role, "content.edit")}
+          comments={comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() }))}
         />
       ) : null}
     </div>

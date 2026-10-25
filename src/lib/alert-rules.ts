@@ -53,7 +53,8 @@ export type AlertDraft = {
     | "BACKLINKS_LOST"
     | "AI_MENTION_LOST"
     | "NEW_REVIEW"
-    | "TASK_DUE";
+    | "TASK_DUE"
+    | "CLIENT_RESPONSE";
   severity: "INFO" | "WARNING" | "CRITICAL";
   title: string;
   body: string;

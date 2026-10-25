@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ReportCommentThread } from "@/components/app/report-comments";
 import { ReportView } from "@/components/app/report-view";
 import { getPortalPageContext } from "@/server/auth/portal-context";
 import { NotFoundError } from "@/server/services/errors";
 import { getPortalReport } from "@/server/services/portal";
+import { listPortalReportComments } from "@/server/services/portal-tasks";
 import { loadPortalBrand } from "@/server/services/portal-brand";
 
 export const metadata: Metadata = { title: "Report" };
@@ -21,6 +23,7 @@ export default async function PortalReportPage({
     if (error instanceof NotFoundError) notFound();
     throw error;
   });
+  const comments = await listPortalReportComments(ctx, reportId);
   const brand = await loadPortalBrand(agencySlug);
   if (!brand) notFound();
   const base = `/portal/${agencySlug}`;
@@ -49,6 +52,13 @@ export default async function PortalReportPage({
           supportEmail: brand.supportEmail,
           logoUrl: brand.hasLogo ? `${base}/logo?v=${brand.logoVersion ?? "1"}` : null,
         }}
+      />
+      <ReportCommentThread
+        kind="portal"
+        agencySlug={agencySlug}
+        reportId={report.id}
+        canPost
+        comments={comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() }))}
       />
     </>
   );

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { TaskDoneButton } from "@/components/app/task-extras";
+import { TemplatePanel } from "@/components/app/template-panel";
 import { TaskForm } from "@/components/app/task-form";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -9,6 +10,7 @@ import { isOverdue, priorityLabel, statusLabel } from "@/lib/tasks";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { listProjects } from "@/server/services/projects";
+import { listTemplates } from "@/server/services/task-templates";
 import { listAssignees, listTasks, TASK_VIEWS, type TaskView } from "@/server/services/tasks";
 
 export const metadata: Metadata = { title: "Tasks" };
@@ -43,10 +45,11 @@ export default async function TasksPage({
   const q = typeof sp.q === "string" ? sp.q : undefined;
   const page = pageFromParams(sp.page);
   const canEdit = can(ctx.role, "content.edit");
-  const [list, assignees, projects] = await Promise.all([
+  const [list, assignees, projects, templates] = await Promise.all([
     listTasks(ctx, { view, q, page, pageSize: PAGE_SIZE }),
     listAssignees(ctx),
     canEdit ? listProjects(ctx, { pageSize: 100 }) : Promise.resolve({ rows: [] }),
+    listTemplates(ctx),
   ]);
   const base = `/app/${agencySlug}/tasks`;
   const today = new Date().toISOString().slice(0, 10);
@@ -69,6 +72,27 @@ export default async function TasksPage({
               agencySlug={agencySlug}
               assignees={assignees}
               projects={projects.rows.map((p) => ({ id: p.id, name: p.name }))}
+            />
+          </div>
+        </details>
+      ) : null}
+
+      {canEdit ? (
+        <details className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <summary className="cursor-pointer px-4 py-3 font-medium">Start from a template</summary>
+          <div className="border-t border-zinc-200 p-4 dark:border-zinc-800">
+            <TemplatePanel
+              agencySlug={agencySlug}
+              templates={templates.map((t) => ({
+                key: t.key,
+                name: t.name,
+                custom: t.custom,
+                tasks: t.items.length,
+              }))}
+              projects={projects.rows.map((p) => ({ id: p.id, name: p.name }))}
+              assignees={assignees}
+              today={today}
+              canDelete={can(ctx.role, "content.delete")}
             />
           </div>
         </details>

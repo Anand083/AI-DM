@@ -46,6 +46,7 @@ Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adap
 
 ## Phase H (extra features from the founder's list)
 
-| Step     | Status | Notes                                                                                                                                                            |
-| -------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| H1 Tasks | Done   | tasks with owner, priority, due day, estimate, repeat; create from audit issues; comments; overdue alert; Tasks pages; unit + integration + isolation + E2E pass |
+| Step                    | Status | Notes                                                                                                                                                                                                                |
+| ----------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H1 Tasks                | Done   | tasks with owner, priority, due day, estimate, repeat; create from audit issues; comments; overdue alert; Tasks pages; unit + integration + isolation + E2E pass                                                     |
+| H2 Client collaboration | Done   | client-visible tasks, approvals, client and team comments, milestones with client progress, task templates (built-in and own), report comments, client portal Tasks pages; unit + integration + isolation + E2E pass |

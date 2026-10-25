@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
-  addCommentAction,
   createTaskFromIssueAction,
   deleteTaskAction,
   updateTaskAction,
@@ -12,7 +11,6 @@ import {
 import { FormMessage } from "@/components/auth/field";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 
 /** Marks a task done from the list. */
@@ -64,38 +62,6 @@ export function TaskDelete({ agencySlug, taskId }: { agencySlug: string; taskId:
         return null;
       }}
     />
-  );
-}
-
-export function CommentForm({ agencySlug, taskId }: { agencySlug: string; taskId: string }) {
-  const router = useRouter();
-  const [body, setBody] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <form
-      noValidate
-      className="space-y-2"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        setBusy(true);
-        setError(null);
-        const result = await addCommentAction(agencySlug, taskId, { body });
-        setBusy(false);
-        if (!result.ok) return setError(result.error);
-        setBody("");
-        router.refresh();
-      }}
-    >
-      <label htmlFor="comment-body" className="text-sm font-medium">
-        Add a comment
-      </label>
-      <Textarea id="comment-body" rows={3} value={body} onChange={(e) => setBody(e.target.value)} />
-      {error ? <FormMessage kind="error">{error}</FormMessage> : null}
-      <Button type="submit" disabled={busy || !body.trim()}>
-        Post comment
-      </Button>
-    </form>
   );
 }
 

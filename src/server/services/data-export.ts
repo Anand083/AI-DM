@@ -423,6 +423,21 @@ export function exportFiles(
       rows: allRows((a) => rawDb.taskComment.findMany({ where, ...order, ...a })),
     },
     {
+      name: "milestones.jsonl",
+      model: "Milestone",
+      rows: allRows((a) => rawDb.milestone.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "task-templates.jsonl",
+      model: "TaskTemplate",
+      rows: allRows((a) => rawDb.taskTemplate.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "report-comments.jsonl",
+      model: "ReportComment",
+      rows: allRows((a) => rawDb.reportComment.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),

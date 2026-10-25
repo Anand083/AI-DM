@@ -54,6 +54,8 @@ export const taskFields = {
     .nullable(),
   recurrence: oneOf(TASK_RECURRENCES),
   projectId: z.string().min(1).max(100).nullable(),
+  clientVisible: z.boolean(),
+  milestoneId: z.string().min(1).max(100).nullable(),
 };
 
 export const createTaskSchema = z.object({
@@ -65,6 +67,8 @@ export const createTaskSchema = z.object({
   estimateMinutes: taskFields.estimateMinutes.default(null),
   recurrence: taskFields.recurrence.default("NONE"),
   projectId: taskFields.projectId.default(null),
+  clientVisible: taskFields.clientVisible.default(false),
+  milestoneId: taskFields.milestoneId.default(null),
 });
 
 export const updateTaskSchema = z
@@ -77,6 +81,8 @@ export const updateTaskSchema = z
     dueOn: taskFields.dueOn,
     estimateMinutes: taskFields.estimateMinutes,
     recurrence: taskFields.recurrence,
+    clientVisible: taskFields.clientVisible,
+    milestoneId: taskFields.milestoneId,
   })
   .partial();
 
@@ -86,6 +92,8 @@ export const commentSchema = z.object({
     .trim()
     .min(1, "Write a comment.")
     .max(2000, "Keep the comment under 2000 characters."),
+  /** Shown to the client too. Only for tasks the client can see. */
+  clientVisible: z.boolean().default(false),
 });
 
 function requireView(ctx: TenantContext): void {
@@ -109,6 +117,32 @@ async function checkAssignee(ctx: TenantContext, assigneeId: string | null): Pro
   }
 }
 
+/** A task can only be shown to clients, or linked to a milestone, when it belongs to a project. */
+async function checkClientFields(
+  ctx: TenantContext,
+  projectId: string | null,
+  fields: { clientVisible?: boolean; milestoneId?: string | null },
+): Promise<void> {
+  if (fields.clientVisible && !projectId) {
+    throw new ValidationError("Choose a project before showing the task to the client.", {
+      clientVisible: "Choose a project first.",
+    });
+  }
+  if (fields.milestoneId) {
+    const milestone = projectId
+      ? await db.milestone.findFirst({
+          where: { id: fields.milestoneId, agencyId: ctx.agencyId, projectId },
+          select: { id: true },
+        })
+      : null;
+    if (!milestone) {
+      throw new ValidationError("Choose a milestone of this project.", {
+        milestoneId: "Choose a milestone of this project.",
+      });
+    }
+  }
+}
+
 const taskSelect = {
   id: true,
   title: true,
@@ -122,6 +156,11 @@ const taskSelect = {
   sourceAuditId: true,
   sourceIssueCode: true,
   completedAt: true,
+  clientVisible: true,
+  approvalStatus: true,
+  approvalNote: true,
+  approvalAt: true,
+  milestoneId: true,
   createdAt: true,
   project: { select: { id: true, name: true } },
 } satisfies Prisma.TaskSelect;
@@ -143,6 +182,7 @@ export async function createTask(ctx: TenantContext, raw: unknown) {
   const input = parseInput(createTaskSchema, raw);
   if (input.projectId) await getProject(ctx, input.projectId);
   await checkAssignee(ctx, input.assigneeId);
+  await checkClientFields(ctx, input.projectId, input);
   const task = await db.task.create({
     data: {
       agencyId: ctx.agencyId,
@@ -154,6 +194,8 @@ export async function createTask(ctx: TenantContext, raw: unknown) {
       dueOn: input.dueOn ? dayDate(input.dueOn) : null,
       estimateMinutes: input.estimateMinutes,
       recurrence: input.recurrence,
+      clientVisible: input.clientVisible,
+      milestoneId: input.milestoneId,
       createdById: ctx.userId,
     },
     select: { id: true },
@@ -239,7 +281,14 @@ export async function getTask(ctx: TenantContext, taskId: string) {
   if (!task) throw new NotFoundError("Task not found.");
   const comments = await db.taskComment.findMany({
     where: { agencyId: ctx.agencyId, taskId },
-    select: { id: true, authorId: true, body: true, createdAt: true },
+    select: {
+      id: true,
+      authorId: true,
+      body: true,
+      clientVisible: true,
+      fromClient: true,
+      createdAt: true,
+    },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: 200,
   });
@@ -279,6 +328,7 @@ export async function updateTask(
   });
   if (!current) throw new NotFoundError("Task not found.");
   if (patch.assigneeId !== undefined) await checkAssignee(ctx, patch.assigneeId);
+  await checkClientFields(ctx, current.projectId, patch);
 
   const data: Prisma.TaskUncheckedUpdateManyInput = {};
   if (patch.title !== undefined) data.title = patch.title;
@@ -288,6 +338,12 @@ export async function updateTask(
   if (patch.dueOn !== undefined) data.dueOn = patch.dueOn ? dayDate(patch.dueOn) : null;
   if (patch.estimateMinutes !== undefined) data.estimateMinutes = patch.estimateMinutes;
   if (patch.recurrence !== undefined) data.recurrence = patch.recurrence;
+  if (patch.clientVisible !== undefined) data.clientVisible = patch.clientVisible;
+  if (patch.milestoneId !== undefined) data.milestoneId = patch.milestoneId;
+  // Hiding a task from the client also ends an open approval request.
+  if (patch.clientVisible === false && current.approvalStatus === "REQUESTED") {
+    data.approvalStatus = "NONE";
+  }
   const finishing = patch.status === "DONE" && current.status !== "DONE";
   if (patch.status !== undefined) {
     data.status = patch.status;
@@ -334,11 +390,20 @@ export async function addTaskComment(ctx: TenantContext, taskId: string, raw: un
   const input = parseInput(commentSchema, raw);
   const task = await db.task.findFirst({
     where: { id: taskId, agencyId: ctx.agencyId },
-    select: { id: true },
+    select: { id: true, clientVisible: true },
   });
   if (!task) throw new NotFoundError("Task not found.");
+  if (input.clientVisible && !task.clientVisible) {
+    throw new ValidationError("Show the task to the client before writing to them.");
+  }
   await db.taskComment.create({
-    data: { agencyId: ctx.agencyId, taskId, authorId: ctx.userId, body: input.body },
+    data: {
+      agencyId: ctx.agencyId,
+      taskId,
+      authorId: ctx.userId,
+      body: input.body,
+      clientVisible: input.clientVisible,
+    },
   });
   await logActivity({
     agencyId: ctx.agencyId,
@@ -416,4 +481,37 @@ export async function listTasks(
     })),
     total,
   };
+}
+
+/**
+ * Asks the client to approve the work in a task. The task becomes visible to the client, who sees
+ * an Approve button and a Request changes button.
+ */
+export async function requestApproval(ctx: TenantContext, taskId: string) {
+  requireEdit(ctx);
+  const task = await db.task.findFirst({
+    where: { id: taskId, agencyId: ctx.agencyId },
+    select: { id: true, projectId: true },
+  });
+  if (!task) throw new NotFoundError("Task not found.");
+  if (!task.projectId) {
+    throw new ValidationError("Choose a project before asking the client to approve.");
+  }
+  await db.task.updateMany({
+    where: { id: taskId, agencyId: ctx.agencyId },
+    data: {
+      clientVisible: true,
+      approvalStatus: "REQUESTED",
+      approvalNote: null,
+      approvalAt: null,
+      approvalById: null,
+    },
+  });
+  await logActivity({
+    agencyId: ctx.agencyId,
+    actorUserId: ctx.userId,
+    action: "task.approval_requested",
+    targetType: "Task",
+    targetId: taskId,
+  });
 }

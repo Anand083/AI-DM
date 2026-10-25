@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CommentForm, TaskDelete } from "@/components/app/task-extras";
+import { ApprovalPanel, TeamCommentForm } from "@/components/app/task-collab";
+import { TaskDelete } from "@/components/app/task-extras";
 import { TaskForm } from "@/components/app/task-form";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { NotFoundError } from "@/server/services/errors";
+import { listMilestones } from "@/server/services/milestones";
 import { getTask, listAssignees } from "@/server/services/tasks";
 
 export const metadata: Metadata = { title: "Task" };
@@ -25,6 +27,7 @@ export default async function TaskPage({
     }),
     listAssignees(ctx),
   ]);
+  const milestones = task.project ? await listMilestones(ctx, task.project.id) : [];
   const canEdit = can(ctx.role, "content.edit");
   const stamp = new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
@@ -77,6 +80,7 @@ export default async function TaskPage({
             taskId={task.id}
             assignees={assignees}
             projects={[]}
+            milestones={milestones.map((m) => ({ id: m.id, title: m.title }))}
             initial={{
               title: task.title,
               description: task.description,
@@ -86,13 +90,30 @@ export default async function TaskPage({
               dueOn: task.dueOn ?? "",
               estimateMinutes: task.estimateMinutes === null ? "" : String(task.estimateMinutes),
               recurrence: task.recurrence,
-              projectId: "",
+              projectId: task.project?.id ?? "",
+              clientVisible: task.clientVisible,
+              milestoneId: task.milestoneId ?? "",
             }}
           />
         </section>
       ) : (
         <p className="whitespace-pre-wrap text-sm">{task.description}</p>
       )}
+
+      <section aria-labelledby="approval-heading" className="space-y-3">
+        <h2 id="approval-heading" className="text-lg font-semibold">
+          Client approval
+        </h2>
+        <ApprovalPanel
+          agencySlug={agencySlug}
+          taskId={task.id}
+          status={task.approvalStatus}
+          note={task.approvalNote}
+          answeredOn={task.approvalAt ? task.approvalAt.toISOString().slice(0, 10) : null}
+          canEdit={canEdit}
+          hasProject={!!task.project}
+        />
+      </section>
 
       <section aria-labelledby="comments-heading" className="space-y-3">
         <h2 id="comments-heading" className="text-lg font-semibold">
@@ -109,6 +130,19 @@ export default async function TaskPage({
               >
                 <p className="font-medium">
                   {c.author}{" "}
+                  {c.fromClient ? (
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-800">
+                      Client
+                    </span>
+                  ) : c.clientVisible ? (
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-800">
+                      Visible to the client
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-800">
+                      Team only
+                    </span>
+                  )}{" "}
                   <span className="text-xs font-normal text-zinc-600 dark:text-zinc-400">
                     {stamp.format(c.createdAt)} UTC
                   </span>
@@ -118,7 +152,13 @@ export default async function TaskPage({
             ))}
           </ul>
         )}
-        {canEdit ? <CommentForm agencySlug={agencySlug} taskId={task.id} /> : null}
+        {canEdit ? (
+          <TeamCommentForm
+            agencySlug={agencySlug}
+            taskId={task.id}
+            clientCanSee={task.clientVisible}
+          />
+        ) : null}
       </section>
 
       {can(ctx.role, "content.delete") ? (

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { reportSchema, shareSchema } from "@/lib/schemas/report";
 import { withTenantAction } from "@/server/auth/actions";
+import { addReportComment } from "@/server/services/report-comments";
 import { createReport, deleteReport, revokeShare, shareReport } from "@/server/services/reports";
 
 const create = withTenantAction(
@@ -31,6 +32,20 @@ const remove = withTenantAction(
   { permission: "reports.create", schema: z.object({ reportId: z.string().min(1) }) },
   (ctx, input) => deleteReport(ctx, input.reportId),
 );
+
+const commentOn = withTenantAction(
+  {
+    permission: "content.edit",
+    schema: z.object({ reportId: z.string().min(1).max(100), values: z.unknown() }),
+  },
+  (ctx, input) => addReportComment(ctx, input.reportId, input.values),
+);
+
+export async function addReportCommentAction(slug: string, reportId: string, values: unknown) {
+  const result = await commentOn(slug, { reportId, values });
+  if (result.ok) revalidatePath(`/app/${slug}/reports/${reportId}`);
+  return result;
+}
 
 export async function createReportAction(slug: string, values: unknown) {
   const result = await create(slug, values);

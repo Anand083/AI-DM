@@ -199,6 +199,9 @@ model Agency {
   leads              Lead[]
   tasks              Task[]
   taskComments       TaskComment[]
+  milestones         Milestone[]
+  taskTemplates      TaskTemplate[]
+  reportComments     ReportComment[]
 
   @@index([status, deletedAt])
 }
@@ -303,6 +306,7 @@ model Project {
   reviews            Review[]
   googleConnections  GoogleConnection[]
   tasks              Task[]
+  milestones         Milestone[]
   searchConsoleDays  SearchConsoleDay[]
   ga4Days            Ga4Day[]
   aiSettings         AiSetting[]
@@ -479,6 +483,7 @@ enum AlertType {
   AI_MENTION_LOST
   NEW_REVIEW
   TASK_DUE
+  CLIENT_RESPONSE
 }
 
 enum AlertSeverity {
@@ -774,8 +779,9 @@ model Report {
   /// Set once the emails for a scheduled report were queued, so they are never sent twice.
   deliveredAt    DateTime?
 
-  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agency   Agency          @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments ReportComment[]
 
   @@unique([scheduleId, scheduledFor])
   @@index([agencyId, createdAt])
@@ -1318,6 +1324,14 @@ model Task {
   sourceIssueCode String?
   createdById     String?
   completedAt     DateTime?
+  /// Client users of the project's client can see this task.
+  clientVisible   Boolean   @default(false)
+  /// NONE, REQUESTED, APPROVED or CHANGES_REQUESTED.
+  approvalStatus  String    @default("NONE")
+  approvalNote    String?
+  approvalAt      DateTime?
+  approvalById    String?
+  milestoneId     String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -1332,15 +1346,64 @@ model Task {
 }
 
 model TaskComment {
-  id        String   @id @default(cuid(2))
-  agencyId  String
-  taskId    String
-  authorId  String?
-  body      String
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid(2))
+  agencyId      String
+  taskId        String
+  authorId      String?
+  body          String
+  /// Shown to client users too. Team comments are private unless this is set.
+  clientVisible Boolean  @default(false)
+  fromClient    Boolean  @default(false)
+  createdAt     DateTime @default(now())
 
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([agencyId, taskId, createdAt])
+}
+
+/// A goal for a project with a due day. Tasks can be linked to it, and clients see the progress.
+model Milestone {
+  id            String    @id @default(cuid(2))
+  agencyId      String
+  projectId     String
+  title         String
+  dueOn         DateTime? @db.Date
+  completedAt   DateTime?
+  clientVisible Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, projectId, dueOn])
+}
+
+/// A reusable list of tasks. `items` is [{ title, description, priority, days, estimateMinutes }].
+model TaskTemplate {
+  id        String   @id @default(cuid(2))
+  agencyId  String
+  name      String
+  items     Json
+  createdAt DateTime @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, name])
+}
+
+/// A comment on a report, from the team or from a client user.
+model ReportComment {
+  id         String   @id @default(cuid(2))
+  agencyId   String
+  reportId   String
+  authorId   String?
+  fromClient Boolean  @default(false)
+  body       String
+  createdAt  DateTime @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, reportId, createdAt])
 }

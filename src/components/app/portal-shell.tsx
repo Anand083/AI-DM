@@ -48,6 +48,9 @@ export function PortalShell({
             <Link href={base} className="underline-offset-4 hover:underline">
               Overview
             </Link>
+            <Link href={`${base}/tasks`} className="underline-offset-4 hover:underline">
+              Tasks
+            </Link>
             <Link href={`${base}/reports`} className="underline-offset-4 hover:underline">
               Reports
             </Link>
