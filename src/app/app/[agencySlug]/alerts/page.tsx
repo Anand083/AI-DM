@@ -50,6 +50,7 @@ export default async function AlertsPage({
     const project = `/app/${agencySlug}/projects/${a.projectId}`;
     if (a.type === "BACKLINKS_LOST") return `${project}/backlinks?filter=lost`;
     if (a.type === "AI_MENTION_LOST") return `${project}/ai-visibility`;
+    if (a.type === "NEW_REVIEW") return `${project}/reviews`;
     return a.type === "AUDIT_CRITICAL" && data.auditId
       ? `${project}/audit/${data.auditId}`
       : `${project}/rankings`;

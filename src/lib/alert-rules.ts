@@ -46,7 +46,13 @@ export function isEnteredTop(
 
 export type AlertDraft = {
   projectId: string | null;
-  type: "RANK_DROP" | "RANK_GAIN" | "AUDIT_CRITICAL" | "BACKLINKS_LOST" | "AI_MENTION_LOST";
+  type:
+    | "RANK_DROP"
+    | "RANK_GAIN"
+    | "AUDIT_CRITICAL"
+    | "BACKLINKS_LOST"
+    | "AI_MENTION_LOST"
+    | "NEW_REVIEW";
   severity: "INFO" | "WARNING" | "CRITICAL";
   title: string;
   body: string;
@@ -187,5 +193,41 @@ export function buildMentionLostAlert(input: {
     body: input.lost.slice(0, SHOWN).join("; ") + (n > SHOWN ? `; and ${n - SHOWN} more.` : "."),
     data: { date: input.date, total: n, lost: input.lost.slice(0, STORED) },
     dedupeKey: `ai_mention_lost:${input.projectId}:${input.date}`,
+  };
+}
+
+/** One alert for the new reviews found by a check. Reviews with 1 or 2 stars make it a warning. */
+export function buildReviewAlert(input: {
+  projectId: string;
+  projectName: string;
+  date: string;
+  reviews: { author: string; rating: number; text: string }[];
+}): AlertDraft | null {
+  const n = input.reviews.length;
+  if (n === 0) return null;
+  const low = input.reviews.filter((r) => r.rating <= 2);
+  const worst = [...input.reviews].sort((a, b) => a.rating - b.rating)[0]!;
+  const star = (r: number) => `${r} ${r === 1 ? "star" : "stars"}`;
+  return {
+    projectId: input.projectId,
+    type: "NEW_REVIEW",
+    severity: low.length > 0 ? "WARNING" : "INFO",
+    title:
+      low.length > 0
+        ? `${plural(low.length, "new low review", "new low reviews")} for ${input.projectName}`
+        : `${plural(n, "new review", "new reviews")} for ${input.projectName}`,
+    body:
+      low.length > 0
+        ? `${worst.author} gave ${star(worst.rating)}: "${worst.text.slice(0, 140)}"${n > 1 ? ` (${plural(n, "new review", "new reviews")} in total).` : "."}`
+        : `${plural(n, "new review", "new reviews")} since the last check. The newest is from ${input.reviews[0]!.author}.`,
+    data: {
+      date: input.date,
+      total: n,
+      low: low.length,
+      reviews: input.reviews
+        .slice(0, STORED)
+        .map((r) => ({ author: r.author, rating: r.rating, text: r.text.slice(0, 300) })),
+    },
+    dedupeKey: `new_review:${input.projectId}:${input.date}`,
   };
 }

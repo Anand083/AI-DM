@@ -1,5 +1,6 @@
 import { brandCssVars, initials } from "@/lib/brand";
 import { formatChange, formatPosition } from "@/lib/rank-math";
+import { describeReviews } from "@/lib/report-reviews";
 import { describeAi } from "@/lib/report-ai";
 import { describeBacklinks } from "@/lib/report-backlinks";
 import type { ReportBacklinkRow, ReportKeywordRow, ReportModel } from "@/lib/report-model";
@@ -387,6 +388,35 @@ export function ReportView({
             </>
           ) : (
             <p className="text-sm text-zinc-600">No AI visibility check has been done yet.</p>
+          )}
+        </Section>
+      ) : null}
+
+      {has("reviews") ? (
+        <Section title="Local reviews">
+          {model.reviews ? (
+            <>
+              {describeReviews(model.reviews).map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+              {model.reviews.latest.length > 0 ? (
+                <ul aria-label="Newest reviews" className="space-y-2">
+                  {model.reviews.latest.map((r) => (
+                    <li
+                      key={`${r.author}-${r.publishedAt}-${r.text}`}
+                      className="rounded-lg border border-zinc-200 p-3 text-sm"
+                    >
+                      <p className="font-medium">
+                        {r.author}, {r.rating} {r.rating === 1 ? "star" : "stars"}
+                      </p>
+                      <p className="mt-1 text-zinc-700">{r.text}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm text-zinc-600">No review check has been done yet.</p>
           )}
         </Section>
       ) : null}

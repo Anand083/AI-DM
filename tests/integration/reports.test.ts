@@ -412,6 +412,82 @@ describe("generating a report", () => {
     expect((await getReport(owner.ctx, without.id)).model?.ai).toBeNull();
   });
 
+  it("adds the local reviews section from the last check in the period", async () => {
+    const { owner, project } = await setup();
+    const agencyId = owner.ctx.agencyId;
+    await prisma.localBusiness.create({
+      data: { agencyId, projectId: project.id, name: "Acme Dental Clinic", city: "Austin" },
+    });
+    const snap = (takenOn: string, ratingTenths: number, reviewCount: number) =>
+      prisma.reviewSnapshot.create({
+        data: {
+          agencyId,
+          projectId: project.id,
+          takenOn: new Date(`${takenOn}T00:00:00Z`),
+          ratingTenths,
+          reviewCount,
+          newReviews: 0,
+        },
+      });
+    await snap("2026-02-27", 41, 100);
+    await snap("2026-03-28", 43, 106);
+    // After the period: must not count.
+    await snap("2026-04-08", 20, 999);
+    const review = (n: number, rating: number, publishedAt: string) =>
+      prisma.review.create({
+        data: {
+          agencyId,
+          projectId: project.id,
+          key: `k${n}`,
+          author: `Reviewer ${n}`,
+          rating,
+          text: `Review text ${n}`,
+          publishedAt: new Date(`${publishedAt}T00:00:00Z`),
+          firstSeenOn: new Date("2026-03-28T00:00:00Z"),
+        },
+      });
+    await review(1, 5, "2026-03-05");
+    await review(2, 1, "2026-03-15");
+    await review(3, 4, "2026-02-10");
+    await review(4, 2, "2026-04-03");
+
+    const created = await createReport(
+      owner.ctx,
+      { ...base, projectId: project.id, sections: [...base.sections, "reviews"] },
+      { now, enqueue },
+    );
+    await generateReport(agencyId, created.id);
+    const model = (await getReport(owner.ctx, created.id)).model;
+    expect(model?.reviews).toMatchObject({
+      businessName: "Acme Dental Clinic",
+      city: "Austin",
+      checkedOn: "2026-03-28",
+      ratingTenths: 43,
+      reviewCount: 106,
+      ratingChangeTenths: 2,
+      newInPeriod: 2,
+      lowInPeriod: 1,
+    });
+    expect(model?.reviews?.latest.map((r) => r.author)).toEqual([
+      "Reviewer 2",
+      "Reviewer 1",
+      "Reviewer 3",
+    ]);
+    const { text } = readPdf((await readReportPdf(owner.ctx, created.id))!.bytes);
+    expect(text).toContain("Local reviews");
+    expect(text).toContain("Acme Dental Clinic");
+    expect(text).toContain("Review text 2");
+    expect(text).not.toContain(getEnv().APP_NAME);
+
+    const without = await createReport(
+      owner.ctx,
+      { ...base, projectId: project.id },
+      { now, enqueue },
+    );
+    await generateReport(agencyId, without.id);
+    expect((await getReport(owner.ctx, without.id)).model?.reviews).toBeNull();
+  });
+
   it("works for a project with no keywords and no audit", async () => {
     const { owner } = await setup();
     const client = await prisma.client.create({

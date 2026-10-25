@@ -358,6 +358,23 @@ describe("backlinks, ranked keywords, AI and reviews", () => {
     expect(data.recent.length).toBeGreaterThan(0);
     for (const r of data.recent) expect(r.rating).toBeGreaterThanOrEqual(1);
   });
+
+  it("keeps five reviews fixed and brings one new review each week", async () => {
+    const at = (iso: string) => new MockSeoProvider({ now: () => new Date(iso) });
+    const input = { businessName: "Bright Dental", locationCode: 2840 };
+    const key = (r: { author: string; rating: number; text: string }) =>
+      `${r.author}|${r.rating}|${r.text}`;
+    const first = (await at("2026-03-03T10:00:00Z").getReviews(input)).data;
+    const sameWeek = (await at("2026-03-04T10:00:00Z").getReviews(input)).data;
+    const nextWeek = (await at("2026-03-11T10:00:00Z").getReviews(input)).data;
+
+    expect(first.recent).toHaveLength(8);
+    expect(sameWeek.recent.map(key)).toEqual(first.recent.map(key));
+    const known = new Set(first.recent.map(key));
+    expect(nextWeek.recent.filter((r) => !known.has(key(r)))).toHaveLength(1);
+    expect(nextWeek.rating).toBeGreaterThanOrEqual(1);
+    expect(nextWeek.rating).toBeLessThanOrEqual(5);
+  });
 });
 
 describe("cost estimates", () => {

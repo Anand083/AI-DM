@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { assembleReport } from "@/lib/report-assembler";
 import type { ReportInput } from "@/lib/report-model";
-import { buildSummary } from "./mock";
+import { buildReply, buildSummary } from "./mock";
 
 const base: ReportInput = {
   title: "T",
@@ -51,5 +51,30 @@ describe("buildSummary", () => {
     const model = assembleReport(base);
     expect(buildSummary(model)).toBe(buildSummary(model));
     expect(buildSummary(model)).not.toContain("—");
+  });
+});
+
+describe("buildReply", () => {
+  const review = { businessName: "Bright Dental", reviewerName: "Sam", text: "ok" };
+
+  it("thanks happy customers", () => {
+    const text = buildReply({ ...review, rating: 5 });
+    expect(text).toContain("Hi Sam, thank you");
+    expect(text).toContain("Bright Dental");
+  });
+
+  it("apologises to unhappy customers and asks them to get in touch", () => {
+    const text = buildReply({ ...review, rating: 1 });
+    expect(text).toContain("sorry");
+    expect(text).toContain("contact us directly");
+  });
+
+  it("asks for ideas on a 3 star review, and copes with a missing name", () => {
+    expect(buildReply({ ...review, rating: 3, reviewerName: " " })).toContain("Hi there,");
+    expect(buildReply({ ...review, rating: 3 })).toContain("what we could improve");
+  });
+
+  it("gives the same reply for the same review", () => {
+    expect(buildReply({ ...review, rating: 2 })).toBe(buildReply({ ...review, rating: 2 }));
   });
 });

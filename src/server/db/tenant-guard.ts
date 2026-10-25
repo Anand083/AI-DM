@@ -42,6 +42,9 @@ export const TENANT_MODELS = new Set([
   "AiPrompt",
   "AiSetting",
   "AiVisibilityCheck",
+  "LocalBusiness",
+  "ReviewSnapshot",
+  "Review",
 ]);
 
 const WHERE_OPERATIONS = new Set([

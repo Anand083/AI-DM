@@ -174,6 +174,9 @@ model Agency {
   competitorKeywords CompetitorKeyword[]
   aiPrompts          AiPrompt[]
   aiChecks           AiVisibilityCheck[]
+  localBusinesses    LocalBusiness[]
+  reviewSnapshots    ReviewSnapshot[]
+  reviews            Review[]
   aiSettings         AiSetting[]
   backlinkSnapshots  BacklinkSnapshot[]
   keywordLists       KeywordList[]
@@ -289,6 +292,9 @@ model Project {
   competitorKeywords CompetitorKeyword[]
   aiPrompts          AiPrompt[]
   aiChecks           AiVisibilityCheck[]
+  localBusinesses    LocalBusiness[]
+  reviewSnapshots    ReviewSnapshot[]
+  reviews            Review[]
   aiSettings         AiSetting[]
   backlinkSnapshots  BacklinkSnapshot[]
   reports            Report[]
@@ -1111,4 +1117,68 @@ model AiVisibilityCheck {
 
   @@unique([promptId, engine, checkedOn])
   @@index([agencyId, projectId, checkedOn])
+}
+
+// ---------------------------------------------------------------------------
+// Local SEO and reviews
+// ---------------------------------------------------------------------------
+
+/// The business a project's review tracking looks up. One per project.
+model LocalBusiness {
+  id            String    @id @default(cuid(2))
+  agencyId      String
+  projectId     String
+  name          String
+  /// Town or city, for people to read. The provider search uses the project's country.
+  city          String?
+  createdAt     DateTime  @default(now())
+  /// UTC day of the last review check.
+  lastCheckedOn DateTime? @db.Date
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId])
+  @@index([agencyId])
+}
+
+/// The rating and number of reviews on one day. The rating is stored in tenths (43 means 4.3).
+model ReviewSnapshot {
+  id           String   @id @default(cuid(2))
+  agencyId     String
+  projectId    String
+  takenOn      DateTime @db.Date
+  ratingTenths Int
+  reviewCount  Int
+  newReviews   Int
+  createdAt    DateTime @default(now())
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, takenOn])
+  @@index([agencyId, projectId, takenOn])
+}
+
+/// One review of the business. `key` identifies it (author, stars and text), so it is saved once.
+model Review {
+  id             String   @id @default(cuid(2))
+  agencyId       String
+  projectId      String
+  key            String
+  author         String
+  rating         Int
+  text           String
+  publishedAt    DateTime @db.Date
+  /// UTC day we first saw it.
+  firstSeenOn    DateTime @db.Date
+  suggestedReply String?
+  createdAt      DateTime @default(now())
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, key])
+  @@index([agencyId, projectId, publishedAt])
+  @@index([agencyId, projectId, rating, publishedAt])
 }

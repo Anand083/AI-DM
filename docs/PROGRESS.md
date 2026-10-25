@@ -36,5 +36,6 @@
 | 27 Backlink monitor | Done | tables + weekly snapshot job (modules queue), summary, history, filters (active, new, lost, suspicious), CSV, loss alert, report section, plan-aware window; unit + integration + isolation + E2E pass |
 | 28 Competitor analysis | Done | up to 5 competitors per project, free ranking comparison from saved top 10 results, keyword gap job in the worker (cached 7 days), add to rank tracker, report section; unit + integration + isolation + E2E pass |
 | 29 AI visibility tracker | Done | questions, brand and engine settings, weekly worker check with plan limit handling, mention rate, share of voice, cited pages, latest answers, mention-lost alert, report section; unit + integration + isolation + E2E pass |
+| 30 Local SEO and reviews | Done | link a business, daily worker check, rating history, star counts, review list with suggested replies (summary provider), new-review alert (1 and 2 stars warn), mock reviews that change weekly, report section; unit + integration + isolation + E2E pass |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).

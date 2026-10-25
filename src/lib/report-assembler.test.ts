@@ -206,3 +206,21 @@ describe("AI visibility in the report", () => {
     expect(assembleReport(input({ ai })).ai).toEqual(ai);
   });
 });
+
+describe("reviews in the report", () => {
+  it("is null when the loader gave none, and passed through when given", () => {
+    expect(assembleReport(input()).reviews).toBeNull();
+    const reviews = {
+      businessName: "Bright Dental",
+      city: null,
+      checkedOn: "2026-03-30",
+      ratingTenths: 43,
+      reviewCount: 10,
+      ratingChangeTenths: null,
+      newInPeriod: 0,
+      lowInPeriod: 0,
+      latest: [],
+    };
+    expect(assembleReport(input({ reviews })).reviews).toEqual(reviews);
+  });
+});

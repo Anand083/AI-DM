@@ -11,6 +11,7 @@ import {
   type ReportBacklinkRow,
   type ReportBacklinksInput,
   type ReportCompetitorsInput,
+  type ReportReviewsInput,
   type ReportInput,
   type ReportKeywordRow,
   type ReportModel,
@@ -95,7 +96,62 @@ export async function loadReportInput(agencyId: string, reportId: string): Promi
     ai: (report.sections as string[]).includes("ai")
       ? await loadAiVisibility(agencyId, report.projectId, report.periodEnd)
       : null,
+    reviews: (report.sections as string[]).includes("reviews")
+      ? await loadReviews(agencyId, report.projectId, report.periodStart, report.periodEnd)
+      : null,
     generatedOn: day(new Date()),
+  };
+}
+
+/** The business rating from the last check up to the end of the period, and the period's reviews. */
+async function loadReviews(
+  agencyId: string,
+  projectId: string,
+  periodStart: Date,
+  periodEnd: Date,
+): Promise<ReportReviewsInput | null> {
+  const business = await db.localBusiness.findFirst({
+    where: { agencyId, projectId },
+    select: { name: true, city: true },
+  });
+  if (!business) return null;
+  const latest = await db.reviewSnapshot.findFirst({
+    where: { agencyId, projectId, takenOn: { lte: periodEnd } },
+    orderBy: { takenOn: "desc" },
+  });
+  if (!latest) return null;
+  const before = await db.reviewSnapshot.findFirst({
+    where: { agencyId, projectId, takenOn: { lte: periodStart } },
+    orderBy: { takenOn: "desc" },
+    select: { ratingTenths: true, takenOn: true },
+  });
+  const inPeriod = { gt: periodStart, lte: periodEnd };
+  const [newInPeriod, lowInPeriod, newest] = await Promise.all([
+    db.review.count({ where: { agencyId, projectId, publishedAt: inPeriod } }),
+    db.review.count({ where: { agencyId, projectId, publishedAt: inPeriod, rating: { lte: 2 } } }),
+    db.review.findMany({
+      where: { agencyId, projectId, publishedAt: { lte: periodEnd } },
+      select: { author: true, rating: true, text: true, publishedAt: true },
+      orderBy: [{ publishedAt: "desc" }, { id: "asc" }],
+      take: 3,
+    }),
+  ]);
+  return {
+    businessName: business.name,
+    city: business.city,
+    checkedOn: day(latest.takenOn),
+    ratingTenths: latest.ratingTenths,
+    reviewCount: latest.reviewCount,
+    ratingChangeTenths:
+      before && before.takenOn < latest.takenOn ? latest.ratingTenths - before.ratingTenths : null,
+    newInPeriod,
+    lowInPeriod,
+    latest: newest.map((r) => ({
+      author: r.author,
+      rating: r.rating,
+      text: r.text,
+      publishedAt: day(r.publishedAt),
+    })),
   };
 }
 

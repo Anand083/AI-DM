@@ -2,6 +2,7 @@ import "server-only";
 import { DEFAULT_ACCENT, DEFAULT_PRIMARY, initials } from "@/lib/brand";
 import { normalizeHex, readableTextOn } from "@/lib/color";
 import { formatChange, formatPosition } from "@/lib/rank-math";
+import { describeReviews } from "@/lib/report-reviews";
 import { describeAi } from "@/lib/report-ai";
 import { describeBacklinks } from "@/lib/report-backlinks";
 import type { ReportBacklinkRow, ReportKeywordRow, ReportModel } from "@/lib/report-model";
@@ -370,6 +371,35 @@ function createRenderer(rp: ReactPdf) {
                 </View>
               ) : (
                 <Text style={s.empty}>No AI visibility check has been done yet.</Text>
+              )}
+            </View>
+          ) : null}
+
+          {has("reviews") ? (
+            <View>
+              <Text style={s.h2}>Local reviews</Text>
+              {model.reviews ? (
+                <View>
+                  {describeReviews(model.reviews).map((line) => (
+                    <Text key={line} style={[s.p, { marginBottom: 4 }]}>
+                      {line}
+                    </Text>
+                  ))}
+                  {model.reviews.latest.map((r) => (
+                    <View
+                      key={`${r.author}-${r.publishedAt}-${r.text}`}
+                      style={{ marginTop: 4 }}
+                      wrap={false}
+                    >
+                      <Text style={[s.p, { fontWeight: 700 }]}>
+                        {r.author}, {r.rating} {r.rating === 1 ? "star" : "stars"}
+                      </Text>
+                      <Text style={s.p}>{r.text}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={s.empty}>No review check has been done yet.</Text>
               )}
             </View>
           ) : null}

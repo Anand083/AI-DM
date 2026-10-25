@@ -12,6 +12,7 @@ export const REPORT_SECTIONS = [
   { key: "backlinks", label: "Backlinks" },
   { key: "competitors", label: "Competitors" },
   { key: "ai", label: "AI visibility" },
+  { key: "reviews", label: "Local reviews" },
   { key: "notes", label: "Notes" },
 ] as const;
 
@@ -109,6 +110,22 @@ export type ReportAiInput = {
   prompts: { text: string; mentioned: number; engines: number }[];
 };
 
+export type ReportReviewsInput = {
+  businessName: string;
+  city: string | null;
+  checkedOn: string;
+  /** Average rating in tenths (43 is 4.3). */
+  ratingTenths: number;
+  reviewCount: number;
+  /** Change of the rating since the start of the period, in tenths. Null without an earlier check. */
+  ratingChangeTenths: number | null;
+  /** Reviews published during the period, and how many of them have 1 or 2 stars. */
+  newInPeriod: number;
+  lowInPeriod: number;
+  /** The newest reviews, at most 3. */
+  latest: { author: string; rating: number; text: string; publishedAt: string }[];
+};
+
 export type ReportInput = {
   title: string;
   projectName: string;
@@ -123,6 +140,7 @@ export type ReportInput = {
   backlinks?: ReportBacklinksInput | null;
   competitors?: ReportCompetitorsInput | null;
   ai?: ReportAiInput | null;
+  reviews?: ReportReviewsInput | null;
   generatedOn: string;
 };
 
@@ -161,6 +179,8 @@ export type ReportModel = {
   competitors?: ReportCompetitorsInput | null;
   /** Missing in reports made before the AI visibility section existed. */
   ai?: ReportAiInput | null;
+  /** Missing in reports made before the reviews section existed. */
+  reviews?: ReportReviewsInput | null;
   issues: ReportAuditInput["issues"];
   opportunities: ReportKeywordRow[];
   notes: string | null;

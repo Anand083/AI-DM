@@ -3,6 +3,7 @@ import {
   buildAuditAlert,
   buildBacklinkLossAlert,
   buildMentionLostAlert,
+  buildReviewAlert,
   buildRankAlerts,
   DEFAULT_ALERT_SETTINGS as S,
   isEnteredTop,
@@ -186,5 +187,41 @@ describe("buildMentionLostAlert", () => {
       dedupeKey: "ai_mention_lost:p1:2026-03-10",
     });
     expect(buildMentionLostAlert({ ...base, lost: ["a", "b", "c"] })?.severity).toBe("CRITICAL");
+  });
+});
+
+describe("buildReviewAlert", () => {
+  const base = { projectId: "p1", projectName: "Shop", date: "2026-03-10" };
+
+  it("gives nothing without new reviews", () => {
+    expect(buildReviewAlert({ ...base, reviews: [] })).toBeNull();
+  });
+
+  it("is informational for good reviews", () => {
+    const alert = buildReviewAlert({
+      ...base,
+      reviews: [
+        { author: "Sam", rating: 5, text: "Great" },
+        { author: "Kim", rating: 4, text: "Good" },
+      ],
+    });
+    expect(alert).toMatchObject({
+      type: "NEW_REVIEW",
+      severity: "INFO",
+      title: "2 new reviews for Shop",
+      dedupeKey: "new_review:p1:2026-03-10",
+    });
+  });
+
+  it("warns about 1 and 2 star reviews and quotes the worst one", () => {
+    const alert = buildReviewAlert({
+      ...base,
+      reviews: [
+        { author: "Sam", rating: 5, text: "Great" },
+        { author: "Lee", rating: 1, text: "Terrible wait" },
+      ],
+    });
+    expect(alert).toMatchObject({ severity: "WARNING", title: "1 new low review for Shop" });
+    expect(alert?.body).toBe('Lee gave 1 star: "Terrible wait" (2 new reviews in total).');
   });
 });

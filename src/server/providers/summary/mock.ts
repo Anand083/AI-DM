@@ -1,5 +1,5 @@
 import { formatPosition } from "@/lib/rank-math";
-import type { SummaryInput, SummaryProvider } from "./types";
+import type { ReplyInput, SummaryInput, SummaryProvider } from "./types";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -13,6 +13,22 @@ export class MockSummaryProvider implements SummaryProvider {
   async write(input: SummaryInput): Promise<string> {
     return buildSummary(input);
   }
+
+  async suggestReply(input: ReplyInput): Promise<string> {
+    return buildReply(input);
+  }
+}
+
+/** A polite reply that fits the number of stars. Same text for the same review. */
+export function buildReply(input: ReplyInput): string {
+  const name = input.reviewerName.trim() || "there";
+  if (input.rating >= 4) {
+    return `Hi ${name}, thank you for the kind words! We are glad you had a good experience with ${input.businessName} and we hope to see you again soon.`;
+  }
+  if (input.rating === 3) {
+    return `Hi ${name}, thank you for your feedback. We are glad part of your visit went well and we would like to do better. Please contact us and tell us what we could improve.`;
+  }
+  return `Hi ${name}, we are sorry that your experience with ${input.businessName} did not meet your expectations. We would like to put this right. Please contact us directly so we can talk about what happened.`;
 }
 
 export function buildSummary(input: SummaryInput): string {
