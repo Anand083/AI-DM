@@ -59,6 +59,8 @@ const baseSchema = z.object({
 
   STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_DIR: z.string().default("./storage"),
+  /** Folder with the nightly database dumps. When set (and S3 is set up) the worker uploads them. */
+  BACKUP_DIR: optionalString,
   S3_BUCKET: optionalString,
   AWS_REGION: optionalString,
 

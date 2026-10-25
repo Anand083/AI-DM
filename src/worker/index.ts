@@ -37,6 +37,19 @@ async function main(): Promise<void> {
     { pattern: "0 2 * * *", tz: "UTC" },
     { name: "purge:expired", opts: { attempts: 1 } },
   );
+  // Copies the newest nightly dump to S3. Only when a backup folder and a bucket are set.
+  if (env.BACKUP_DIR && env.S3_BUCKET && env.AWS_REGION) {
+    await maintenance.upsertJobScheduler(
+      "backup-upload",
+      { pattern: "30 2 * * *", tz: "UTC" },
+      {
+        name: "backup:upload",
+        opts: { attempts: 3, backoff: { type: "exponential", delay: 60_000 } },
+      },
+    );
+  } else {
+    logger.warn("backup upload is off (set BACKUP_DIR, S3_BUCKET and AWS_REGION to turn it on)");
+  }
   // Poll mode asks DataForSEO every 5 minutes. With callbacks the poll is only a safety net.
   await getQueue("provider-tasks").upsertJobScheduler(
     "provider-task-poll",

@@ -30,6 +30,8 @@ import { buildAgencyExport, purgeExpiredExports } from "@/server/services/data-e
 import { generateReport } from "@/server/services/report-generator";
 import { runDigestScheduler, sendDigest } from "@/server/services/alert-digest";
 import type { JobProcessors } from "@/server/jobs/runtime";
+import { uploadLatestBackup } from "@/server/jobs/system/backup-upload";
+import { S3StorageProvider } from "@/server/providers/storage/s3";
 import { purgeExpired } from "@/server/jobs/system/purge";
 import { runBillingTick } from "@/server/jobs/system/billing-tick";
 import { runReportDispatcher } from "@/server/jobs/system/report-dispatcher";
@@ -85,6 +87,16 @@ export const processors: JobProcessors = {
       case "purge:expired": {
         const result = { ...(await purgeExpired(rawDb)), exports: await purgeExpiredExports() };
         logger.info(result, "purged expired data");
+        return result;
+      }
+      case "backup:upload": {
+        const env = getEnv();
+        const result = await uploadLatestBackup({
+          db: rawDb,
+          dir: env.BACKUP_DIR || undefined,
+          storage: new S3StorageProvider(env.S3_BUCKET, env.AWS_REGION),
+        });
+        logger.info(result, "backup upload");
         return result;
       }
       default:

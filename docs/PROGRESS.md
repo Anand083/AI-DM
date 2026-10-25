@@ -32,5 +32,6 @@
 | 23 Production Docker | Done | web and worker images, prod compose (caddy, postgres, redis, migrate + seed, backup, optional mailpit), prod env checks, smoke test script and browser check; stack runs locally and data survives a restart |
 | 24 CI/CD | Done (pipeline untested) | CI builds and pushes web and worker images to GHCR (SHA + latest) after all checks; manual Deploy workflow over SSH; `scripts/deploy.sh` migrates, smoke tests and rolls back on failure (rollback proven locally); docs/DEPLOY.md lists the GitHub secrets. Real run needs the server from Step 25. |
 | 25 AWS server setup | Scripts done, WAITING FOR HUMAN | `scripts/server-setup.sh` and `docs/SERVER-SETUP.md` written. You must do the AWS console steps, run the script, add GitHub secrets, run Deploy, then check the smoke test and a reboot. |
+| 26 Backups and operations | Done (S3 upload and monitor need the server) | S3 upload job for the newest dump, restore and restore-test scripts (restore verified locally, row counts match), docs/OPERATIONS.md. Sentry skipped (package not approved). |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).
