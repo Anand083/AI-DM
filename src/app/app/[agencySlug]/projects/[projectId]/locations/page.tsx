@@ -3,6 +3,8 @@ import { LocationForm } from "@/components/app/location-form";
 import { CheckListingsButton, CheckLocalRanksButton } from "@/components/app/location-job-buttons";
 import { Badge } from "@/components/ui/badge";
 import { MAX_LOCATIONS } from "@/lib/local";
+import { FeatureNotice } from "@/components/app/feature-notice";
+import { featureUnavailable } from "@/server/services/feature-status";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { getLocalOverview } from "@/server/services/locations";
@@ -33,8 +35,10 @@ export default async function LocationsPage({
       .sort()
       .at(-1) ?? null;
 
+  const unavailable = featureUnavailable("listings");
   return (
     <div className="space-y-8">
+      {unavailable ? <FeatureNotice message={unavailable} /> : null}
       <div>
         <h2 className="text-lg font-semibold">Locations</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">

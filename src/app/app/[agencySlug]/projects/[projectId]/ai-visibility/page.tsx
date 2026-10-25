@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { engineLabel, MAX_AI_PROMPTS, sortByEngine } from "@/lib/ai-visibility";
 import { getAiInsights } from "@/server/services/ai-insights";
+import { FeatureNotice } from "@/components/app/feature-notice";
+import { featureUnavailable } from "@/server/services/feature-status";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import {
@@ -51,8 +53,10 @@ export default async function AiVisibilityPage({
   const rateChange =
     overview.previousRate === null || !latest ? null : latest.mentionRate - overview.previousRate;
 
+  const unavailable = featureUnavailable("ai");
   return (
     <div className="space-y-8">
+      {unavailable ? <FeatureNotice message={unavailable} /> : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">AI visibility</h2>

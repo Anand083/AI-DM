@@ -1,4 +1,5 @@
 import "server-only";
+import { assertFeatureAvailable } from "./feature-status";
 import { z } from "zod";
 import {
   LISTING_SOURCES,
@@ -130,6 +131,7 @@ async function requestJob(
   now: Date,
 ) {
   if (!can(ctx.role, "tools.run")) throw new ForbiddenError();
+  if (kind === "listings") assertFeatureAvailable("listings");
   await getProject(ctx, projectId);
   const base = { agencyId: ctx.agencyId, projectId };
   if ((await db.location.count({ where: base })) === 0) {

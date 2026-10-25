@@ -1,4 +1,5 @@
 import "server-only";
+import { assertFeatureAvailable } from "./feature-status";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { ratingChange, starCounts } from "@/lib/reviews";
@@ -95,6 +96,7 @@ export async function unlinkBusiness(ctx: TenantContext, projectId: string) {
 /** Asks the worker to read the reviews now. */
 export async function requestReviewCheck(ctx: TenantContext, projectId: string) {
   if (!can(ctx.role, "tools.run")) throw new ForbiddenError();
+  assertFeatureAvailable("reviews");
   await getProject(ctx, projectId);
   const business = await db.localBusiness.findFirst({
     where: { agencyId: ctx.agencyId, projectId },

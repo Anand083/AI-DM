@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { formatTenths } from "@/lib/reviews";
+import { FeatureNotice } from "@/components/app/feature-notice";
+import { featureUnavailable } from "@/server/services/feature-status";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import {
@@ -55,8 +57,10 @@ export default async function ReviewsPage({
   const { latest, change } = overview;
   const lowCount = overview.stars[0] + overview.stars[1];
 
+  const unavailable = featureUnavailable("reviews");
   return (
     <div className="space-y-8">
+      {unavailable ? <FeatureNotice message={unavailable} /> : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Local SEO and reviews</h2>

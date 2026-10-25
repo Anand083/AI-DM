@@ -1,7 +1,7 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { ProviderError } from "../errors";
+import { FeatureUnavailableError, ProviderError } from "../errors";
 import { callbackFields } from "./callbacks";
 import { assertTaskOk, DataForSeoClient, errorForStatus } from "./client";
 import { DataForSeoProvider } from "./index";
@@ -282,8 +282,9 @@ describe("DataForSeoProvider.testConnection", () => {
     expect(await p.listReadyTaskIds("audit")).toEqual([]);
   });
 
-  it("still refuses methods that are built in Step 8c", () => {
-    expect(() => provider().getRankings({} as never)).toThrow(/not implemented/i);
+  it("says so plainly for features DataForSEO does not cover yet", () => {
+    expect(() => provider().getReviews({} as never)).toThrow(/not available with DataForSEO/i);
+    expect(() => provider().checkAiVisibility({} as never)).toThrow(FeatureUnavailableError);
   });
 });
 

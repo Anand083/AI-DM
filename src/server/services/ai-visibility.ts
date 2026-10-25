@@ -1,4 +1,5 @@
 import "server-only";
+import { assertFeatureAvailable } from "./feature-status";
 import { z } from "zod";
 import {
   AI_ENGINES,
@@ -165,6 +166,7 @@ export async function removePrompt(ctx: TenantContext, projectId: string, prompt
 /** Asks the worker to check the prompts now. The checks use the plan's AI check allowance. */
 export async function requestAiCheck(ctx: TenantContext, projectId: string) {
   if (!can(ctx.role, "tools.run")) throw new ForbiddenError();
+  assertFeatureAvailable("ai");
   await getProject(ctx, projectId);
   const prompts = await db.aiPrompt.count({ where: { agencyId: ctx.agencyId, projectId } });
   if (prompts === 0) throw new ValidationError("Add at least one question first.");

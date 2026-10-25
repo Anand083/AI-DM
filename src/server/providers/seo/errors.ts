@@ -17,3 +17,17 @@ export class NotImplementedError extends Error {
     this.name = "NotImplementedError";
   }
 }
+
+/**
+ * A feature the chosen data source cannot give (yet). The message is plain English and safe to
+ * show. Callers treat it like NotImplementedError: no retry, no charge.
+ */
+export class FeatureUnavailableError extends NotImplementedError {
+  readonly userMessage: string;
+  constructor(feature: string, source = "your data source") {
+    super(feature);
+    this.userMessage = `${feature} is not available with ${source} yet.`;
+    this.message = this.userMessage;
+    this.name = "FeatureUnavailableError";
+  }
+}
