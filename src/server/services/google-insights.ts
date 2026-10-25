@@ -1,14 +1,21 @@
 import "server-only";
+import { z } from "zod";
 import { addDays } from "@/lib/google-metrics";
 import type { DimensionKey } from "@/lib/google-insights";
 import { can } from "@/server/auth/permissions";
 import type { TenantContext } from "@/server/auth/tenant-context";
 import { db } from "@/server/db/client";
 import { loadAnnotations } from "./annotations";
-import { ForbiddenError } from "./errors";
+import { cleanInspectionUrl } from "@/lib/url-inspection";
+import { enqueueUrlInspection } from "@/server/jobs/enqueue";
+import { ForbiddenError, LimitExceededError, ValidationError } from "./errors";
+import { parseInput } from "./validation";
 import { paging, type Page } from "./paging";
 import { getProject } from "./projects";
 
+const inspectionSchema = z.object({
+  url: z.string().trim().min(1, "Enter a page address.").max(2000),
+});
 const day = (d: Date) => d.toISOString().slice(0, 10);
 const dayDate = (value: string) => new Date(`${value}T00:00:00Z`);
 
@@ -161,4 +168,73 @@ export async function getCombinedDaily(
     });
   }
   return out;
+}
+
+const INSPECTIONS_PER_DAY = 20;
+
+/** Asks the worker to check how Google sees one page. At most 20 pages a day per project. */
+export async function requestUrlInspection(
+  ctx: TenantContext,
+  projectId: string,
+  rawUrl: unknown,
+  now = new Date(),
+) {
+  if (!can(ctx.role, "tools.run")) throw new ForbiddenError();
+  const project = await getProject(ctx, projectId);
+  const input = parseInput(inspectionSchema, { url: rawUrl });
+  const url = cleanInspectionUrl(input.url, project.domain);
+  if (!url) {
+    throw new ValidationError("Enter a full address of a page on this website.", {
+      url: "Use an address on this website, starting with https://.",
+    });
+  }
+  const connection = await db.googleConnection.findFirst({
+    where: { agencyId: ctx.agencyId, projectId },
+    select: { status: true, gscSite: true },
+  });
+  if (!connection) throw new ValidationError("Connect Google first.");
+  if (connection.status !== "ACTIVE") throw new ValidationError("Connect Google again first.");
+  if (!connection.gscSite) throw new ValidationError("Choose a Search Console site first.");
+  const startOfDay = new Date(`${day(now)}T00:00:00Z`);
+  const today = await db.urlInspection.count({
+    where: { agencyId: ctx.agencyId, projectId, inspectedAt: { gte: startOfDay } },
+  });
+  if (today >= INSPECTIONS_PER_DAY) {
+    throw new LimitExceededError(
+      `You can check up to ${INSPECTIONS_PER_DAY} pages a day for each project. Try again tomorrow.`,
+    );
+  }
+  const queued = await enqueueUrlInspection({ agencyId: ctx.agencyId, projectId, url });
+  return { queued, url };
+}
+
+/** The newest Google answers, most recent first. */
+export async function listUrlInspections(ctx: TenantContext, projectId: string, p: Page = {}) {
+  requireView(ctx);
+  await getProject(ctx, projectId);
+  const { take, skip } = paging({ pageSize: 10, ...p });
+  const where = { agencyId: ctx.agencyId, projectId };
+  const [rows, total] = await Promise.all([
+    db.urlInspection.findMany({
+      where,
+      select: {
+        url: true,
+        inspectedAt: true,
+        verdict: true,
+        coverageState: true,
+        robotsTxtState: true,
+        lastCrawlTime: true,
+        googleCanonical: true,
+        userCanonical: true,
+        mobileVerdict: true,
+        richVerdict: true,
+        richTypes: true,
+      },
+      orderBy: [{ inspectedAt: "desc" }, { url: "asc" }],
+      take,
+      skip,
+    }),
+    db.urlInspection.count({ where }),
+  ]);
+  return { items: rows, total, page: Math.floor(skip / take) + 1, pageSize: take };
 }

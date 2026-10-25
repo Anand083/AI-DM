@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import "server-only";
 import { getEnv } from "@/env";
 import type { EmailMessage } from "@/server/providers/email/types";
@@ -104,6 +105,27 @@ export async function enqueueLeadPoll(
     jobId: jobIds.leadPoll(data.leadId, data.attempt),
     attempts: 1,
   });
+}
+
+/**
+ * Queues a Google URL Inspection of one page. The job id holds the page and the minute, so a
+ * double click does not ask Google twice. Returns false if it was already queued.
+ */
+export async function enqueueUrlInspection(data: {
+  agencyId: string;
+  projectId: string;
+  url: string;
+}): Promise<boolean> {
+  const queue = getQueue("modules");
+  const key = `${createHash("sha1").update(data.url).digest("hex").slice(0, 16)}_${Math.floor(Date.now() / 60_000)}`;
+  const jobId = jobIds.urlInspect(data.projectId, key);
+  if (await queue.getJob(jobId)) return false;
+  await queue.add("google-inspect", data, {
+    jobId,
+    attempts: 3,
+    backoff: { type: "exponential", delay: 30_000 },
+  });
+  return true;
 }
 
 /** Queues the Google numbers sync of a project. Returns false if it was already queued for that date. */

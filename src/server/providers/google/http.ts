@@ -11,6 +11,7 @@ import {
   type GoogleTokens,
   type SearchDay,
   type SearchSite,
+  type UrlInspectionResult,
 } from "./types";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -233,6 +234,41 @@ export class GoogleHttpProvider implements GoogleProvider {
       engagedSessions: Math.round(Number(r.metricValues[1]!.value)),
       conversions: Math.round(Number(r.metricValues[2]!.value)),
     }));
+  }
+
+  async inspectUrl(
+    accessToken: string,
+    input: { siteUrl: string; inspectionUrl: string },
+  ): Promise<UrlInspectionResult> {
+    const body = await this.api(
+      accessToken,
+      "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
+      { inspectionUrl: input.inspectionUrl, siteUrl: input.siteUrl },
+    );
+    const result = (body.inspectionResult ?? {}) as {
+      indexStatusResult?: Record<string, string>;
+      mobileUsabilityResult?: { verdict?: string };
+      richResultsResult?: {
+        verdict?: string;
+        detectedItems?: { richResultType?: string }[];
+      };
+    };
+    const index = result.indexStatusResult ?? {};
+    return {
+      verdict: index.verdict ?? "VERDICT_UNSPECIFIED",
+      coverageState: index.coverageState ?? "Unknown",
+      indexingState: index.indexingState ?? null,
+      robotsTxtState: index.robotsTxtState ?? null,
+      pageFetchState: index.pageFetchState ?? null,
+      lastCrawlTime: index.lastCrawlTime ?? null,
+      googleCanonical: index.googleCanonical ?? null,
+      userCanonical: index.userCanonical ?? null,
+      mobileVerdict: result.mobileUsabilityResult?.verdict ?? null,
+      richResultsVerdict: result.richResultsResult?.verdict ?? null,
+      richResultTypes: (result.richResultsResult?.detectedItems ?? [])
+        .map((i) => i.richResultType)
+        .filter((t): t is string => typeof t === "string"),
+    };
   }
 
   async revoke(token: string): Promise<void> {

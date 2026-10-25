@@ -431,3 +431,11 @@ These steps are not in `docs/PLAN.md` (which is not edited without asking). They
 - Issue marks (`AuditIssueState`, with `agencyId`): the team can mark an issue on chosen pages, or on every page that has it, as "ignored" (will not fix) or "fixed", or put it back. Marks belong to the project, so they carry over to the next audit. A "fixed" mark that the next audit finds again is removed (the issue is open again); an "ignored" mark stays. The health score is not changed by marks (it stays the vendor's view); the list shows how many pages are ignored or marked fixed.
 - Change monitoring: each audit shows the pages that changed since the one before (new, removed, status change, title change, text length change of 30% or more and at least 50 words), up to 50 per kind, on top of the existing new and fixed issue counts.
 - URL Inspection through Google comes in the second part of H6.
+
+### H6 part 2: URL Inspection through Google
+
+- The Analytics tab has an "Is this page on Google?" section for projects with an active Search Console connection. A person who may run tools types a page address; the worker (never the web request) asks Google's URL Inspection API and saves the answer in `UrlInspection` (with `agencyId`, in the guard list and the export; one row per page, replaced each time). The page refreshes itself until the answer is there.
+- The address must be on the project's website (the same domain or a subdomain, http or https; look-alike domains, other schemes and plain text are refused) and the `#part` is dropped. At most 20 pages a day per project, well under Google's own limit.
+- Google's answer is shown in plain English: on Google, left out on purpose, not on Google, or no clear answer, then the things worth acting on (Google picked another main address, robots.txt blocks it, hard to use on a phone, structured data errors, rich results found, last visit).
+- Access problems behave like the daily read: the connection is marked "needs reconnect" and an alert is raised. Temporary Google problems retry up to 3 times.
+- Needs no new Google permission (the read-only Search Console permission already covers it). Only tested against the mock and fake responses until a real Google OAuth client exists.

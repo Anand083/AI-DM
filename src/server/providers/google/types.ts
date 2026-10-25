@@ -48,6 +48,24 @@ export type AnalyticsPageRow = {
   conversions: number;
 };
 
+/** What Google's URL Inspection says about one page of a verified Search Console site. */
+export type UrlInspectionResult = {
+  /** PASS (on Google), FAIL (not on Google), NEUTRAL (excluded on purpose) or PARTIAL / UNSPECIFIED. */
+  verdict: string;
+  /** Google's own words, for example "Submitted and indexed". */
+  coverageState: string;
+  indexingState: string | null;
+  robotsTxtState: string | null;
+  pageFetchState: string | null;
+  /** ISO time of the last Google crawl, if any. */
+  lastCrawlTime: string | null;
+  googleCanonical: string | null;
+  userCanonical: string | null;
+  mobileVerdict: string | null;
+  richResultsVerdict: string | null;
+  richResultTypes: string[];
+};
+
 /**
  * The person took back access, the token is not valid any more, or Google refused the request.
  * `needsReconnect` means asking Google again will not help: the person must connect again.
@@ -101,6 +119,10 @@ export interface GoogleProvider {
     accessToken: string,
     input: { propertyId: string; startDate: string; endDate: string; limit: number },
   ): Promise<AnalyticsPageRow[]>;
+  inspectUrl(
+    accessToken: string,
+    input: { siteUrl: string; inspectionUrl: string },
+  ): Promise<UrlInspectionResult>;
   /** Tells Google to forget the token. Failing is fine: the connection is removed here anyway. */
   revoke(token: string): Promise<void>;
 }

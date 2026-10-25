@@ -261,6 +261,65 @@ describe("daily numbers", () => {
     expect(rows).toEqual([{ path: "/pricing", sessions: 90, engagedSessions: 60, conversions: 4 }]);
   });
 
+  it("reads a URL inspection answer", async () => {
+    let sent: { inspectionUrl?: string; siteUrl?: string } = {};
+    server.use(
+      http.post(
+        "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
+        async ({ request }) => {
+          sent = (await request.json()) as typeof sent;
+          return HttpResponse.json({
+            inspectionResult: {
+              indexStatusResult: {
+                verdict: "PASS",
+                coverageState: "Submitted and indexed",
+                robotsTxtState: "ALLOWED",
+                indexingState: "INDEXING_ALLOWED",
+                lastCrawlTime: "2026-03-01T10:00:00Z",
+                pageFetchState: "SUCCESSFUL",
+                googleCanonical: "https://example.com/a",
+                userCanonical: "https://example.com/a",
+              },
+              mobileUsabilityResult: { verdict: "PASS" },
+              richResultsResult: { verdict: "PASS", detectedItems: [{ richResultType: "FAQ" }] },
+            },
+          });
+        },
+      ),
+    );
+    const result = await provider.inspectUrl("at", {
+      siteUrl: "sc-domain:example.com",
+      inspectionUrl: "https://example.com/a",
+    });
+    expect(sent).toEqual({
+      inspectionUrl: "https://example.com/a",
+      siteUrl: "sc-domain:example.com",
+    });
+    expect(result).toMatchObject({
+      verdict: "PASS",
+      coverageState: "Submitted and indexed",
+      lastCrawlTime: "2026-03-01T10:00:00Z",
+      mobileVerdict: "PASS",
+      richResultsVerdict: "PASS",
+      richResultTypes: ["FAQ"],
+    });
+  });
+
+  it("copes with an empty inspection answer", async () => {
+    server.use(
+      http.post("https://searchconsole.googleapis.com/v1/urlInspection/index:inspect", () =>
+        HttpResponse.json({}),
+      ),
+    );
+    expect(
+      await provider.inspectUrl("at", { siteUrl: "s", inspectionUrl: "https://example.com/" }),
+    ).toMatchObject({
+      verdict: "VERDICT_UNSPECIFIED",
+      coverageState: "Unknown",
+      richResultTypes: [],
+    });
+  });
+
   it("returns an empty list when Google has no rows", async () => {
     server.use(
       http.post("https://www.googleapis.com/webmasters/v3/sites/:site/searchAnalytics/query", () =>

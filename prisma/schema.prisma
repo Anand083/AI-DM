@@ -211,6 +211,7 @@ model Agency {
   aiMarketSnapshots  AiMarketSnapshot[]
   auditConfigs       AuditConfig[]
   auditIssueStates   AuditIssueState[]
+  urlInspections     UrlInspection[]
 
   @@index([status, deletedAt])
 }
@@ -329,6 +330,7 @@ model Project {
   aiMarketSnapshots  AiMarketSnapshot[]
   auditConfig        AuditConfig?
   auditIssueStates   AuditIssueState[]
+  urlInspections     UrlInspection[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -1598,4 +1600,30 @@ model AuditIssueState {
 
   @@unique([projectId, code, url])
   @@index([agencyId, projectId, status])
+}
+
+/// The newest Google URL Inspection of one page. Replaced each time the page is inspected.
+model UrlInspection {
+  id              String    @id @default(cuid(2))
+  agencyId        String
+  projectId       String
+  url             String
+  inspectedAt     DateTime  @default(now())
+  verdict         String
+  coverageState   String
+  indexingState   String?
+  robotsTxtState  String?
+  pageFetchState  String?
+  lastCrawlTime   DateTime?
+  googleCanonical String?
+  userCanonical   String?
+  mobileVerdict   String?
+  richVerdict     String?
+  richTypes       String[]
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, url])
+  @@index([agencyId, projectId, inspectedAt])
 }

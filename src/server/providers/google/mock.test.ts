@@ -119,3 +119,24 @@ describe("mock breakdowns", () => {
     expect(landing.every((p) => p.engagedSessions <= p.sessions)).toBe(true);
   });
 });
+
+describe("mock URL inspection", () => {
+  const mock = new MockGoogleProvider({ now: () => new Date("2026-03-10T10:00:00Z") });
+  const input = { siteUrl: "sc-domain:example.com", inspectionUrl: "https://example.com/pricing" };
+  it("gives the same answer every time, with a crawl time in the past", async () => {
+    const a = await mock.inspectUrl("t", input);
+    expect(a).toEqual(await mock.inspectUrl("t", input));
+    expect(["PASS", "NEUTRAL", "FAIL"]).toContain(a.verdict);
+    expect(new Date(a.lastCrawlTime!).getTime()).toBeLessThan(Date.parse("2026-03-10T10:00:00Z"));
+  });
+  it("gives a mix of answers over many pages", async () => {
+    const verdicts = new Set<string>();
+    for (let i = 0; i < 60; i++) {
+      verdicts.add(
+        (await mock.inspectUrl("t", { ...input, inspectionUrl: `https://example.com/p${i}` }))
+          .verdict,
+      );
+    }
+    expect([...verdicts].sort()).toEqual(["FAIL", "NEUTRAL", "PASS"]);
+  });
+});

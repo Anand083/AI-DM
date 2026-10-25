@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GooglePanel } from "@/components/app/google-panel";
+import { InspectUrlForm } from "@/components/app/inspect-url-form";
 import { StatCard } from "@/components/app/rank-widgets";
 import { FormMessage } from "@/components/auth/field";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -14,12 +15,14 @@ import {
   engagedPercent,
   labelBreakdownKey,
 } from "@/lib/google-insights";
+import { describeInspection } from "@/lib/url-inspection";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { getAnalyticsOverview, getGoogleStatus } from "@/server/services/google";
 import {
   getCombinedDaily,
   listLandingPages,
+  listUrlInspections,
   listSearchBreakdown,
 } from "@/server/services/google-insights";
 
@@ -59,7 +62,7 @@ export default async function AnalyticsPage({
   const dimension = dimensionFromParam(typeof sp.by === "string" ? sp.by : undefined);
   const breakdownPage = pageFromParams(sp.bpage);
   const landingPage = pageFromParams(sp.lpage);
-  const [status, overview, breakdown, landing, combined] = await Promise.all([
+  const [status, overview, breakdown, landing, combined, inspections] = await Promise.all([
     getGoogleStatus(ctx, projectId),
     getAnalyticsOverview(ctx, projectId),
     listSearchBreakdown(ctx, projectId, dimension, {
@@ -68,6 +71,7 @@ export default async function AnalyticsPage({
     }),
     listLandingPages(ctx, projectId, { page: landingPage, pageSize: BREAKDOWN_PAGE_SIZE }),
     getCombinedDaily(ctx, projectId),
+    listUrlInspections(ctx, projectId, { page: pageFromParams(sp.ipage), pageSize: 10 }),
   ]);
   const here = `/app/${agencySlug}/projects/${projectId}/analytics`;
   const tab = DIMENSION_TABS.find((t) => t.key === dimension)!;
@@ -103,6 +107,54 @@ export default async function AnalyticsPage({
           syncedToday={connection?.lastSyncedOn === today}
         />
       </section>
+
+      {connection?.gscSite && connection.status === "ACTIVE" ? (
+        <section aria-labelledby="inspect-heading" className="space-y-3">
+          <h3 id="inspect-heading" className="text-base font-semibold">
+            Is this page on Google?
+          </h3>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Ask Google how it sees one page of this website. Up to 20 pages a day.
+          </p>
+          {can(ctx.role, "tools.run") ? (
+            <InspectUrlForm agencySlug={agencySlug} projectId={projectId} />
+          ) : null}
+          {inspections.total > 0 ? (
+            <>
+              <ul aria-label="Google page checks" className="space-y-3">
+                {inspections.items.map((i) => {
+                  const view = describeInspection(i);
+                  return (
+                    <li
+                      key={i.url}
+                      className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+                    >
+                      <p className="break-all text-sm text-zinc-600 dark:text-zinc-400">{i.url}</p>
+                      <p className="mt-1 font-medium">{view.headline}</p>
+                      <ul className="mt-1 space-y-0.5 text-sm">
+                        {view.notes.map((n) => (
+                          <li key={n}>{n}</li>
+                        ))}
+                      </ul>
+                      <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                        Checked {i.inspectedAt.toISOString().slice(0, 10)}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Pagination
+                basePath={here}
+                page={inspections.page}
+                pageSize={10}
+                total={inspections.total}
+                pageParam="ipage"
+                label="Page checks"
+              />
+            </>
+          ) : null}
+        </section>
+      ) : null}
 
       {!overview ? (
         connection && (connection.gscSite || connection.ga4PropertyId) ? (

@@ -483,6 +483,11 @@ export function exportFiles(
       rows: allRows((a) => rawDb.auditIssueState.findMany({ where, ...order, ...a })),
     },
     {
+      name: "url-inspections.jsonl",
+      model: "UrlInspection",
+      rows: allRows((a) => rawDb.urlInspection.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),

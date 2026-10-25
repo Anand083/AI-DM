@@ -7,11 +7,19 @@ import {
   MOCK_REVOKED_REFRESH_TOKEN,
   MockGoogleProvider,
 } from "@/server/providers/google/mock";
-import { ForbiddenError, NotFoundError } from "@/server/services/errors";
+import {
+  ForbiddenError,
+  LimitExceededError,
+  NotFoundError,
+  ValidationError,
+} from "@/server/services/errors";
+import { runUrlInspection } from "@/server/services/google-inspect";
 import { chooseGoogleSources, completeGoogleConnect } from "@/server/services/google";
 import {
   getCombinedDaily,
   listLandingPages,
+  listUrlInspections,
+  requestUrlInspection,
   listSearchBreakdown,
 } from "@/server/services/google-insights";
 import { runGoogleSync } from "@/server/services/google-sync";
@@ -287,5 +295,135 @@ describe("Google alerts", () => {
       where: { agencyId: s.agency.id, type: "GOOGLE_RECONNECT" },
     });
     expect(alert.title).toBe("Reconnect Google for Site");
+  });
+});
+
+describe("URL inspection", () => {
+  const inspect = (s: S, url: string, p = provider()) =>
+    runUrlInspection(
+      { db, provider: p, secret: secret(), now: () => clock },
+      { agencyId: s.agency.id, projectId: s.project.id, url },
+    );
+
+  it("saves Google's answer once per page and replaces it next time", async () => {
+    const s = await setup();
+    const url = "https://example.com/pricing";
+    const first = await inspect(s, url);
+    expect(first.status).toBe("done");
+    const again = await inspect(
+      s,
+      url,
+      provider({
+        inspectUrl: async () => ({
+          verdict: "FAIL",
+          coverageState: "Crawled - currently not indexed",
+          indexingState: null,
+          robotsTxtState: "ALLOWED",
+          pageFetchState: "SUCCESSFUL",
+          lastCrawlTime: "2026-03-02T00:00:00Z",
+          googleCanonical: url,
+          userCanonical: url,
+          mobileVerdict: "PASS",
+          richResultsVerdict: null,
+          richResultTypes: [],
+        }),
+      }),
+    );
+    expect(again).toEqual({ status: "done", verdict: "FAIL" });
+    const rows = await prisma.urlInspection.findMany({ where: { projectId: s.project.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      verdict: "FAIL",
+      coverageState: "Crawled - currently not indexed",
+    });
+    const list = await listUrlInspections(s.owner, s.project.id);
+    expect(list.total).toBe(1);
+  });
+
+  it("marks the connection and raises an alert when access was taken back", async () => {
+    const s = await setup();
+    await prisma.googleConnection.updateMany({
+      where: { projectId: s.project.id },
+      data: {
+        accessExpiresAt: new Date("2026-03-10T09:00:00Z"),
+        refreshTokenEnc: seal(MOCK_REVOKED_REFRESH_TOKEN, secret()),
+      },
+    });
+    expect((await inspect(s, "https://example.com/a")).status).toBe("needs-reconnect");
+    expect(
+      await prisma.alert.count({ where: { agencyId: s.agency.id, type: "GOOGLE_RECONNECT" } }),
+    ).toBe(1);
+    expect(await prisma.urlInspection.count({ where: { projectId: s.project.id } })).toBe(0);
+  });
+
+  it("does nothing for a project without a connection or a site", async () => {
+    const { agency, members } = await createAgencyWithMembers(
+      prisma,
+      ["OWNER"],
+      undefined,
+      "GROWTH",
+    );
+    const client = await prisma.client.create({ data: { agencyId: agency.id, name: "C" } });
+    const project = await prisma.project.create({
+      data: {
+        agencyId: agency.id,
+        clientId: client.id,
+        name: "P",
+        domain: "p.test",
+        locationCode: 2840,
+        languageCode: "en",
+      },
+    });
+    const run = (projectId: string) =>
+      runUrlInspection(
+        { db, provider: provider(), secret: secret(), now: () => clock },
+        { agencyId: agency.id, projectId, url: "https://p.test/" },
+      );
+    expect((await run(project.id)).status).toBe("not-connected");
+    expect((await run("missing")).status).toBe("inactive");
+    await expect(
+      requestUrlInspection(members[0]!.ctx, project.id, "https://p.test/"),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("only takes pages of the project website, within the daily limit, for people who may run tools", async () => {
+    const s = await setup();
+    const ok = await requestUrlInspection(s.owner, s.project.id, "https://www.example.com/a#x");
+    expect(ok.url).toBe("https://www.example.com/a");
+    for (const bad of ["https://evil.com/", "https://example.com.evil.com/", "nonsense", ""]) {
+      await expect(requestUrlInspection(s.owner, s.project.id, bad)).rejects.toThrow(
+        ValidationError,
+      );
+    }
+    await expect(
+      requestUrlInspection({ ...s.owner, role: "CLIENT" }, s.project.id, "https://example.com/"),
+    ).rejects.toThrow(ForbiddenError);
+    const now = new Date("2026-03-10T12:00:00Z");
+    for (let i = 0; i < 20; i++) {
+      await prisma.urlInspection.create({
+        data: {
+          agencyId: s.agency.id,
+          projectId: s.project.id,
+          url: `https://example.com/p${i}`,
+          inspectedAt: now,
+          verdict: "PASS",
+          coverageState: "x",
+        },
+      });
+    }
+    await expect(
+      requestUrlInspection(s.owner, s.project.id, "https://example.com/new", now),
+    ).rejects.toThrow(LimitExceededError);
+  });
+
+  it("stays inside the agency", async () => {
+    const a = await setup();
+    const b = await setup("Other Agency");
+    await inspect(a, "https://example.com/a");
+    await expect(listUrlInspections(b.owner, a.project.id)).rejects.toThrow(NotFoundError);
+    await expect(
+      requestUrlInspection(b.owner, a.project.id, "https://example.com/a"),
+    ).rejects.toThrow(NotFoundError);
+    expect((await listUrlInspections(b.owner, b.project.id)).total).toBe(0);
   });
 });

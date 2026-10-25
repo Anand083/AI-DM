@@ -63,6 +63,7 @@ export const TENANT_MODELS = new Set([
   "AiMarketSnapshot",
   "AuditConfig",
   "AuditIssueState",
+  "UrlInspection",
 ]);
 
 const WHERE_OPERATIONS = new Set([

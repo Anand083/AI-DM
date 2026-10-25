@@ -9,6 +9,7 @@ import {
   disconnectGoogle,
   requestGoogleSync,
 } from "@/server/services/google";
+import { requestUrlInspection } from "@/server/services/google-insights";
 
 const idSchema = z.string().min(1).max(100);
 
@@ -38,4 +39,14 @@ export async function disconnectGoogleAction(slug: string, projectId: string) {
   const result = await disconnect(slug, { projectId });
   if (result.ok) revalidatePath(`/app/${slug}/projects/${projectId}/analytics`);
   return result;
+}
+
+const inspect = withTenantAction(
+  { permission: "tools.run", schema: z.object({ projectId: idSchema, url: z.string().max(2000) }) },
+  (ctx, input) => requestUrlInspection(ctx, input.projectId, input.url),
+);
+
+/** Asks the worker to check how Google sees one page. The page refreshes to show the answer. */
+export async function inspectUrlAction(slug: string, projectId: string, url: string) {
+  return inspect(slug, { projectId, url });
 }

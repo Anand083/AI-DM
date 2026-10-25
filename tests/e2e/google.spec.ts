@@ -102,6 +102,18 @@ test("connect Google, choose a site and a property, read the numbers", async ({ 
     29,
   );
 
+  // Ask Google about one page (a page from another website is refused).
+  await page.getByLabel("Page address").fill("https://other.example/page");
+  await page.getByRole("button", { name: "Check with Google" }).click();
+  await expect(
+    page.getByText("Use an address on this website, starting with https://."),
+  ).toBeVisible();
+  await page.getByLabel("Page address").fill("https://bluebakery.example/menu");
+  await page.getByRole("button", { name: "Check with Google" }).click();
+  const checks = page.getByRole("list", { name: "Google page checks" });
+  await expect(checks).toContainText("https://bluebakery.example/menu", { timeout: 60_000 });
+  await expect(checks).toContainText(/On Google|Not on Google|Left out of Google on purpose/);
+
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   const serious = results.violations.filter(
     (v) => v.impact === "serious" || v.impact === "critical",

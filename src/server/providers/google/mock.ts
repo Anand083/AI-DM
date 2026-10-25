@@ -11,6 +11,7 @@ import {
   type GoogleTokens,
   type SearchDay,
   type SearchSite,
+  type UrlInspectionResult,
 } from "./types";
 
 export const MOCK_CODE = "mock-code";
@@ -206,6 +207,37 @@ export class MockGoogleProvider implements GoogleProvider {
         conversions: Math.round(sessions * (0.01 + rng.next() * 0.05)),
       };
     });
+  }
+
+  async inspectUrl(
+    _token: string,
+    input: { siteUrl: string; inspectionUrl: string },
+  ): Promise<UrlInspectionResult> {
+    const rng = makeRng(input.siteUrl, "inspect", input.inspectionUrl, "v1");
+    const roll = rng.next();
+    const indexed = roll < 0.7;
+    const excluded = !indexed && roll < 0.85;
+    const canonicalOther = indexed && rng.chance(0.15);
+    const crawled = new Date(this.now().getTime() - rng.int(1, 20) * DAY_MS);
+    return {
+      verdict: indexed ? "PASS" : excluded ? "NEUTRAL" : "FAIL",
+      coverageState: indexed
+        ? "Submitted and indexed"
+        : excluded
+          ? "Excluded by 'noindex' tag"
+          : "Crawled - currently not indexed",
+      indexingState: indexed ? "INDEXING_ALLOWED" : excluded ? "BLOCKED_BY_META_TAG" : null,
+      robotsTxtState: "ALLOWED",
+      pageFetchState: "SUCCESSFUL",
+      lastCrawlTime: crawled.toISOString(),
+      googleCanonical: canonicalOther
+        ? `${new URL(input.inspectionUrl).origin}/`
+        : input.inspectionUrl,
+      userCanonical: input.inspectionUrl,
+      mobileVerdict: rng.chance(0.9) ? "PASS" : "FAIL",
+      richResultsVerdict: rng.chance(0.4) ? "PASS" : null,
+      richResultTypes: rng.chance(0.4) ? ["Breadcrumbs"] : [],
+    };
   }
 
   async revoke(): Promise<void> {}
