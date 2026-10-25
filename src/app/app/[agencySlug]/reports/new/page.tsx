@@ -3,6 +3,7 @@ import { ReportBuilder } from "@/components/app/report-builder";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getPageContext, requirePermission } from "@/server/auth/page-context";
 import { listProjects } from "@/server/services/projects";
+import { listReportTemplates } from "@/server/services/report-templates";
 
 export const metadata: Metadata = { title: "New report" };
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export default async function NewReportPage({
   const { ctx } = await getPageContext(agencySlug);
   requirePermission(ctx, "reports.create");
   const { rows } = await listProjects(ctx, { pageSize: 100 });
+  const templates = await listReportTemplates(ctx);
   const projectId = typeof sp.projectId === "string" ? sp.projectId : undefined;
 
   return (
@@ -33,6 +35,7 @@ export default async function NewReportPage({
         <ReportBuilder
           agencySlug={agencySlug}
           defaultProjectId={projectId}
+          templates={templates}
           projects={rows.map((p) => ({ id: p.id, name: p.name, clientName: p.client.name }))}
         />
       )}

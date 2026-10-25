@@ -1,6 +1,8 @@
 import "server-only";
 import sharp from "sharp";
-import { percentChange } from "@/lib/google-metrics";
+import { getEnv } from "@/env";
+import { percentChange, previousPeriod } from "@/lib/google-metrics";
+import { formatGoalValue, goalInfo, goalStatus } from "@/lib/goals";
 import { engineLabel, sortByEngine, summarizeChecks } from "@/lib/ai-visibility";
 import { summarizeCompetitors } from "@/lib/competitors";
 import { assembleReport } from "@/lib/report-assembler";
@@ -8,6 +10,8 @@ import { pickPositions, START_LOOKBACK_DAYS, type PeriodCheck } from "@/lib/repo
 import {
   RANKINGS_LIMIT,
   type ReportAiInput,
+  type ReportGoalRow,
+  type ReportSource,
   type ReportAnalyticsInput,
   type ReportAuditInput,
   type ReportBacklinkRow,
@@ -28,6 +32,8 @@ import { getSummaryProvider } from "@/server/providers/summary";
 import { renderReportPdf, type PdfBranding } from "@/server/reports/pdf";
 import { loadBranding, readLogo } from "./branding";
 import { loadComparisonRows } from "./competitors";
+import { loadAnnotations } from "./annotations";
+import { loadGoals } from "./goals";
 import { loadAnalyticsNumbers } from "./google";
 import { deliverScheduledReport, type SendEmail } from "./report-delivery";
 
@@ -56,12 +62,13 @@ export async function loadReportInput(agencyId: string, reportId: string): Promi
     orderBy: { phrase: "asc" },
     take: RANKINGS_LIMIT,
   });
+  const before = previousPeriod(period.start, period.end);
   const checks = await db.rankCheck.findMany({
     where: {
       agencyId,
       keywordId: { in: keywords.map((k) => k.id) },
       date: {
-        gte: new Date(report.periodStart.getTime() - START_LOOKBACK_DAYS * DAY_MS),
+        gte: new Date(Date.parse(`${before.start}T00:00:00Z`) - START_LOOKBACK_DAYS * DAY_MS),
         lte: report.periodEnd,
       },
     },
@@ -78,6 +85,12 @@ export async function loadReportInput(agencyId: string, reportId: string): Promi
   const rows: ReportKeywordRow[] = keywords.map((k) => ({
     phrase: k.phrase,
     ...pickPositions(byKeyword.get(k.id) ?? [], period),
+  }));
+
+  const wants = (key: ReportSectionKey) => (report.sections as string[]).includes(key);
+  const previousKeywords: ReportKeywordRow[] = keywords.map((k) => ({
+    phrase: k.phrase,
+    ...pickPositions(byKeyword.get(k.id) ?? [], before),
   }));
 
   return {
@@ -110,8 +123,113 @@ export async function loadReportInput(agencyId: string, reportId: string): Promi
           day(report.periodEnd),
         )
       : null,
+    annotations: wants("annotations")
+      ? (await loadAnnotations(agencyId, report.projectId, period, 30)).map((a) => ({
+          on: a.on,
+          kind: a.kind,
+          title: a.title,
+        }))
+      : null,
+    goals: wants("goals") ? await loadGoalRows(agencyId, report.projectId) : null,
+    sources: await loadSources(
+      agencyId,
+      report.projectId,
+      report.sections as string[],
+      report.periodEnd,
+    ),
+    previousKeywords,
     generatedOn: day(new Date()),
   };
+}
+
+async function loadGoalRows(agencyId: string, projectId: string): Promise<ReportGoalRow[]> {
+  const goals = await loadGoals(agencyId, projectId);
+  return goals.map((g) => ({
+    label: goalInfo(g.kind)?.label ?? g.kind,
+    current: formatGoalValue(g.kind, g.current),
+    target: formatGoalValue(g.kind, g.target),
+    percent: g.percent,
+    status: goalStatus(g.percent, g.onTrack),
+  }));
+}
+
+/** Where each part of the report comes from, how fresh it is, and whether it is sample data. */
+async function loadSources(
+  agencyId: string,
+  projectId: string,
+  sections: string[],
+  periodEnd: Date,
+): Promise<ReportSource[]> {
+  const env = getEnv();
+  const base = { agencyId, projectId };
+  const has = (...keys: string[]) => keys.some((k) => sections.includes(k));
+  const seoReal = env.SEO_PROVIDER !== "mock";
+  const out: ReportSource[] = [];
+  const newest = await db.keyword.aggregate({
+    where: { ...base, lastCheckedOn: { lte: periodEnd } },
+    _max: { lastCheckedOn: true },
+  });
+  out.push({
+    label: "Rankings",
+    updated: newest._max.lastCheckedOn ? day(newest._max.lastCheckedOn) : null,
+    real: seoReal,
+  });
+  if (has("audit", "issues")) {
+    const audit = await db.audit.findFirst({
+      where: {
+        ...base,
+        status: "COMPLETED",
+        finishedAt: { lte: new Date(periodEnd.getTime() + DAY_MS) },
+      },
+      select: { finishedAt: true },
+      orderBy: { finishedAt: "desc" },
+    });
+    out.push({
+      label: "Site audit",
+      updated: audit?.finishedAt ? day(audit.finishedAt) : null,
+      real: true,
+    });
+  }
+  if (has("backlinks")) {
+    const snap = await db.backlinkSnapshot.findFirst({
+      where: { ...base, takenOn: { lte: periodEnd } },
+      select: { takenOn: true },
+      orderBy: { takenOn: "desc" },
+    });
+    out.push({ label: "Backlinks", updated: snap ? day(snap.takenOn) : null, real: seoReal });
+  }
+  if (has("ai")) {
+    const check = await db.aiVisibilityCheck.findFirst({
+      where: { ...base, checkedOn: { lte: periodEnd } },
+      select: { checkedOn: true },
+      orderBy: { checkedOn: "desc" },
+    });
+    out.push({
+      label: "AI visibility (estimate)",
+      updated: check ? day(check.checkedOn) : null,
+      real: seoReal,
+    });
+  }
+  if (has("reviews")) {
+    const snap = await db.reviewSnapshot.findFirst({
+      where: { ...base, takenOn: { lte: periodEnd } },
+      select: { takenOn: true },
+      orderBy: { takenOn: "desc" },
+    });
+    out.push({ label: "Reviews", updated: snap ? day(snap.takenOn) : null, real: seoReal });
+  }
+  if (has("analytics")) {
+    const connection = await db.googleConnection.findFirst({
+      where: base,
+      select: { lastSyncedOn: true },
+    });
+    out.push({
+      label: "Search Console and Analytics",
+      updated: connection?.lastSyncedOn ? day(connection.lastSyncedOn) : null,
+      real: env.GOOGLE_PROVIDER === "google",
+    });
+  }
+  return out;
 }
 
 /** Search Console and Analytics totals for the period against the period of the same length before. */

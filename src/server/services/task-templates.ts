@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { dateText } from "@/lib/date-text";
 import {
   BUILT_IN_TEMPLATES,
   parseTemplateLines,
@@ -112,13 +113,7 @@ export async function deleteTemplate(ctx: TenantContext, templateId: string) {
 export const applySchema = z.object({
   templateKey: z.string().min(1).max(120),
   projectId: z.string().min(1).max(100),
-  startOn: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a date like 2026-03-31.")
-    .refine(
-      (v) => new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v,
-      "Enter a real date.",
-    ),
+  startOn: dateText,
   assigneeId: z.string().min(1).max(100).nullable().default(null),
 });
 

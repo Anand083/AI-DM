@@ -49,6 +49,7 @@ import { notifyAgencyOfLead } from "@/server/services/leads";
 import { runGoogleSync } from "@/server/services/google-sync";
 import { runReviewScheduler } from "@/server/jobs/system/review-scheduler";
 import { getSummaryProvider } from "@/server/providers/summary";
+import { runGoalSnapshots } from "@/server/services/goal-runner";
 import { runReviewRefresh } from "@/server/services/review-runner";
 import { runTaskReminders } from "@/server/jobs/system/task-reminders";
 import { runAiScheduler } from "@/server/jobs/system/ai-scheduler";
@@ -115,6 +116,8 @@ export const processors: JobProcessors = {
           now: new Date(),
         });
         if (taskReminders.alerts > 0) logger.info(taskReminders, "task reminders");
+        const goalPoints = await runGoalSnapshots({ db: rawDb, now: new Date() });
+        if (goalPoints.saved > 0) logger.info(goalPoints, "goal points saved");
         const digests = await runDigestScheduler({
           db: rawDb,
           now: new Date(),
@@ -137,6 +140,7 @@ export const processors: JobProcessors = {
           reviewChecks,
           googleSyncs,
           taskReminders,
+          goalPoints,
           digests,
           reports,
           billing,

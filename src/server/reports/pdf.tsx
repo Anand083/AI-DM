@@ -3,6 +3,7 @@ import { DEFAULT_ACCENT, DEFAULT_PRIMARY, initials } from "@/lib/brand";
 import { normalizeHex, readableTextOn } from "@/lib/color";
 import { formatChange, formatPosition } from "@/lib/rank-math";
 import { describeAnalytics } from "@/lib/report-analytics";
+import { KIND_LABELS, describeComparison, describeSource } from "@/lib/report-extras";
 import { describeReviews } from "@/lib/report-reviews";
 import { describeAi } from "@/lib/report-ai";
 import { describeBacklinks } from "@/lib/report-backlinks";
@@ -232,6 +233,11 @@ function createRenderer(rp: ReactPdf) {
                   </View>
                 ))}
               </View>
+              {describeComparison(model.kpis, model.previous).map((line) => (
+                <Text key={line} style={[s.p, { marginTop: 4 }]}>
+                  {line}
+                </Text>
+              ))}
             </View>
           ) : null}
 
@@ -451,10 +457,54 @@ function createRenderer(rp: ReactPdf) {
             </View>
           ) : null}
 
+          {has("goals") ? (
+            <View>
+              <Text style={s.h2}>Goals</Text>
+              {model.goals && model.goals.length > 0 ? (
+                model.goals.map((g) => (
+                  <View key={g.label} style={{ marginBottom: 6 }} wrap={false}>
+                    <Text style={s.p}>
+                      {`${g.label}: ${g.current} of ${g.target} (${g.percent}%)`}
+                    </Text>
+                    <Text style={{ color: "#52525b" }}>{g.status}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={s.empty}>No goals are set for this project.</Text>
+              )}
+            </View>
+          ) : null}
+
+          {has("annotations") ? (
+            <View>
+              <Text style={s.h2}>Timeline notes</Text>
+              {model.annotations && model.annotations.length > 0 ? (
+                model.annotations.map((a) => (
+                  <Text key={`${a.on}-${a.title}`} style={[s.p, { marginBottom: 3 }]}>
+                    {`${a.on}: ${KIND_LABELS[a.kind] ?? "Note"}, ${a.title}`}
+                  </Text>
+                ))
+              ) : (
+                <Text style={s.empty}>No notes fall in this period.</Text>
+              )}
+            </View>
+          ) : null}
+
           {has("notes") && model.notes ? (
             <View wrap={false}>
               <Text style={s.h2}>Notes</Text>
               <Text style={s.p}>{model.notes}</Text>
+            </View>
+          ) : null}
+
+          {model.sources && model.sources.length > 0 ? (
+            <View style={{ marginTop: 14 }} wrap={false}>
+              <Text style={s.kpiLabel}>Data sources</Text>
+              {model.sources.map((src) => (
+                <Text key={src.label} style={s.kpiLabel}>
+                  {describeSource(src)}
+                </Text>
+              ))}
             </View>
           ) : null}
 

@@ -1,6 +1,7 @@
 import { brandCssVars, initials } from "@/lib/brand";
 import { formatChange, formatPosition } from "@/lib/rank-math";
 import { describeAnalytics } from "@/lib/report-analytics";
+import { KIND_LABELS, describeComparison, describeSource } from "@/lib/report-extras";
 import { describeReviews } from "@/lib/report-reviews";
 import { describeAi } from "@/lib/report-ai";
 import { describeBacklinks } from "@/lib/report-backlinks";
@@ -198,6 +199,11 @@ export function ReportView({
               </div>
             ))}
           </dl>
+          {describeComparison(model.kpis, model.previous).map((line) => (
+            <p key={line} className="text-sm text-zinc-700">
+              {line}
+            </p>
+          ))}
         </Section>
       ) : null}
 
@@ -477,10 +483,56 @@ export function ReportView({
         </Section>
       ) : null}
 
+      {has("goals") ? (
+        <Section title="Goals">
+          {model.goals && model.goals.length > 0 ? (
+            <ul className="space-y-3">
+              {model.goals.map((g) => (
+                <li key={g.label} className="rounded-lg border border-zinc-200 p-3 text-sm">
+                  <p className="font-medium">
+                    {`${g.label}: ${g.current} of ${g.target} (${g.percent}%)`}
+                  </p>
+                  <p className="mt-0.5 text-zinc-700">{g.status}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-zinc-600">No goals are set for this project.</p>
+          )}
+        </Section>
+      ) : null}
+
+      {has("annotations") ? (
+        <Section title="Timeline notes">
+          {model.annotations && model.annotations.length > 0 ? (
+            <ul className="space-y-1 text-sm">
+              {model.annotations.map((a) => (
+                <li key={`${a.on}-${a.title}`}>
+                  {`${a.on}: ${KIND_LABELS[a.kind] ?? "Note"}, ${a.title}`}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-zinc-600">No notes fall in this period.</p>
+          )}
+        </Section>
+      ) : null}
+
       {has("notes") && model.notes ? (
         <Section title="Notes">
           <p className="whitespace-pre-line leading-relaxed">{model.notes}</p>
         </Section>
+      ) : null}
+
+      {model.sources && model.sources.length > 0 ? (
+        <section aria-label="Data sources" className="text-xs text-zinc-600">
+          <p className="font-medium">Data sources</p>
+          <ul>
+            {model.sources.map((src) => (
+              <li key={src.label}>{describeSource(src)}</li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       <footer className="border-t border-zinc-200 pt-4 text-xs text-zinc-600">

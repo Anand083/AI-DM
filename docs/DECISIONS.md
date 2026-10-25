@@ -395,3 +395,13 @@ These steps are not in `docs/PLAN.md` (which is not edited without asking). They
 - Templates: three ready-made lists (new client onboarding, monthly routine, technical clean-up) plus the agency's own, written one task a line as `Title | days | priority`. Applying one makes the tasks for a website with due days counted from a chosen start day. Up to 50 own templates, up to 50 tasks each.
 - Report comments are one shared conversation between the team and the client (nothing on a report is private). The client can only comment on finished reports of their own websites.
 - Not built yet: attachments on tasks, and email to the assignee or the client when something happens (comes with notification preferences).
+
+### H3: Reporting extras
+
+- New tables, all with `agencyId`, in the guard list and the export: `ReportTemplate` (a named set of sections, up to 50, saving an existing name updates it), `Annotation` (a dated note: campaign, Google update, site change or other; it can belong to one project or to all projects of the agency), `Goal` (one goal per kind per project, up to 20) and `GoalPoint` (one saved number per goal per day).
+- Goal kinds: keywords in the top 10, average position, site health score, search clicks in 28 days, sessions in 28 days, average review rating. Positions and ratings are stored in tenths (6.5 is 65) so all numbers stay whole.
+- The worker saves goal points inside the 15 minute tick (cheap reads, no provider call, so it does not need its own queue). A goal with no data yet (for example clicks without a Google connection) saves nothing instead of a zero. The first saved number becomes the start value.
+- The forecast is a straight line through the last 30 saved days and needs at least 5 points over at least 5 days. It is always shown as an estimate. Progress is the share of the way from the start value to the target.
+- Reports: the previous period of the same length is measured with the same rank checks, so the summary can say "up 3 on the period before". New optional sections "Goals" and "Timeline notes". A "Data sources" list at the end of every report says what each part is based on, when it was last updated and whether it is sample data (a mock provider is on) or real. Older saved reports still open because every new field is optional.
+- Performance page: one row per project (staff only), 25 a page, with a CSV download of the first 500 projects.
+- A shared date check (`src/lib/date-text.ts`) replaces four copies. The old copies threw an error on a month such as 13 instead of giving a plain message.

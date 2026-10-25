@@ -202,6 +202,10 @@ model Agency {
   milestones         Milestone[]
   taskTemplates      TaskTemplate[]
   reportComments     ReportComment[]
+  reportTemplates    ReportTemplate[]
+  annotations        Annotation[]
+  goals              Goal[]
+  goalPoints         GoalPoint[]
 
   @@index([status, deletedAt])
 }
@@ -307,6 +311,8 @@ model Project {
   googleConnections  GoogleConnection[]
   tasks              Task[]
   milestones         Milestone[]
+  annotations        Annotation[]
+  goals              Goal[]
   searchConsoleDays  SearchConsoleDay[]
   ga4Days            Ga4Day[]
   aiSettings         AiSetting[]
@@ -1406,4 +1412,77 @@ model ReportComment {
   report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
   @@index([agencyId, reportId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Reporting extras: templates, annotations, goals
+// ---------------------------------------------------------------------------
+
+/// A saved choice of report sections (and notes) for a kind of client.
+model ReportTemplate {
+  id        String   @id @default(cuid(2))
+  agencyId  String
+  name      String
+  sections  String[]
+  notes     String?
+  createdAt DateTime @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, name])
+}
+
+/// A dated note about something that may explain a change: a campaign, an algorithm update, a site change.
+model Annotation {
+  id          String   @id @default(cuid(2))
+  agencyId    String
+  /// Empty means it applies to every project (for example a Google update).
+  projectId   String?
+  on          DateTime @db.Date
+  /// CAMPAIGN, ALGORITHM, SITE_CHANGE or OTHER.
+  kind        String
+  title       String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  agency  Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, projectId, on])
+}
+
+/// A target for a project, for example 20 keywords in the top 10 by a date.
+model Goal {
+  id         String    @id @default(cuid(2))
+  agencyId   String
+  projectId  String
+  /// TOP10_KEYWORDS, AVG_POSITION, HEALTH_SCORE, CLICKS_28D, SESSIONS_28D or REVIEW_RATING.
+  kind       String
+  /// In the unit of the kind: keywords, tenths of a position, points, clicks, sessions, tenths of a star.
+  target     Int
+  startValue Int?
+  dueOn      DateTime? @db.Date
+  createdAt  DateTime  @default(now())
+
+  agency  Agency      @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  points  GoalPoint[]
+
+  @@unique([projectId, kind])
+  @@index([agencyId, projectId])
+}
+
+/// The value of a goal's number on one day, saved by the worker. Used for progress and forecasts.
+model GoalPoint {
+  id       String   @id @default(cuid(2))
+  agencyId String
+  goalId   String
+  on       DateTime @db.Date
+  value    Int
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  goal   Goal   @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, on])
+  @@index([agencyId, goalId, on])
 }

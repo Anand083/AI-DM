@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { reportSchema, shareSchema } from "@/lib/schemas/report";
 import { withTenantAction } from "@/server/auth/actions";
+import { deleteReportTemplate, saveReportTemplate } from "@/server/services/report-templates";
 import { addReportComment } from "@/server/services/report-comments";
 import { createReport, deleteReport, revokeShare, shareReport } from "@/server/services/reports";
 
@@ -40,6 +41,28 @@ const commentOn = withTenantAction(
   },
   (ctx, input) => addReportComment(ctx, input.reportId, input.values),
 );
+
+const saveTemplate = withTenantAction(
+  { permission: "reports.create", schema: z.unknown() },
+  (ctx, input) => saveReportTemplate(ctx, input),
+);
+
+const removeTemplate = withTenantAction(
+  { permission: "reports.create", schema: z.object({ id: z.string().min(1).max(100) }) },
+  (ctx, input) => deleteReportTemplate(ctx, input.id),
+);
+
+export async function saveReportTemplateAction(slug: string, values: unknown) {
+  const result = await saveTemplate(slug, values);
+  if (result.ok) revalidatePath(`/app/${slug}/reports/new`);
+  return result;
+}
+
+export async function deleteReportTemplateAction(slug: string, id: string) {
+  const result = await removeTemplate(slug, { id });
+  if (result.ok) revalidatePath(`/app/${slug}/reports/new`);
+  return result;
+}
 
 export async function addReportCommentAction(slug: string, reportId: string, values: unknown) {
   const result = await commentOn(slug, { reportId, values });

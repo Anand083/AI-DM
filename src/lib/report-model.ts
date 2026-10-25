@@ -14,6 +14,8 @@ export const REPORT_SECTIONS = [
   { key: "ai", label: "AI visibility" },
   { key: "reviews", label: "Local reviews" },
   { key: "analytics", label: "Search Console and Analytics" },
+  { key: "goals", label: "Goals" },
+  { key: "annotations", label: "Timeline notes" },
   { key: "notes", label: "Notes" },
 ] as const;
 
@@ -146,6 +148,27 @@ export type ReportAnalyticsInput = {
   } | null;
 };
 
+export type ReportAnnotationRow = { on: string; kind: string; title: string };
+
+/** A goal with its numbers already written as text, so the web view and the PDF stay simple. */
+export type ReportGoalRow = {
+  label: string;
+  current: string;
+  target: string;
+  percent: number;
+  /** Plain words, for example "On track by the due date (estimate)". */
+  status: string;
+};
+
+/** Where a part of the report came from and how fresh it is. */
+export type ReportSource = {
+  label: string;
+  /** UTC day of the newest data, or null when there is none. */
+  updated: string | null;
+  /** False for the built-in sample data used until real keys are added. */
+  real: boolean;
+};
+
 export type ReportInput = {
   title: string;
   projectName: string;
@@ -162,6 +185,11 @@ export type ReportInput = {
   ai?: ReportAiInput | null;
   reviews?: ReportReviewsInput | null;
   analytics?: ReportAnalyticsInput | null;
+  annotations?: ReportAnnotationRow[] | null;
+  goals?: ReportGoalRow[] | null;
+  sources?: ReportSource[] | null;
+  /** The same keywords measured over the period of the same length before. Null if not loaded. */
+  previousKeywords?: ReportKeywordRow[] | null;
   generatedOn: string;
 };
 
@@ -204,6 +232,14 @@ export type ReportModel = {
   reviews?: ReportReviewsInput | null;
   /** Missing in reports made before the Google data section existed. */
   analytics?: ReportAnalyticsInput | null;
+  /** Missing in reports made before timeline notes existed. */
+  annotations?: ReportAnnotationRow[] | null;
+  /** Missing in reports made before goals existed. */
+  goals?: ReportGoalRow[] | null;
+  /** Missing in reports made before data labels existed. */
+  sources?: ReportSource[] | null;
+  /** Key numbers of the period before, for the comparison lines. Missing in older reports. */
+  previous?: ReportKpis | null;
   issues: ReportAuditInput["issues"];
   opportunities: ReportKeywordRow[];
   notes: string | null;

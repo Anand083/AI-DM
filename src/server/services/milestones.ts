@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { dateText } from "@/lib/date-text";
 import { progressPercent } from "@/lib/tasks";
 import { can } from "@/server/auth/permissions";
 import type { TenantContext } from "@/server/auth/tenant-context";
@@ -17,15 +18,7 @@ export const milestoneSchema = z.object({
     .trim()
     .min(3, "Write a title of at least 3 characters.")
     .max(120, "Keep the title under 120 characters."),
-  dueOn: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a date like 2026-03-31.")
-    .refine(
-      (v) => new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v,
-      "Enter a real date.",
-    )
-    .nullable()
-    .default(null),
+  dueOn: dateText.nullable().default(null),
   clientVisible: z.boolean().default(true),
 });
 

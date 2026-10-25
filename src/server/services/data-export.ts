@@ -438,6 +438,26 @@ export function exportFiles(
       rows: allRows((a) => rawDb.reportComment.findMany({ where, ...order, ...a })),
     },
     {
+      name: "report-templates.jsonl",
+      model: "ReportTemplate",
+      rows: allRows((a) => rawDb.reportTemplate.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "annotations.jsonl",
+      model: "Annotation",
+      rows: allRows((a) => rawDb.annotation.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "goals.jsonl",
+      model: "Goal",
+      rows: allRows((a) => rawDb.goal.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "goal-points.jsonl",
+      model: "GoalPoint",
+      rows: allRows((a) => rawDb.goalPoint.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),
