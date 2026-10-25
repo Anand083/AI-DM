@@ -27,7 +27,7 @@ test("create, pause, resume and delete a report schedule", async ({ page }) => {
 
   await page.getByLabel("How often").selectOption("WEEKLY");
   await page.getByLabel("Day", { exact: true }).selectOption({ label: "Friday" });
-  await page.getByLabel(/^Time/).selectOption("9");
+  await page.getByLabel(/^Time \(/).selectOption("9");
   await page.getByLabel("Send to (email addresses)").fill("client@example.com, boss@example.com");
   await page.getByRole("button", { name: "Save schedule" }).click();
 
