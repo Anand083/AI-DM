@@ -11,6 +11,7 @@ describe("navItemsFor", () => {
       "projects",
       "research",
       "reports",
+      "leads",
       "team",
       "branding",
       "billing",
@@ -22,6 +23,9 @@ describe("navItemsFor", () => {
   it("hides billing from admins", () => {
     expect(keys("ADMIN")).not.toContain("billing");
     expect(keys("ADMIN")).toContain("branding");
+  });
+  it("shows leads to members too", () => {
+    expect(keys("MEMBER")).toContain("leads");
   });
   it("hides branding, billing and usage from members", () => {
     const list = keys("MEMBER");

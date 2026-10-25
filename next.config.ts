@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { NON_FRAMEABLE_SOURCE, securityHeaders } from "./src/lib/security-headers";
+import { NON_FRAMEABLE_SOURCE, securityHeaders, widgetHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   // A small self-contained server for the Docker image.
@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
       {
         source: NON_FRAMEABLE_SOURCE,
         headers: securityHeaders({ dev: process.env.NODE_ENV !== "production" }),
+      },
+      // The lead widget may be framed by any site, but is otherwise locked down.
+      {
+        source: "/widget/:path*",
+        headers: widgetHeaders({ dev: process.env.NODE_ENV !== "production" }),
       },
       {
         source: "/r/:path*",

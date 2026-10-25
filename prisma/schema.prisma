@@ -196,6 +196,7 @@ model Agency {
   keywordListItems   KeywordListItem[]
   auditPages         AuditPage[]
   auditIssues        AuditIssue[]
+  leads              Lead[]
 
   @@index([status, deletedAt])
 }
@@ -1255,4 +1256,35 @@ model Ga4Day {
 
   @@unique([projectId, date])
   @@index([agencyId, projectId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Lead generation widget
+// ---------------------------------------------------------------------------
+
+/// A visitor of an agency's website who asked for a free mini audit through the widget.
+model Lead {
+  id             String    @id @default(cuid(2))
+  agencyId       String
+  /// Long random id the widget uses to ask for the result. It is the only thing that finds a lead without signing in.
+  publicId       String    @unique @default(cuid(2))
+  /// The website the visitor wants checked, without "www." and path.
+  domain         String
+  email          String
+  /// QUEUED, RUNNING, DONE or FAILED.
+  status         String    @default("QUEUED")
+  providerTaskId String?
+  healthScore    Int?
+  pagesCrawled   Int?
+  /// The most important issues: [{ code, title, severity, fix }].
+  issues         Json?
+  error          String?
+  notifiedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  finishedAt     DateTime?
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, createdAt])
+  @@index([agencyId, domain, email, createdAt])
 }

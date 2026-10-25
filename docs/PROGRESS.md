@@ -38,5 +38,8 @@
 | 29 AI visibility tracker | Done | questions, brand and engine settings, weekly worker check with plan limit handling, mention rate, share of voice, cited pages, latest answers, mention-lost alert, report section; unit + integration + isolation + E2E pass |
 | 30 Local SEO and reviews | Done | link a business, daily worker check, rating history, star counts, review list with suggested replies (summary provider), new-review alert (1 and 2 stars warn), mock reviews that change weekly, report section; unit + integration + isolation + E2E pass |
 | 31 Search Console and GA4 | Done (real Google needs a human) | Google provider (mock default, real HTTP code tested with msw), OAuth start and callback with signed state and nonce cookie, tokens encrypted, choose site and property, daily worker sync with refresh and reconnect handling, Analytics tab, overview cards, report section, export covers all tenant tables. Real use needs the OAuth client from docs/GOOGLE-SETUP.md. |
+| 32 Lead generation widget | Done | embed script + frameable widget page (only /widget may be framed), agency branding, IP and bot limits, worker mini audit (5 pages) counted as lead audits, neutral messages for visitors, email to owners and admins, Leads page with embed code and delete, export includes leads; unit + integration + E2E (embedded on another site) pass |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).
+
+**Phase F (Steps 27 to 32) is complete.** Phase G (Steps 33 to 36) needs real accounts and paid services, so it is waiting for the founder. Step 25 (server) is also waiting for the founder.

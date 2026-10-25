@@ -84,6 +84,28 @@ export async function enqueueBacklinkRefresh(data: {
   return true;
 }
 
+export type LeadJobData = { leadId: string; agencyId: string };
+
+/** Queues the start of a lead's mini audit. */
+export async function enqueueLeadRun(data: LeadJobData): Promise<void> {
+  await getQueue("modules").add("lead-start", data, {
+    jobId: jobIds.leadRun(data.leadId),
+    attempts: 2,
+  });
+}
+
+/** Queues the next progress check of a lead's mini audit (same pace as site audits). */
+export async function enqueueLeadPoll(
+  data: LeadJobData & { attempt: number },
+  delayMs = getEnv().AUDIT_POLL_SECONDS * 1000,
+): Promise<void> {
+  await getQueue("modules").add("lead-poll", data, {
+    delay: delayMs,
+    jobId: jobIds.leadPoll(data.leadId, data.attempt),
+    attempts: 1,
+  });
+}
+
 /** Queues the Google numbers sync of a project. Returns false if it was already queued for that date. */
 export async function enqueueGoogleSync(data: {
   agencyId: string;

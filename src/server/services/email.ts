@@ -63,3 +63,14 @@ export async function sendBillingNoticeEmail(
   const body = await renderBoth(BillingNotice({ brandName: getEnv().APP_NAME, ...props }));
   await enqueueEmail({ to, subject, ...body }, key);
 }
+
+/** A new lead goes to the agency's team, so it uses the platform name like other team emails. */
+export async function sendLeadNoticeEmail(
+  to: string,
+  subject: string,
+  props: Omit<BillingNoticeProps, "brandName">,
+  key: string,
+): Promise<void> {
+  const body = await renderBoth(BillingNotice({ brandName: getEnv().APP_NAME, ...props }));
+  await enqueueEmail({ to, subject, ...body }, key);
+}

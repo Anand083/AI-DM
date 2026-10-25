@@ -390,6 +390,29 @@ export function exportFiles(
       rows: allRows((a) => rawDb.ga4Day.findMany({ where, ...order, ...a })),
     },
     {
+      // The public id is left out: it is a secret that opens the visitor's result.
+      name: "leads.jsonl",
+      model: "Lead",
+      rows: allRows((a) =>
+        rawDb.lead.findMany({
+          where,
+          select: {
+            id: true,
+            domain: true,
+            email: true,
+            status: true,
+            healthScore: true,
+            pagesCrawled: true,
+            issues: true,
+            createdAt: true,
+            finishedAt: true,
+          },
+          ...order,
+          ...a,
+        }),
+      ),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),

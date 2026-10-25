@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { contentSecurityPolicy, NON_FRAMEABLE_SOURCE, securityHeaders } from "./security-headers";
+import {
+  contentSecurityPolicy,
+  NON_FRAMEABLE_SOURCE,
+  securityHeaders,
+  widgetHeaders,
+} from "./security-headers";
 
 const get = (headers: ReturnType<typeof securityHeaders>, key: string) =>
   headers.find((h) => h.key === key)?.value;
@@ -45,5 +50,33 @@ describe("security headers", () => {
     expect(matches("/widgetry")).toBe(true);
     expect(matches("/widget")).toBe(false);
     expect(matches("/widget/abc")).toBe(false);
+  });
+});
+
+describe("widget headers", () => {
+  it("allow framing by any site but stay strict otherwise", () => {
+    const headers = widgetHeaders({ dev: false });
+    const csp = get(headers, "Content-Security-Policy")!;
+    expect(csp).toContain("frame-ancestors *");
+    expect(csp).not.toContain("frame-ancestors 'none'");
+    for (const part of [
+      "default-src 'self'",
+      "object-src 'none'",
+      "form-action 'self'",
+      "base-uri 'self'",
+    ]) {
+      expect(csp).toContain(part);
+    }
+    expect(csp).not.toMatch(/script-src[^;]*https?:/);
+    // Framing is allowed, so there is no X-Frame-Options.
+    expect(get(headers, "X-Frame-Options")).toBeUndefined();
+    expect(get(headers, "X-Robots-Tag")).toBe("noindex, nofollow");
+    expect(get(headers, "X-Content-Type-Options")).toBe("nosniff");
+    expect(get(headers, "Strict-Transport-Security")).toContain("max-age");
+    expect(get(widgetHeaders({ dev: true }), "Strict-Transport-Security")).toBeUndefined();
+  });
+
+  it("does not loosen the normal headers", () => {
+    expect(contentSecurityPolicy({ dev: false })).toContain("frame-ancestors 'none'");
   });
 });

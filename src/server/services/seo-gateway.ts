@@ -290,6 +290,30 @@ export class SeoGateway {
     });
   }
 
+  /**
+   * The result of a lead widget mini audit. It counts as one lead audit (not as audit pages), and
+   * the cost is that of the pages crawled.
+   */
+  getLeadAuditResult(caller: GatewayCaller, taskId: string): Promise<GatewayResult<AuditResult>> {
+    return this.cachedCall({
+      module: "audit",
+      operation: "lead_audit_result",
+      costOperation: "audit_page",
+      input: { taskId },
+      expiresAt: (now) => new Date(now.getTime() + 7 * DAY_MS),
+      metric: "LEAD_AUDIT",
+      units: 1,
+      caller,
+      run: async (p) => {
+        const result = await p.getAuditResult(taskId);
+        return {
+          data: result.data,
+          costMicros: p.estimateCostMicros("audit_page", result.data.pagesCrawled),
+        };
+      },
+    });
+  }
+
   getBacklinkSummary(
     caller: GatewayCaller,
     domain: string,

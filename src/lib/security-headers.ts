@@ -3,7 +3,11 @@ export const FRAMEABLE_PATHS = ["widget"] as const;
 
 export type Header = { key: string; value: string };
 
-export function contentSecurityPolicy(options: { dev: boolean }): string {
+export function contentSecurityPolicy(options: {
+  dev: boolean;
+  /** The lead widget may be shown in a frame by any website. */
+  frameable?: boolean;
+}): string {
   const { dev } = options;
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
@@ -18,7 +22,7 @@ export function contentSecurityPolicy(options: { dev: boolean }): string {
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'"],
-    "frame-ancestors": ["'none'"],
+    "frame-ancestors": [options.frameable ? "*" : "'none'"],
   };
   return Object.entries(directives)
     .map(([name, values]) => `${name} ${values.join(" ")}`)
@@ -48,3 +52,27 @@ export function securityHeaders(options: { dev: boolean }): Header[] {
 
 /** The Next.js `source` pattern that matches everything except the frameable paths. */
 export const NON_FRAMEABLE_SOURCE = `/((?!(?:${FRAMEABLE_PATHS.join("|")})(?:/|$)).*)`;
+
+/**
+ * Headers for the lead widget (`/widget/...`). Other websites put it in a frame, so framing is
+ * allowed, but everything else stays strict: scripts and forms only from our own address, and
+ * search engines are told to leave it out.
+ */
+export function widgetHeaders(options: { dev: boolean }): Header[] {
+  return [
+    {
+      key: "Content-Security-Policy",
+      value: contentSecurityPolicy({ ...options, frameable: true }),
+    },
+    { key: "X-Content-Type-Options", value: "nosniff" },
+    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    {
+      key: "Permissions-Policy",
+      value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    },
+    { key: "X-Robots-Tag", value: "noindex, nofollow" },
+    ...(options.dev
+      ? []
+      : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]),
+  ];
+}

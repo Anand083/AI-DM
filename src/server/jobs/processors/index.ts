@@ -28,6 +28,7 @@ import {
   enqueueBacklinkRefresh,
   enqueueDigest,
   enqueueGoogleSync,
+  enqueueLeadPoll,
   enqueueEmail,
   enqueueProcessTask,
   enqueueRankCheck,
@@ -43,6 +44,8 @@ import { S3StorageProvider } from "@/server/providers/storage/s3";
 import { purgeExpired } from "@/server/jobs/system/purge";
 import { runGoogleScheduler } from "@/server/jobs/system/google-scheduler";
 import { getGoogleProvider } from "@/server/providers/google";
+import { pollLead, runLeadStart } from "@/server/services/lead-runner";
+import { notifyAgencyOfLead } from "@/server/services/leads";
 import { runGoogleSync } from "@/server/services/google-sync";
 import { runReviewScheduler } from "@/server/jobs/system/review-scheduler";
 import { getSummaryProvider } from "@/server/providers/summary";
@@ -203,6 +206,38 @@ export const processors: JobProcessors = {
             return { error: error.message };
           }
           throw error;
+        }
+      }
+      case "lead-start":
+      case "lead-poll": {
+        const data = job.data as { leadId: string; agencyId: string; attempt?: number };
+        const deps = {
+          db,
+          gateway: getSeoGateway(),
+          enqueuePoll: enqueueLeadPoll,
+          notify: notifyAgencyOfLead,
+          // Give up after about 10 minutes, whatever the pace of the checks.
+          maxPolls: Math.ceil(600 / getEnv().AUDIT_POLL_SECONDS),
+        };
+        try {
+          const result =
+            job.name === "lead-start"
+              ? await runLeadStart(deps, data)
+              : await pollLead(deps, { ...data, attempt: data.attempt ?? 1 });
+          logger.info({ jobId: job.id, result }, "lead audit step");
+          return result;
+        } catch (error) {
+          // Anything unexpected ends this lead with the neutral message; the cause is in the log.
+          logger.error({ err: error, jobId: job.id }, "lead audit failed");
+          await db.lead.updateMany({
+            where: {
+              id: data.leadId,
+              agencyId: data.agencyId,
+              status: { in: ["QUEUED", "RUNNING"] },
+            },
+            data: { status: "FAILED", error: "Unexpected error", finishedAt: new Date() },
+          });
+          return { error: "failed" };
         }
       }
       case "google-sync": {
