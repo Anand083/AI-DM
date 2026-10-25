@@ -18,6 +18,7 @@ const MENU = [
   ["Billing", "/billing"],
   ["Usage", "/usage"],
   ["Settings", "/settings"],
+  ["Help", "/help"],
 ] as const;
 
 test("every menu item opens without errors", async ({ page }) => {

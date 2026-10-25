@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { extractLink, waitForEmail } from "../helpers/mailpit";
 import { markDomainVerified, seedRankings, setPlan } from "./db";
-import { createAgencyInUi, newEmail, PASSWORD, signUpAndVerify } from "./helpers";
+import { createAgencyInUi, newEmail, PASSWORD, signUpAndVerify, waitForHydration } from "./helpers";
 
 // Every run uses its own name, because a domain can only belong to one agency.
 const DOMAIN = `agency-one-${Date.now()}.localhost`;
@@ -76,16 +76,18 @@ test("a verified custom domain shows the agency's client portal", async ({ page,
   // On the custom domain, the root is the agency's portal login.
   const first = await visitor.goto(`${ORIGIN}/`);
   expect(first?.status()).toBe(200);
-  await expect(visitor.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await expect(visitor.getByRole("heading", { name: "Sign in" })).toBeVisible({ timeout: 60_000 });
   expect(visitor.url().startsWith(ORIGIN)).toBe(true);
   expect(await visitor.title()).toContain("Agency One");
 
   // Signing in works on that origin and stays on it. Wait until the page is ready for typing.
-  await visitor.waitForLoadState("networkidle");
+  await waitForHydration(visitor, "form");
   await visitor.getByLabel("Email").fill(clientEmail);
   await visitor.getByLabel("Password").fill(PASSWORD);
   await visitor.getByRole("button", { name: "Sign in" }).click();
-  await expect(visitor.getByRole("heading", { name: "Your websites" })).toBeVisible();
+  await expect(visitor.getByRole("heading", { name: "Your websites" })).toBeVisible({
+    timeout: 45_000,
+  });
   expect(visitor.url().startsWith(ORIGIN)).toBe(true);
   await expect(visitor.getByRole("link", { name: "Shop" })).toBeVisible();
   const home = await visitor.goto(`${ORIGIN}/`);

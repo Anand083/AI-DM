@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OnboardingChecklist } from "@/components/app/onboarding-checklist";
 import { ChangeBadge, StatCard } from "@/components/app/rank-widgets";
 import { ScoreBadge } from "@/components/app/audit-widgets";
 import { UsageBars } from "@/components/app/usage-bars";
@@ -10,6 +11,7 @@ import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { getAgency } from "@/server/services/agency";
 import { getDashboard } from "@/server/services/dashboard";
+import { getOnboardingState } from "@/server/services/onboarding";
 
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
@@ -28,9 +30,10 @@ export default async function AgencyHome({
   const sp = await searchParams;
   const { ctx } = await getPageContext(agencySlug);
   const page = pageFromParams(sp.page);
-  const [agency, data] = await Promise.all([
+  const [agency, data, onboarding] = await Promise.all([
     getAgency(ctx),
     getDashboard(ctx, { page, pageSize: PAGE_SIZE }),
+    getOnboardingState(ctx),
   ]);
   const base = `/app/${agencySlug}`;
   const date = (d: Date) =>
@@ -39,6 +42,8 @@ export default async function AgencyHome({
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-semibold">{agency.name}</h1>
+
+      {onboarding ? <OnboardingChecklist state={onboarding} helpHref={`${base}/help`} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Clients" value={String(data.clientTotal)} />

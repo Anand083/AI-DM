@@ -28,5 +28,6 @@
 | 19 Plans and mock billing | Done | billing provider interface + mock checkout (Pay / Fail payment, signed webhook), idempotent webhook route, subscription state machine, billing page, trial/payment/read-only banner, trial reminders, dev clock; unit + integration + E2E pass |
 | 20 Super admin | Done | /admin (404 for others), overview with MRR/churn/margin, agencies list + detail with actions, support sessions (30 min, red banner, logged, billing blocked), queues, data provider, plans editor, platform settings, suspended page, admin:create CLI; unit + integration + E2E pass |
 | 21 Security hardening | Done | security headers + CSP, rate limits (actions, public routes, provider callbacks), 2FA (authenticator app, required for admins), sessions page, data export zip, agency deletion, login activity log, CI audit + secret scan, route and action registry test; unit + integration + E2E pass |
+| 22 Marketing site and onboarding | Done | home, features, pricing (from the plan table), about, contact form (limited, bot trap), terms and privacy placeholders, robots and sitemap; get-started checklist on the dashboard; in-app help; unit + integration + E2E pass |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).

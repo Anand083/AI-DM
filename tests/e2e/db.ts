@@ -138,3 +138,14 @@ export async function activityActions(
     return rows.map((r) => ({ action: r.action, impersonated: r.impersonatorUserId !== null }));
   });
 }
+
+/** The public plans as stored, for checking what the pricing page shows. */
+export async function publicPlans() {
+  return withDb((prisma) =>
+    prisma.plan.findMany({ where: { isPublic: true }, orderBy: { sortOrder: "asc" } }),
+  );
+}
+
+export async function contactMessagesFrom(email: string) {
+  return withDb((prisma) => prisma.contactMessage.findMany({ where: { email } }));
+}

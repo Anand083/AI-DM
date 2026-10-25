@@ -59,7 +59,8 @@ export type ActionGuard =
   | "tenant" // every exported action goes through withTenantAction
   | "admin" // every exported action goes through withAdminAction (or requireSuperAdmin)
   | "own-account" // acts only on the signed-in person's own records
-  | "token"; // proof is a secret token that was sent to the person
+  | "token" // proof is a secret token that was sent to the person
+  | "public-limited"; // no sign-in on purpose; limited by IP address and validated
 
 export const ACTION_FILES: Record<string, ActionGuard> = {
   "src/app/account-actions.ts": "own-account",
@@ -78,6 +79,7 @@ export const ACTION_FILES: Record<string, ActionGuard> = {
   "src/app/app/[agencySlug]/settings/actions.ts": "tenant",
   "src/app/app/[agencySlug]/team/actions.ts": "tenant",
   "src/app/app/onboarding/actions.ts": "own-account",
+  "src/app/(marketing)/contact/actions.ts": "public-limited",
   "src/app/invite-actions.ts": "token",
   "src/app/portal-actions.ts": "token",
 };
@@ -88,6 +90,7 @@ export const ACTION_GUARD_MARKERS: Record<ActionGuard, string[]> = {
   admin: ["withAdminAction(", "requireSuperAdmin("],
   "own-account": ["getRealSessionUser(", "getSessionUser(", "requireUser("],
   token: ["getSessionUser(", "acceptInvitation(", "createClientAccount("],
+  "public-limited": ["allow("],
 };
 
 /**

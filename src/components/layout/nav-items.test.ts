@@ -16,6 +16,7 @@ describe("navItemsFor", () => {
       "billing",
       "usage",
       "settings",
+      "help",
     ]);
   });
   it("hides billing from admins", () => {

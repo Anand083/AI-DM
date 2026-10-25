@@ -4,6 +4,7 @@ import {
   CreditCard,
   FileText,
   FolderKanban,
+  CircleHelp,
   Search,
   Gauge,
   LayoutDashboard,
@@ -28,6 +29,7 @@ const ICONS: Record<NavKey, LucideIcon> = {
   branding: Palette,
   billing: CreditCard,
   usage: Gauge,
+  help: CircleHelp,
   settings: Settings,
 };
 
