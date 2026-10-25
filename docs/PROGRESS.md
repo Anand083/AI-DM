@@ -31,5 +31,6 @@
 | 22 Marketing site and onboarding | Done | home, features, pricing (from the plan table), about, contact form (limited, bot trap), terms and privacy placeholders, robots and sitemap; get-started checklist on the dashboard; in-app help; unit + integration + E2E pass |
 | 23 Production Docker | Done | web and worker images, prod compose (caddy, postgres, redis, migrate + seed, backup, optional mailpit), prod env checks, smoke test script and browser check; stack runs locally and data survives a restart |
 | 24 CI/CD | Done (pipeline untested) | CI builds and pushes web and worker images to GHCR (SHA + latest) after all checks; manual Deploy workflow over SSH; `scripts/deploy.sh` migrates, smoke tests and rolls back on failure (rollback proven locally); docs/DEPLOY.md lists the GitHub secrets. Real run needs the server from Step 25. |
+| 25 AWS server setup | Scripts done, WAITING FOR HUMAN | `scripts/server-setup.sh` and `docs/SERVER-SETUP.md` written. You must do the AWS console steps, run the script, add GitHub secrets, run Deploy, then check the smoke test and a reboot. |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).

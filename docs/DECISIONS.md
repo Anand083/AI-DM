@@ -292,3 +292,8 @@
 - Only one deploy runs at a time (`concurrency` group). The deploy is manual on purpose.
 - Rollback does not undo migrations. The rule (add first, remove later) is written in `docs/DEPLOY.md`.
 - Test done: with the prod stack locally, deploy of `v1` passed, then deploy of `v2` with `DEPLOY_FORCE_SMOKE_FAIL=1` rolled back to `v1` and the smoke test passed on it. The pipeline itself (GitHub runs, GHCR push, SSH deploy) cannot be run from here, because it needs the real repository secrets and a server. It runs for the first time after Step 25.
+
+## Step 25
+
+- `scripts/server-setup.sh` (Ubuntu 24.04, run as root, safe to run twice) needs `DEPLOY_PUBKEY`. It creates the `deploy` user (key login only), writes an sshd drop-in that disables root and password login and allows only that user, enables ufw (22, 80, 443 tcp and 443 udp for HTTP/3), fail2ban for SSH, unattended security upgrades, a 2 GB swap file with low swappiness, Docker from Docker's own apt repository with the compose plugin, Docker log rotation, and the app folder. It checks the SSH config with `sshd -t` before reloading.
+- The console part (budget, region, EC2, Elastic IP, security group) and the final checks (smoke test against the server, reboot test) need the human, so they are listed in `docs/SERVER-SETUP.md`. Step 25 stays open until then. Because the remaining work in Steps 26 to 32 can be written and tested without the server, I continue with those while Step 25 waits, and I will not mark Step 25 done.
