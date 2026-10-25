@@ -8,6 +8,7 @@ import type {
   AiTopic,
   BingRank,
   KeywordMetric,
+  ListingResult,
   ReferringDomain,
   AiVisibilityResult,
   LlmMentionsSummary,
@@ -100,6 +101,15 @@ export class DataForSeoProvider implements SeoDataProvider {
     languageCode: string;
   }): Promise<ProviderResult<KeywordMetric[]>> {
     throw new NotImplementedError("DataForSEO getKeywordMetrics");
+  }
+  getListings(_i: {
+    name: string;
+    address: string;
+    phone: string;
+    city: string;
+    sources: string[];
+  }): Promise<ProviderResult<ListingResult[]>> {
+    throw new NotImplementedError("DataForSEO getListings");
   }
   getReferringDomains(_i: {
     domain: string;

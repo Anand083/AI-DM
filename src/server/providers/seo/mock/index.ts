@@ -5,6 +5,7 @@ import type {
   AiTopic,
   BingRank,
   KeywordMetric,
+  ListingResult,
   ReferringDomain,
   AuditCrawlConfig,
   AiVisibilityResult,
@@ -35,6 +36,7 @@ import {
   buildAiTopics,
   buildAiVisibility,
   buildBingRankings,
+  buildListings,
   buildKeywordMetrics,
   buildLlmMentions,
   buildReviews,
@@ -152,6 +154,16 @@ export class MockSeoProvider implements SeoDataProvider {
     limit: number;
   }): Promise<ProviderResult<ReferringDomain[]>> {
     return this.call(() => buildReferringDomains(i.domain.toLowerCase(), i.limit));
+  }
+
+  getListings(i: {
+    name: string;
+    address: string;
+    phone: string;
+    city: string;
+    sources: string[];
+  }): Promise<ProviderResult<ListingResult[]>> {
+    return this.call(() => buildListings({ ...i, day: dayNumber(this.now()) }));
   }
 
   getBingRankings(i: {

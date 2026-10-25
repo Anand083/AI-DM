@@ -213,6 +213,9 @@ model Agency {
   auditIssueStates   AuditIssueState[]
   urlInspections     UrlInspection[]
   competitorLinks    CompetitorLink[]
+  locations          Location[]
+  localRanks         LocalRank[]
+  listingChecks      ListingCheck[]
 
   @@index([status, deletedAt])
 }
@@ -333,6 +336,9 @@ model Project {
   auditIssueStates   AuditIssueState[]
   urlInspections     UrlInspection[]
   competitorLinks    CompetitorLink[]
+  locations          Location[]
+  localRanks         LocalRank[]
+  listingChecks      ListingCheck[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -432,6 +438,7 @@ model Keyword {
   agency     Agency      @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   rankChecks RankCheck[]
+  localRanks LocalRank[]
 
   @@unique([projectId, phrase])
   @@index([agencyId, projectId, phrase])
@@ -1667,4 +1674,71 @@ model CompetitorLink {
 
   @@unique([competitorId, sourceDomain])
   @@index([agencyId, projectId, sourceDomain])
+}
+
+/// A physical place of the client's business (up to 10 per project).
+model Location {
+  id           String   @id @default(cuid(2))
+  agencyId     String
+  projectId    String
+  name         String
+  city         String
+  /// The address as it should appear everywhere.
+  address      String
+  phone        String
+  /// Search location used for local rank checks. Empty means the project's own.
+  locationCode Int?
+  createdAt    DateTime @default(now())
+
+  agency   Agency         @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ranks    LocalRank[]
+  listings ListingCheck[]
+
+  @@unique([projectId, name])
+  @@index([agencyId, projectId])
+}
+
+/// A keyword's position as seen from one location, one row per day. `position` null means not in the top 100.
+model LocalRank {
+  id         String   @id @default(cuid(2))
+  agencyId   String
+  projectId  String
+  locationId String
+  keywordId  String
+  date       DateTime @db.Date
+  position   Int?
+  url        String?
+  provider   String
+
+  agency   Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  keyword  Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, keywordId, date])
+  @@index([agencyId, projectId, locationId, date])
+}
+
+/// What one directory shows for a location, from the last listing check. One row per directory.
+model ListingCheck {
+  id         String   @id @default(cuid(2))
+  agencyId   String
+  projectId  String
+  locationId String
+  source     String
+  found      Boolean
+  name       String?
+  address    String?
+  phone      String?
+  url        String?
+  checkedOn  DateTime @db.Date
+  provider   String
+
+  agency   Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, source])
+  @@index([agencyId, projectId, locationId])
 }

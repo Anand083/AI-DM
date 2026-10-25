@@ -107,6 +107,40 @@ export async function enqueueLeadPoll(
   });
 }
 
+/** Queues a local rank check for the locations of a project. Returns false if one is queued for that date. */
+export async function enqueueLocalRanks(data: {
+  agencyId: string;
+  projectId: string;
+  date: string;
+}): Promise<boolean> {
+  const queue = getQueue("modules");
+  const jobId = jobIds.localRanks(data.projectId, data.date);
+  if (await queue.getJob(jobId)) return false;
+  await queue.add("local-ranks", data, {
+    jobId,
+    attempts: 2,
+    backoff: { type: "exponential", delay: 60_000 },
+  });
+  return true;
+}
+
+/** Queues a listing check for the locations of a project. Returns false if one is queued for that date. */
+export async function enqueueListingChecks(data: {
+  agencyId: string;
+  projectId: string;
+  date: string;
+}): Promise<boolean> {
+  const queue = getQueue("modules");
+  const jobId = jobIds.listingChecks(data.projectId, data.date);
+  if (await queue.getJob(jobId)) return false;
+  await queue.add("listing-checks", data, {
+    jobId,
+    attempts: 2,
+    backoff: { type: "exponential", delay: 60_000 },
+  });
+  return true;
+}
+
 /** Queues a refresh of the link numbers of a project's competitors. Returns false if one is queued for that date. */
 export async function enqueueCompetitorLinks(data: {
   agencyId: string;

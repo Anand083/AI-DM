@@ -2,6 +2,7 @@ import type {
   AiEngine,
   BingRank,
   KeywordMetric,
+  ListingResult,
   AiTopic,
   AiVisibilityResult,
   LlmMentionsSummary,
@@ -186,6 +187,38 @@ export function buildBingRankings(input: {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "")}`,
+    };
+  });
+}
+
+/**
+ * Pretend directory listings for a business. Most directories have it; some show an old phone
+ * number, a short form of the address, or a slightly different name. Stable within a week.
+ */
+export function buildListings(input: {
+  name: string;
+  address: string;
+  phone: string;
+  city: string;
+  sources: string[];
+  day: number;
+}): ListingResult[] {
+  const week = Math.floor(input.day / 7);
+  return input.sources.map((source) => {
+    const rng = makeRng(input.name, input.city, source, "listing", week);
+    if (rng.chance(0.15)) {
+      return { source, found: false, name: null, address: null, phone: null, url: null };
+    }
+    const digits = input.phone.replace(/\D/g, "");
+    return {
+      source,
+      found: true,
+      name: rng.chance(0.15) ? `${input.name} Clinic` : input.name,
+      address: rng.chance(0.2)
+        ? input.address.replace(/\d+/, (m) => String(Number(m) + 2))
+        : input.address,
+      phone: rng.chance(0.25) && digits.length > 4 ? `${digits.slice(0, -2)}99` : input.phone,
+      url: `https://${source.toLowerCase().replace(/[^a-z]+/g, "")}.example/${encodeURIComponent(input.name.toLowerCase().replace(/\s+/g, "-"))}`,
     };
   });
 }

@@ -493,6 +493,21 @@ export function exportFiles(
       rows: allRows((a) => rawDb.competitorLink.findMany({ where, ...order, ...a })),
     },
     {
+      name: "locations.jsonl",
+      model: "Location",
+      rows: allRows((a) => rawDb.location.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "local-ranks.jsonl",
+      model: "LocalRank",
+      rows: allRows((a) => rawDb.localRank.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "listing-checks.jsonl",
+      model: "ListingCheck",
+      rows: allRows((a) => rawDb.listingCheck.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),

@@ -430,6 +430,32 @@ describe("backlinks, ranked keywords, AI and reviews", () => {
     expect(b.some((r) => a.some((x) => x.domain === r.domain))).toBe(true);
   });
 
+  it("returns directory listings: most found, some with the wrong details, the same all week", async () => {
+    const input = {
+      name: "Acme Dental",
+      address: "12 North Main Street",
+      phone: "512-555-0134",
+      city: "Austin",
+      sources: ["Google Business Profile", "Bing Places", "Apple Maps", "Facebook", "Yelp"],
+    };
+    const a = (await p.getListings(input)).data;
+    expect(a.map((l) => l.source)).toEqual(input.sources);
+    expect(a).toEqual((await p.getListings(input)).data);
+    let found = 0;
+    let wrong = 0;
+    for (let i = 0; i < 40; i++) {
+      for (const l of (await p.getListings({ ...input, name: `Business ${i}` })).data) {
+        if (!l.found) continue;
+        found++;
+        if (l.phone !== input.phone || l.address !== input.address || l.name !== `Business ${i}`)
+          wrong++;
+      }
+    }
+    expect(found).toBeGreaterThan(120);
+    expect(wrong).toBeGreaterThan(10);
+    expect(wrong).toBeLessThan(found);
+  });
+
   it("returns reviews with ratings from 1 to 5", async () => {
     const { data } = await p.getReviews({ businessName: "Bright Dental", locationCode: 2840 });
     expect(data.rating).toBeGreaterThanOrEqual(1);

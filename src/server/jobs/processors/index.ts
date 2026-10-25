@@ -47,6 +47,8 @@ import { getGoogleProvider } from "@/server/providers/google";
 import { pollLead, runLeadStart } from "@/server/services/lead-runner";
 import { notifyAgencyOfLead } from "@/server/services/leads";
 import { runCompetitorAlerts } from "@/server/jobs/system/competitor-alerts";
+import { pseudoLocationCode } from "@/lib/local";
+import { runListingChecks, runLocalRanks } from "@/server/services/local-runner";
 import { runCompetitorLinks } from "@/server/services/competitor-links-runner";
 import { runKeywordMetrics } from "@/server/services/keyword-metrics-runner";
 import { runUrlInspection } from "@/server/services/google-inspect";
@@ -270,6 +272,29 @@ export const processors: JobProcessors = {
           data,
         );
         logger.info({ jobId: job.id, ...result }, "google sync");
+        return result;
+      }
+      case "local-ranks": {
+        const data = job.data as { projectId: string; agencyId: string; date: string };
+        const gateway = getSeoGateway();
+        const result = await runLocalRanks(
+          {
+            db,
+            gateway,
+            // A real vendor needs a real location code; the mock gets a stable made-up one per city.
+            codeFor: (location, projectCode) =>
+              location.locationCode ??
+              (getEnv().SEO_PROVIDER === "mock" ? pseudoLocationCode(location.city) : projectCode),
+          },
+          data,
+        );
+        logger.info({ jobId: job.id, ...result }, "local ranks");
+        return result;
+      }
+      case "listing-checks": {
+        const data = job.data as { projectId: string; agencyId: string; date: string };
+        const result = await runListingChecks({ db, gateway: getSeoGateway() }, data);
+        logger.info({ jobId: job.id, ...result }, "listing checks");
         return result;
       }
       case "competitor-links": {

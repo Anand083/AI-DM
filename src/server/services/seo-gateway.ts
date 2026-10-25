@@ -7,6 +7,7 @@ import type {
   AiTopic,
   BingRank,
   KeywordMetric,
+  ListingResult,
   ReferringDomain,
   AuditCrawlConfig,
   AiVisibilityResult,
@@ -289,6 +290,27 @@ export class SeoGateway {
       units: 1,
       caller,
       run: (p) => p.getKeywordMetrics(normalized),
+    });
+  }
+
+  /** What directories show for a business. Cached for a day; counts as one review query per directory. */
+  getListings(
+    caller: GatewayCaller,
+    input: { name: string; address: string; phone: string; city: string; sources: string[] },
+  ): Promise<GatewayResult<ListingResult[]>> {
+    const sources = [...input.sources].sort();
+    const normalized = { ...input, sources };
+    return this.cachedCall({
+      module: "reviews",
+      operation: "listings",
+      costOperation: "listings",
+      input: normalized,
+      perDay: true,
+      expiresAt: endOfUtcDay,
+      metric: "REVIEW_QUERY",
+      units: sources.length,
+      caller,
+      run: (p) => p.getListings(normalized),
     });
   }
 

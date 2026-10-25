@@ -194,6 +194,16 @@ export type ReferringDomain = {
   backlinks: number;
 };
 
+/** What one directory shows for a business. */
+export type ListingResult = {
+  source: string;
+  found: boolean;
+  name: string | null;
+  address: string | null;
+  phone: string | null;
+  url: string | null;
+};
+
 export type Review = {
   author: string;
   rating: number;
@@ -219,6 +229,7 @@ export type SeoOperation =
   | "keyword_metrics"
   | "bing_rankings"
   | "referring_domains"
+  | "listings"
   | "ai_topics"
   | "llm_mentions"
   | "reviews";
@@ -270,6 +281,13 @@ export interface SeoDataProvider {
     domain: string;
     limit: number;
   }): Promise<ProviderResult<ReferringDomain[]>>;
+  getListings(i: {
+    name: string;
+    address: string;
+    phone: string;
+    city: string;
+    sources: string[];
+  }): Promise<ProviderResult<ListingResult[]>>;
   startAudit(i: {
     domain: string;
     maxPages: number;
