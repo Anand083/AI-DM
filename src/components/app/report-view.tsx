@@ -1,7 +1,12 @@
 import { brandCssVars, initials } from "@/lib/brand";
 import { formatChange, formatPosition } from "@/lib/rank-math";
 import { describeAnalytics } from "@/lib/report-analytics";
-import { KIND_LABELS, describeComparison, describeSource } from "@/lib/report-extras";
+import {
+  KIND_LABELS,
+  describeComparison,
+  describeCompetitorLinks,
+  describeSource,
+} from "@/lib/report-extras";
 import { describeReviews } from "@/lib/report-reviews";
 import { describeAi } from "@/lib/report-ai";
 import { describeBacklinks } from "@/lib/report-backlinks";
@@ -318,6 +323,16 @@ export function ReportView({
                   </tbody>
                 </table>
               </div>
+              {model.competitors.links && model.competitors.links.length > 0 ? (
+                <div>
+                  <p className="text-sm font-medium">Links side by side</p>
+                  <ul aria-label="Links side by side" className="mt-1 space-y-0.5 text-sm">
+                    {describeCompetitorLinks(model.competitors.links).map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {model.competitors.gap.length > 0 ? (
                 <div className="overflow-x-auto rounded-lg border border-zinc-200">
                   <table className="w-full text-left text-sm" aria-label="Biggest keyword gaps">

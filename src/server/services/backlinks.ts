@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { snapshotChange, type SuspiciousReason } from "@/lib/backlink-math";
+import { anchorDistribution } from "@/lib/competitor-insights";
 import { can } from "@/server/auth/permissions";
 import type { TenantContext } from "@/server/auth/tenant-context";
 import { db } from "@/server/db/client";
@@ -152,6 +153,31 @@ export type BacklinkRow = Omit<
   Prisma.BacklinkGetPayload<{ select: typeof linkSelect }>,
   "suspiciousReasons"
 > & { suspiciousReasons: SuspiciousReason[] };
+
+/**
+ * What kind of text the project's live links use (brand name, exact keyword, generic words,
+ * web address...). Too many exact-keyword anchors can look unnatural to Google.
+ */
+export async function getAnchorDistribution(ctx: TenantContext, projectId: string) {
+  requireView(ctx);
+  const project = await getProject(ctx, projectId);
+  const base = { agencyId: ctx.agencyId, projectId };
+  const [links, keywords] = await Promise.all([
+    db.backlink.findMany({
+      where: { ...base, lostAt: null },
+      select: { anchor: true },
+      orderBy: { id: "asc" },
+      take: 5000,
+    }),
+    db.keyword.findMany({ where: base, select: { phrase: true }, take: 2000 }),
+  ]);
+  const domainWord = project.domain.split(".")[0] ?? "";
+  return anchorDistribution(
+    links.map((l) => l.anchor),
+    [project.name, project.client.name, project.domain, domainWord],
+    keywords.map((k) => k.phrase),
+  );
+}
 
 export async function listBacklinks(
   ctx: TenantContext,

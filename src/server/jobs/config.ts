@@ -58,6 +58,7 @@ export const jobIds = {
   leadRun: (leadId: string) => `lead_${safe(leadId)}_run`,
   leadPoll: (leadId: string, attempt: number) => `lead_${safe(leadId)}_poll_${attempt}`,
   googleSync: (projectId: string, date: string) => `google_${safe(projectId)}_${date}`,
+  competitorLinks: (projectId: string, date: string) => `complinks_${safe(projectId)}_${date}`,
   keywordMetrics: (projectId: string, date: string) => `kwmetrics_${safe(projectId)}_${date}`,
   urlInspect: (projectId: string, key: string) => `inspect_${safe(projectId)}_${key}`,
   reviewCheck: (projectId: string, date: string) => `reviews_${safe(projectId)}_${date}`,

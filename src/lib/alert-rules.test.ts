@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildAuditAlert,
   buildBacklinkLossAlert,
+  buildCompetitorMoveAlert,
   buildGoogleAnomalyAlert,
   buildGoogleReconnectAlert,
   detectDrop,
@@ -284,5 +285,27 @@ describe("Google alerts", () => {
       title: "Reconnect Google for Shop",
       dedupeKey: "google_reconnect:p1:2026-03-10",
     });
+  });
+});
+
+describe("competitor move alert", () => {
+  const base = {
+    projectId: "p1",
+    projectName: "Shop",
+    competitor: "rival.com",
+    weekEnd: "2026-03-22",
+  };
+  it("names the competitor and the numbers, with a key per competitor and week", () => {
+    const a = buildCompetitorMoveAlert({ ...base, from: 4, to: 9 });
+    expect(a).toMatchObject({
+      type: "COMPETITOR_MOVE",
+      severity: "WARNING",
+      title: "rival.com moved up for Shop",
+      dedupeKey: "competitor_move:p1:rival.com:2026-03-22",
+    });
+    expect(a.body).toContain("9 of your keywords, up from 4");
+  });
+  it("is critical for a big jump", () => {
+    expect(buildCompetitorMoveAlert({ ...base, from: 2, to: 14 }).severity).toBe("CRITICAL");
   });
 });

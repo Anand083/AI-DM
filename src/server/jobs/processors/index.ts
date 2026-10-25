@@ -46,6 +46,8 @@ import { runGoogleScheduler } from "@/server/jobs/system/google-scheduler";
 import { getGoogleProvider } from "@/server/providers/google";
 import { pollLead, runLeadStart } from "@/server/services/lead-runner";
 import { notifyAgencyOfLead } from "@/server/services/leads";
+import { runCompetitorAlerts } from "@/server/jobs/system/competitor-alerts";
+import { runCompetitorLinks } from "@/server/services/competitor-links-runner";
 import { runKeywordMetrics } from "@/server/services/keyword-metrics-runner";
 import { runUrlInspection } from "@/server/services/google-inspect";
 import { runGoogleSync } from "@/server/services/google-sync";
@@ -118,6 +120,12 @@ export const processors: JobProcessors = {
           now: new Date(),
         });
         if (taskReminders.alerts > 0) logger.info(taskReminders, "task reminders");
+        const competitorMoves = await runCompetitorAlerts({
+          db: rawDb,
+          alertDb: db,
+          now: new Date(),
+        });
+        if (competitorMoves.alerts > 0) logger.info(competitorMoves, "competitor moves");
         const goalPoints = await runGoalSnapshots({ db: rawDb, now: new Date() });
         if (goalPoints.saved > 0) logger.info(goalPoints, "goal points saved");
         const digests = await runDigestScheduler({
@@ -143,6 +151,7 @@ export const processors: JobProcessors = {
           googleSyncs,
           taskReminders,
           goalPoints,
+          competitorMoves,
           digests,
           reports,
           billing,
@@ -261,6 +270,15 @@ export const processors: JobProcessors = {
           data,
         );
         logger.info({ jobId: job.id, ...result }, "google sync");
+        return result;
+      }
+      case "competitor-links": {
+        const data = job.data as { projectId: string; agencyId: string };
+        const result = await runCompetitorLinks(
+          { db, gateway: getSeoGateway(), windowFor: (agencyId) => backlinkWindow({ agencyId }) },
+          data,
+        );
+        logger.info({ jobId: job.id, ...result }, "competitor links");
         return result;
       }
       case "keyword-metrics": {

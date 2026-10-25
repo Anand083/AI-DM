@@ -32,6 +32,8 @@ test("check backlinks, filter the list, download the CSV", async ({ page }) => {
   await expect(table).toBeVisible();
   await expect(table.getByRole("row")).not.toHaveCount(1);
   await expect(page.getByText("Already checked today.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Link text (anchors)" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Link text types" })).toContainText("Generic words");
   await expect(page.getByRole("button", { name: "Check again" })).toBeDisabled();
 
   // Filters keep working, and an empty one says so in plain words.

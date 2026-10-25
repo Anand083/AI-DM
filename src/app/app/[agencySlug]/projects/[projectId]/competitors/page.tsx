@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CompetitorInsightsPanels } from "@/components/app/competitor-insights-panels";
 import { CompetitorPanel } from "@/components/app/competitor-panel";
 import { GapTable } from "@/components/app/gap-table";
 import { RefreshGapButton } from "@/components/app/refresh-gap-button";
@@ -8,6 +9,7 @@ import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { MAX_COMPETITORS } from "@/lib/competitors";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
+import { getCompetitorInsights } from "@/server/services/competitor-insights";
 import { getComparison, listGap } from "@/server/services/competitors";
 
 export const metadata: Metadata = { title: "Competitors" };
@@ -27,9 +29,10 @@ export default async function CompetitorsPage({
   const { ctx } = await getPageContext(agencySlug);
   const page = pageFromParams(sp.page);
   const gapPage = pageFromParams(sp.gap_page);
-  const [comparison, gap] = await Promise.all([
+  const [comparison, gap, insights] = await Promise.all([
     getComparison(ctx, projectId, { page, pageSize: PAGE_SIZE }),
     listGap(ctx, projectId, { page: gapPage, pageSize: PAGE_SIZE }),
+    getCompetitorInsights(ctx, projectId),
   ]);
   const base = `/app/${agencySlug}/projects/${projectId}/competitors`;
   const canEdit = can(ctx.role, "content.edit");
@@ -64,6 +67,15 @@ export default async function CompetitorsPage({
           canEdit={canEdit}
         />
       </section>
+
+      <CompetitorInsightsPanels
+        insights={insights}
+        agencySlug={agencySlug}
+        projectId={projectId}
+        canEdit={canEdit}
+        canRun={canRun}
+        hasCompetitors={competitors.length > 0}
+      />
 
       {competitors.length === 0 ? null : (
         <>

@@ -34,3 +34,21 @@ export const KIND_LABELS: Record<string, string> = {
   SITE_CHANGE: "Site change",
   OTHER: "Note",
 };
+
+const n = (v: number | null) => (v === null ? "no data" : v.toLocaleString("en-US"));
+
+/** One line per website for the side-by-side link comparison, you first. */
+export function describeCompetitorLinks(
+  rows: readonly {
+    domain: string;
+    isYou: boolean;
+    backlinks: number | null;
+    referringDomains: number | null;
+    rating: number | null;
+  }[],
+): string[] {
+  return rows.map(
+    (r) =>
+      `${r.domain}${r.isYou ? " (you)" : ""}: ${n(r.backlinks)} links from ${n(r.referringDomains)} websites, rating ${r.rating === null ? "no data" : `${r.rating} of 100`}.`,
+  );
+}

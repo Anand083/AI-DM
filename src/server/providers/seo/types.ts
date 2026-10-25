@@ -185,6 +185,15 @@ export type LlmMentionsSummary = {
   topQuestions: { question: string; mentions: number }[];
 };
 
+/** One website that links to a domain. */
+export type ReferringDomain = {
+  domain: string;
+  /** 0 to 100, the authority of the linking website. */
+  rating: number;
+  /** How many links it has to the domain. */
+  backlinks: number;
+};
+
 export type Review = {
   author: string;
   rating: number;
@@ -209,6 +218,7 @@ export type SeoOperation =
   | "ai_visibility"
   | "keyword_metrics"
   | "bing_rankings"
+  | "referring_domains"
   | "ai_topics"
   | "llm_mentions"
   | "reviews";
@@ -256,6 +266,10 @@ export interface SeoDataProvider {
     locationCode: number;
     languageCode: string;
   }): Promise<ProviderResult<BingRank[]>>;
+  getReferringDomains(i: {
+    domain: string;
+    limit: number;
+  }): Promise<ProviderResult<ReferringDomain[]>>;
   startAudit(i: {
     domain: string;
     maxPages: number;

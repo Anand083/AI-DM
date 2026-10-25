@@ -212,6 +212,7 @@ model Agency {
   auditConfigs       AuditConfig[]
   auditIssueStates   AuditIssueState[]
   urlInspections     UrlInspection[]
+  competitorLinks    CompetitorLink[]
 
   @@index([status, deletedAt])
 }
@@ -331,6 +332,7 @@ model Project {
   auditConfig        AuditConfig?
   auditIssueStates   AuditIssueState[]
   urlInspections     UrlInspection[]
+  competitorLinks    CompetitorLink[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -514,6 +516,7 @@ enum AlertType {
   NEW_REVIEW
   TASK_DUE
   CLIENT_RESPONSE
+  COMPETITOR_MOVE
   GOOGLE_ANOMALY
   GOOGLE_RECONNECT
 }
@@ -1068,18 +1071,26 @@ model BacklinkSnapshot {
 
 /// A website a project is compared with. At most 5 per project (see MAX_COMPETITORS in the service).
 model Competitor {
-  id           String    @id @default(cuid(2))
-  agencyId     String
-  projectId    String
+  id               String    @id @default(cuid(2))
+  agencyId         String
+  projectId        String
   /// Lower case, without "www." and without a path.
-  domain       String
-  createdAt    DateTime  @default(now())
+  domain           String
+  createdAt        DateTime  @default(now())
   /// When the keyword gap list for this competitor was last refreshed.
-  gapFetchedAt DateTime?
+  gapFetchedAt     DateTime?
+  /// Link numbers from the last link refresh. Null until then.
+  backlinks        Int?
+  referringDomains Int?
+  domainRating     Int?
+  linksFetchedAt   DateTime?
+  /// UTC day the "competitor moved up" check last ran for this competitor.
+  alertCheckedOn   DateTime? @db.Date
 
   agency   Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   project  Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
   keywords CompetitorKeyword[]
+  links    CompetitorLink[]
 
   @@unique([projectId, domain])
   @@index([agencyId, projectId])
@@ -1638,4 +1649,22 @@ model UrlInspection {
 
   @@unique([projectId, url])
   @@index([agencyId, projectId, inspectedAt])
+}
+
+/// A website that links to a competitor (one row per website). Replaced on every link refresh.
+model CompetitorLink {
+  id           String @id @default(cuid(2))
+  agencyId     String
+  projectId    String
+  competitorId String
+  sourceDomain String
+  /// 0 to 100, the authority of the linking website.
+  rating       Int
+
+  agency     Agency     @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@unique([competitorId, sourceDomain])
+  @@index([agencyId, projectId, sourceDomain])
 }

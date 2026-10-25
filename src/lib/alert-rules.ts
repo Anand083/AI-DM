@@ -55,6 +55,7 @@ export type AlertDraft = {
     | "NEW_REVIEW"
     | "TASK_DUE"
     | "CLIENT_RESPONSE"
+    | "COMPETITOR_MOVE"
     | "GOOGLE_ANOMALY"
     | "GOOGLE_RECONNECT";
   severity: "INFO" | "WARNING" | "CRITICAL";
@@ -323,5 +324,26 @@ export function buildGoogleReconnectAlert(input: {
     body: "Google no longer lets us read the data. Open the Analytics tab and connect again.",
     data: { date: input.date },
     dedupeKey: `google_reconnect:${input.projectId}:${input.date}`,
+  };
+}
+
+/** An alert when a competitor holds clearly more top 10 places than the week before. */
+export function buildCompetitorMoveAlert(input: {
+  projectId: string;
+  projectName: string;
+  competitor: string;
+  /** Last day of the newer week (YYYY-MM-DD). */
+  weekEnd: string;
+  from: number;
+  to: number;
+}): AlertDraft {
+  return {
+    projectId: input.projectId,
+    type: "COMPETITOR_MOVE",
+    severity: input.to - input.from >= 10 ? "CRITICAL" : "WARNING",
+    title: `${input.competitor} moved up for ${input.projectName}`,
+    body: `${input.competitor} is in the top 10 for ${input.to} of your keywords, up from ${input.from} the week before. Open the Competitors tab to see which ones.`,
+    data: { competitor: input.competitor, from: input.from, to: input.to, weekEnd: input.weekEnd },
+    dedupeKey: `competitor_move:${input.projectId}:${input.competitor}:${input.weekEnd}`,
   };
 }

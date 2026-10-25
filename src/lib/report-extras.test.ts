@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeComparison, describeSource } from "./report-extras";
+import { describeComparison, describeCompetitorLinks, describeSource } from "./report-extras";
 import type { ReportKpis } from "./report-model";
 
 const kpis = (o: Partial<ReportKpis>): ReportKpis => ({
@@ -46,5 +46,25 @@ describe("describeSource", () => {
     expect(describeSource({ label: "Audit", updated: null, real: true })).toBe(
       "Audit: no data yet, real data",
     );
+  });
+});
+
+describe("describeCompetitorLinks", () => {
+  it("writes one line per website and says when there is no data", () => {
+    expect(
+      describeCompetitorLinks([
+        { domain: "mine.com", isYou: true, backlinks: 12400, referringDomains: 820, rating: 54 },
+        {
+          domain: "rival.com",
+          isYou: false,
+          backlinks: null,
+          referringDomains: null,
+          rating: null,
+        },
+      ]),
+    ).toEqual([
+      "mine.com (you): 12,400 links from 820 websites, rating 54 of 100.",
+      "rival.com: no data links from no data websites, rating no data.",
+    ]);
   });
 });

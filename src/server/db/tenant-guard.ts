@@ -64,6 +64,7 @@ export const TENANT_MODELS = new Set([
   "AuditConfig",
   "AuditIssueState",
   "UrlInspection",
+  "CompetitorLink",
 ]);
 
 const WHERE_OPERATIONS = new Set([

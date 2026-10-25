@@ -6,10 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { REASON_LABELS } from "@/lib/backlink-math";
+import { ANCHOR_LABELS } from "@/lib/competitor-insights";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import {
   BACKLINK_FILTERS,
+  getAnchorDistribution,
   getBacklinkOverview,
   listBacklinks,
   type BacklinkFilter,
@@ -47,9 +49,10 @@ export default async function BacklinksPage({
     ? (asked as BacklinkFilter)
     : "active";
   const page = pageFromParams(sp.page);
-  const [overview, list] = await Promise.all([
+  const [overview, list, anchors] = await Promise.all([
     getBacklinkOverview(ctx, projectId),
     listBacklinks(ctx, projectId, filter, { page, pageSize: PAGE_SIZE }),
+    getAnchorDistribution(ctx, projectId),
   ]);
   const base = `/app/${agencySlug}/projects/${projectId}/backlinks`;
   const canRun = can(ctx.role, "tools.run");
@@ -153,6 +156,52 @@ export default async function BacklinksPage({
                         </td>
                         <td className="px-4 py-2 tabular-nums">{h.newLinks}</td>
                         <td className="px-4 py-2 tabular-nums">{h.lostLinks}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
+
+          {anchors.total > 0 ? (
+            <section aria-labelledby="anchors-heading" className="space-y-2">
+              <h3 id="anchors-heading" className="text-base font-semibold">
+                Link text (anchors)
+              </h3>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                What the words of your links look like, out of {anchors.total} live links. A natural
+                mix is mostly brand names, addresses and generic words.
+              </p>
+              {anchors.overOptimised ? (
+                <p
+                  role="note"
+                  className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+                >
+                  More than 30% of the links use an exact keyword. That can look unnatural to
+                  Google. Ask for more brand name links.
+                </p>
+              ) : null}
+              <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+                <table className="w-full text-left text-sm" aria-label="Link text types">
+                  <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
+                    <tr>
+                      {["Type", "Links", "Share"].map((h) => (
+                        <th key={h} scope="col" className="px-4 py-2 font-medium">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {anchors.rows.map((r) => (
+                      <tr
+                        key={r.kind}
+                        className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
+                      >
+                        <td className="px-4 py-2">{ANCHOR_LABELS[r.kind]}</td>
+                        <td className="px-4 py-2 tabular-nums">{r.count}</td>
+                        <td className="px-4 py-2 tabular-nums">{r.percent}%</td>
                       </tr>
                     ))}
                   </tbody>

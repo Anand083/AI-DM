@@ -488,6 +488,11 @@ export function exportFiles(
       rows: allRows((a) => rawDb.urlInspection.findMany({ where, ...order, ...a })),
     },
     {
+      name: "competitor-links.jsonl",
+      model: "CompetitorLink",
+      rows: allRows((a) => rawDb.competitorLink.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),

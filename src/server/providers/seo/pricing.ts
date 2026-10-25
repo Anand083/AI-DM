@@ -27,6 +27,9 @@ export const UNIT_COST_MICROS = {
   aiVisibility: 10_000,
   /** per keyword metrics request (up to 100 phrases) */
   keywordMetric: 3000,
+  /** per referring domains request, plus per row */
+  referringDomains: 20_000,
+  referringDomainRow: 20,
   /** per keyword, Bing rankings */
   bingRanking: 600,
   /** per AI topic demand request */
@@ -62,6 +65,8 @@ export function estimateCostMicros(
       return n * UNIT_COST_MICROS.aiVisibility;
     case "keyword_metrics":
       return n * UNIT_COST_MICROS.keywordMetric;
+    case "referring_domains":
+      return UNIT_COST_MICROS.referringDomains + n * UNIT_COST_MICROS.referringDomainRow;
     case "bing_rankings":
       return n * UNIT_COST_MICROS.bingRanking;
     case "ai_topics":

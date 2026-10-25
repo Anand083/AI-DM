@@ -7,6 +7,7 @@ import type {
   AiTopic,
   BingRank,
   KeywordMetric,
+  ReferringDomain,
   AuditCrawlConfig,
   AiVisibilityResult,
   LlmMentionsSummary,
@@ -288,6 +289,25 @@ export class SeoGateway {
       units: 1,
       caller,
       run: (p) => p.getKeywordMetrics(normalized),
+    });
+  }
+
+  /** The websites linking to a domain (strongest first). Cached for 7 days; counts as one backlink query. */
+  getReferringDomains(
+    caller: GatewayCaller,
+    input: { domain: string; limit: number },
+  ): Promise<GatewayResult<ReferringDomain[]>> {
+    const normalized = { ...input, domain: input.domain.toLowerCase() };
+    return this.cachedCall({
+      module: "backlinks",
+      operation: "referring_domains",
+      costOperation: "referring_domains",
+      input: normalized,
+      expiresAt: (now) => new Date(now.getTime() + 7 * DAY_MS),
+      metric: "BACKLINK_QUERY",
+      units: normalized.limit,
+      caller,
+      run: (p) => p.getReferringDomains(normalized),
     });
   }
 

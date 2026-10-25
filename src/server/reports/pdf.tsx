@@ -3,7 +3,12 @@ import { DEFAULT_ACCENT, DEFAULT_PRIMARY, initials } from "@/lib/brand";
 import { normalizeHex, readableTextOn } from "@/lib/color";
 import { formatChange, formatPosition } from "@/lib/rank-math";
 import { describeAnalytics } from "@/lib/report-analytics";
-import { KIND_LABELS, describeComparison, describeSource } from "@/lib/report-extras";
+import {
+  KIND_LABELS,
+  describeComparison,
+  describeCompetitorLinks,
+  describeSource,
+} from "@/lib/report-extras";
 import { describeReviews } from "@/lib/report-reviews";
 import { describeAi } from "@/lib/report-ai";
 import { describeBacklinks } from "@/lib/report-backlinks";
@@ -336,6 +341,16 @@ function createRenderer(rp: ReactPdf) {
                       <Text style={s.cPages}>{c.theyAreAhead}</Text>
                     </View>
                   ))}
+                  {model.competitors.links && model.competitors.links.length > 0 ? (
+                    <View style={{ marginTop: 6 }}>
+                      <Text style={[s.p, { fontWeight: 700 }]}>Links side by side</Text>
+                      {describeCompetitorLinks(model.competitors.links).map((line) => (
+                        <Text key={line} style={[s.p, { marginBottom: 2 }]}>
+                          {line}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
                   {model.competitors.gap.length > 0 ? (
                     <View style={{ marginTop: 6 }}>
                       <Text style={[s.p, { fontWeight: 700 }]}>

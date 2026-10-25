@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { withTenantAction } from "@/server/auth/actions";
 import { addCompetitor, removeCompetitor, requestGapRefresh } from "@/server/services/competitors";
+import { requestCompetitorLinks } from "@/server/services/competitor-insights";
 import { addResearchToTracker } from "@/server/services/research";
 
 const idSchema = z.string().min(1).max(100);
@@ -25,6 +26,10 @@ const remove = withTenantAction(
 const refresh = withTenantAction(
   { permission: "tools.run", schema: z.object({ projectId: idSchema }) },
   (ctx, input) => requestGapRefresh(ctx, input.projectId),
+);
+const refreshLinks = withTenantAction(
+  { permission: "tools.run", schema: z.object({ projectId: idSchema }) },
+  (ctx, input) => requestCompetitorLinks(ctx, input.projectId),
 );
 const track = withTenantAction(
   {
@@ -54,6 +59,10 @@ export async function removeCompetitorAction(
 /** Asks the worker to refresh the keyword gap. The page refreshes itself when it is done. */
 export async function refreshGapAction(slug: string, projectId: string) {
   return refresh(slug, { projectId });
+}
+/** Asks the worker to read the competitors' link numbers. The page refreshes itself when it is done. */
+export async function refreshCompetitorLinksAction(slug: string, projectId: string) {
+  return refreshLinks(slug, { projectId });
 }
 export async function trackGapKeywordsAction(slug: string, projectId: string, phrases: string[]) {
   const result = await track(slug, { projectId, phrases });

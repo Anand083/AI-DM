@@ -59,6 +59,15 @@ test("add a competitor, compare rankings, find keyword gaps and track one", asyn
   await expect(gap).toBeVisible({ timeout: 90_000 });
   await expect(page.getByText("Already refreshed today.")).toBeVisible();
 
+  // Link numbers and the link gap come from the worker too.
+  await expect(page.getByRole("heading", { name: "Links compared" })).toBeVisible();
+  await page.getByRole("button", { name: "Read competitor links" }).click();
+  await expect(page.getByText("Already updated today.")).toBeVisible({ timeout: 90_000 });
+  const linkTable = page.getByRole("table", { name: "Link comparison" });
+  await expect(linkTable).toContainText("topratedpros.example");
+  await expect(linkTable).toContainText("You");
+  await expect(page.getByRole("table", { name: "Link gap" })).toBeVisible();
+
   // Add one gap keyword to the rank tracker.
   const firstKeyword = (
     await gap.getByRole("row").nth(1).getByRole("cell").nth(1).innerText()

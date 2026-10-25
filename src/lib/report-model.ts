@@ -96,6 +96,16 @@ export type ReportCompetitorsInput = {
   }[];
   /** The biggest keyword gaps, at most 10. */
   gap: { keyword: string; competitor: string; position: number; volume: number }[];
+  /** Links side by side, you first. Missing in older reports or before links were read. */
+  links?:
+    | {
+        domain: string;
+        isYou: boolean;
+        backlinks: number | null;
+        referringDomains: number | null;
+        rating: number | null;
+      }[]
+    | null;
 };
 
 export type ReportAiInput = {

@@ -107,6 +107,23 @@ export async function enqueueLeadPoll(
   });
 }
 
+/** Queues a refresh of the link numbers of a project's competitors. Returns false if one is queued for that date. */
+export async function enqueueCompetitorLinks(data: {
+  agencyId: string;
+  projectId: string;
+  date: string;
+}): Promise<boolean> {
+  const queue = getQueue("modules");
+  const jobId = jobIds.competitorLinks(data.projectId, data.date);
+  if (await queue.getJob(jobId)) return false;
+  await queue.add("competitor-links", data, {
+    jobId,
+    attempts: 2,
+    backoff: { type: "exponential", delay: 60_000 },
+  });
+  return true;
+}
+
 /** Queues a refresh of search volume and Bing positions. Returns false if one is queued for that date. */
 export async function enqueueKeywordMetrics(data: {
   agencyId: string;

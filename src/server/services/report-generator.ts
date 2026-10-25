@@ -419,7 +419,40 @@ async function loadCompetitors(
     orderBy: [{ volume: "desc" }, { keyword: "asc" }],
     take: 10,
   });
+  const [project, snapshot, withLinks] = await Promise.all([
+    db.project.findFirst({ where: { id: projectId, agencyId }, select: { domain: true } }),
+    db.backlinkSnapshot.findFirst({
+      where: { agencyId, projectId },
+      select: { totalBacklinks: true, referringDomains: true, domainRating: true },
+      orderBy: { takenOn: "desc" },
+    }),
+    db.competitor.findMany({
+      where: { agencyId, projectId, linksFetchedAt: { not: null } },
+      select: { domain: true, backlinks: true, referringDomains: true, domainRating: true },
+      orderBy: { domain: "asc" },
+      take: 20,
+    }),
+  ]);
   return {
+    links:
+      withLinks.length === 0 || !project
+        ? null
+        : [
+            {
+              domain: project.domain,
+              isYou: true,
+              backlinks: snapshot?.totalBacklinks ?? null,
+              referringDomains: snapshot?.referringDomains ?? null,
+              rating: snapshot?.domainRating ?? null,
+            },
+            ...withLinks.map((c) => ({
+              domain: c.domain,
+              isYou: false,
+              backlinks: c.backlinks,
+              referringDomains: c.referringDomains,
+              rating: c.domainRating,
+            })),
+          ],
     compared: rows.length,
     competitors: summarizeCompetitors(
       rows,

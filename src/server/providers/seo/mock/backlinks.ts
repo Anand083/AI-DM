@@ -1,5 +1,5 @@
 import { COMPETITOR_DOMAINS } from "@/data/competitor-domains";
-import type { Backlink, BacklinkSummary, RankedKeyword } from "../types";
+import type { Backlink, BacklinkSummary, RankedKeyword, ReferringDomain } from "../types";
 import { makeRng } from "./prng";
 import { slugForUrl } from "./rankings";
 
@@ -90,4 +90,26 @@ export function buildRankedKeywords(
     });
   }
   return rows.sort((a, b) => a.position - b.position || b.volume - a.volume);
+}
+
+/**
+ * Pretend websites that link to a domain. They come from a small shared pool, so two rivals
+ * often have some of the same linking websites, like in real life.
+ */
+export function buildReferringDomains(domain: string, limit: number): ReferringDomain[] {
+  const rng = makeRng(domain, "referring-domains");
+  const wanted = Math.max(0, Math.min(limit, rng.int(25, 60)));
+  const chosen = new Map<string, ReferringDomain>();
+  for (let i = 0; chosen.size < wanted && i < wanted * 5; i++) {
+    const source = i % 3 === 0 ? rng.pick(COMPETITOR_DOMAINS) : `blog${rng.int(1, 150)}.example`;
+    if (source === domain || chosen.has(source)) continue;
+    chosen.set(source, {
+      domain: source,
+      rating: makeRng(source, "domain-rating").int(1, 90),
+      backlinks: rng.int(1, 40),
+    });
+  }
+  return [...chosen.values()].sort(
+    (a, b) => b.rating - a.rating || a.domain.localeCompare(b.domain),
+  );
 }

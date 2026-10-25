@@ -415,6 +415,21 @@ describe("backlinks, ranked keywords, AI and reviews", () => {
     }
   });
 
+  it("returns the websites linking to a domain, strongest first, never the domain itself", async () => {
+    const a = (await p.getReferringDomains({ domain: "Rival.com", limit: 200 })).data;
+    expect(a.length).toBeGreaterThanOrEqual(25);
+    expect(a).toEqual((await p.getReferringDomains({ domain: "rival.com", limit: 200 })).data);
+    expect(a.map((r) => r.rating)).toEqual([...a.map((r) => r.rating)].sort((x, y) => y - x));
+    expect(new Set(a.map((r) => r.domain)).size).toBe(a.length);
+    expect(a.some((r) => r.domain === "rival.com")).toBe(false);
+    expect(
+      (await p.getReferringDomains({ domain: "rival.com", limit: 5 })).data.length,
+    ).toBeLessThanOrEqual(5);
+    // Two domains share part of the pool, so a link gap can be found.
+    const b = (await p.getReferringDomains({ domain: "other-rival.com", limit: 200 })).data;
+    expect(b.some((r) => a.some((x) => x.domain === r.domain))).toBe(true);
+  });
+
   it("returns reviews with ratings from 1 to 5", async () => {
     const { data } = await p.getReviews({ businessName: "Bright Dental", locationCode: 2840 });
     expect(data.rating).toBeGreaterThanOrEqual(1);
