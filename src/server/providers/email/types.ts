@@ -6,6 +6,8 @@ export type EmailMessage = {
   /** Display name for the From address. Defaults to the platform name. */
   fromName?: string;
   replyTo?: string;
+  /** Files to attach. The content is base64 text so the message can travel through the queue. */
+  attachments?: { filename: string; contentType: string; contentBase64: string }[];
 };
 
 export interface EmailProvider {

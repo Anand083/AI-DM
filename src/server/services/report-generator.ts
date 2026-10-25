@@ -18,6 +18,7 @@ import { getStorage } from "@/server/providers/storage";
 import { getSummaryProvider } from "@/server/providers/summary";
 import { renderReportPdf, type PdfBranding } from "@/server/reports/pdf";
 import { loadBranding, readLogo } from "./branding";
+import { deliverScheduledReport, type SendEmail } from "./report-delivery";
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
 const DAY_MS = 86_400_000;
@@ -163,7 +164,11 @@ export function reportPdfKey(agencyId: string, reportId: string): string {
 export async function generateReport(
   agencyId: string,
   reportId: string,
-  options: { finalAttempt?: boolean } = {},
+  options: {
+    finalAttempt?: boolean;
+    /** How scheduled-report emails are sent. Tests pass their own. */
+    send?: SendEmail;
+  } = {},
 ): Promise<{ status: "READY" | "FAILED" | "SKIPPED" }> {
   const report = await db.report.findFirst({
     where: { id: reportId, agencyId },
@@ -193,7 +198,6 @@ export async function generateReport(
         error: null,
       },
     });
-    return { status: "READY" };
   } catch (error) {
     logger.error({ err: error, reportId }, "report generation failed");
     if (!options.finalAttempt) throw error;
@@ -203,4 +207,8 @@ export async function generateReport(
     });
     return { status: "FAILED" };
   }
+  // A scheduled report is emailed once it is ready. A failure here retries the job without
+  // touching the finished report.
+  await deliverScheduledReport(agencyId, reportId, { send: options.send });
+  return { status: "READY" };
 }

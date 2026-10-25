@@ -170,6 +170,7 @@ model Agency {
   alerts           Alert[]
   branding         Branding?
   reports          Report[]
+  reportSchedules  ReportSchedule[]
   keywordListItems KeywordListItem[]
   auditPages       AuditPage[]
   auditIssues      AuditIssue[]
@@ -263,11 +264,12 @@ model Project {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  agency   Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  keywords Keyword[]
-  audits   Audit[]
-  reports  Report[]
+  agency         Agency          @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  keywords       Keyword[]
+  audits         Audit[]
+  reports        Report[]
+  reportSchedule ReportSchedule?
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -377,6 +379,11 @@ model RankCheck {
 // ---------------------------------------------------------------------------
 // White label
 // ---------------------------------------------------------------------------
+
+enum ScheduleFrequency {
+  WEEKLY
+  MONTHLY
+}
 
 enum ReportStatus {
   QUEUED
@@ -713,10 +720,43 @@ model Report {
   createdById    String?
   generatedAt    DateTime?
   createdAt      DateTime     @default(now())
+  /// Set when a schedule made this report. `scheduledFor` is the run time it was made for.
+  scheduleId     String?
+  scheduledFor   DateTime?
+  /// Set once the emails for a scheduled report were queued, so they are never sent twice.
+  deliveredAt    DateTime?
 
   agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
+  @@unique([scheduleId, scheduledFor])
   @@index([agencyId, createdAt])
   @@index([agencyId, projectId, createdAt])
+}
+
+model ReportSchedule {
+  id         String            @id @default(cuid(2))
+  agencyId   String
+  projectId  String            @unique
+  frequency  ScheduleFrequency
+  /// 1 (Monday) to 7 (Sunday). Used when weekly.
+  dayOfWeek  Int               @default(1)
+  /// 1 to 28. Used when monthly.
+  dayOfMonth Int               @default(1)
+  /// 0 to 23 in the agency time zone.
+  hour       Int               @default(8)
+  recipients String[]
+  sections   String[]
+  enabled    Boolean           @default(true)
+  /// Next run time (UTC). The dispatcher picks schedules whose time has passed.
+  nextRunAt  DateTime
+  lastRunAt  DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([enabled, nextRunAt])
+  @@index([agencyId, createdAt])
 }

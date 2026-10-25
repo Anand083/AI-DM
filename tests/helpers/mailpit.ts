@@ -7,6 +7,9 @@ export type MailMessage = {
   To: { Address: string }[];
   HTML: string;
   Text: string;
+  FromName?: string;
+  ReplyTo?: { Address: string }[];
+  Attachments?: { FileName: string; ContentType: string; Size: number }[];
 };
 
 export async function clearMail(): Promise<void> {

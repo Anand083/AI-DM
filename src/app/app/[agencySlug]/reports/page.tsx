@@ -48,11 +48,16 @@ export default async function ReportsPage({
       <ReportRefresher active={busy} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Reports</h1>
-        {canCreate ? (
-          <Link href={`/app/${agencySlug}/reports/new`} className={buttonClasses()}>
-            New report
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/app/${agencySlug}/reports/schedules`} className={buttonClasses("outline")}>
+            Schedules
           </Link>
-        ) : null}
+          {canCreate ? (
+            <Link href={`/app/${agencySlug}/reports/new`} className={buttonClasses()}>
+              New report
+            </Link>
+          ) : null}
+        </div>
       </div>
       {items.length === 0 ? (
         <EmptyState

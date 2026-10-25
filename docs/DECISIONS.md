@@ -194,3 +194,14 @@
 - Public pages set their own `<title>` (report title and agency name), so the platform name is not shown.
 - Reports are always drawn in light colors (they are documents), even when the agency app is in dark mode.
 - Permissions: create, share, revoke and delete need `reports.create`; viewing the list and downloading need `data.view` and `reports.download`.
+
+## Step 16
+
+- One `ReportSchedule` per project (unique project id). Weekly uses ISO weekday 1 to 7, monthly uses day 1 to 28 (so every month has it), hour 0 to 23 in the agency time zone. Plan limit `reportSchedules` counts schedules per agency.
+- `nextRunAt` is stored in UTC and computed by `src/lib/report-schedule.ts` with `Intl` only (no extra library). A time that happens twice (clocks go back) uses the first one; a time that does not exist (clocks go forward) uses the first moment after the gap.
+- The dispatcher runs in the 15-minute tick. It makes one report per due schedule, then moves `nextRunAt` to the next time after now (so a long pause sends one report, not one per missed run). Weekly reports cover the last 7 days ending on the run day; monthly reports cover the whole previous calendar month. Reports are unique per schedule and run time (`Report.scheduleId` + `scheduledFor`), so parallel workers or repeated ticks cannot make two.
+- Delivery happens in the report job after the PDF is ready. `Report.deliveredAt` is claimed first, and each email has its own job id (`report_<id>_<address>`), so retries never send twice. If queuing fails the claim is released and the job retries.
+- Email: from name is the agency display name, reply-to is the agency support email, only the agency name appears. The PDF is attached up to 5 MB; above that the email has a link to the online report (a 30-day share link is created). Attachments travel through the queue as base64 text.
+- Paused schedules do not run. Resuming starts from now, so missed reports are not sent. Schedules of suspended agencies, archived clients or deleted projects are skipped.
+- The mail sink used in tests now reports sender name, reply-to and attachments like Mailpit does.
+- The UI can create, pause, resume and delete schedules. Editing an existing schedule is supported by the service (`updateSchedule`) but has no screen yet.

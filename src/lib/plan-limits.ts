@@ -19,7 +19,12 @@ export type PlanLimits = {
 export const UNLIMITED = -1;
 
 export type CountLimitKey =
-  "maxClients" | "maxProjects" | "maxKeywords" | "maxTeamMembers" | "maxClientUsers";
+  | "maxClients"
+  | "maxProjects"
+  | "maxKeywords"
+  | "maxTeamMembers"
+  | "maxClientUsers"
+  | "reportSchedules";
 
 /** True when adding `adding` more to `current` would go over `limit`. */
 export function wouldExceed(limit: number, current: number, adding = 1): boolean {

@@ -52,7 +52,12 @@ export async function createReportRecord(
   agency: { agencyId: string },
   createdById: string | null,
   rawInput: unknown,
-  options: { now?: Date; enqueue?: Enqueue } = {},
+  options: {
+    now?: Date;
+    enqueue?: Enqueue;
+    /** Set by the schedule dispatcher. The pair is unique, so a run is never made twice. */
+    schedule?: { id: string; scheduledFor: Date };
+  } = {},
 ) {
   const input = parseInput(reportSchema, rawInput);
   const project = await db.project.findFirst({
@@ -88,6 +93,8 @@ export async function createReportRecord(
       sections,
       notes: input.notes || null,
       createdById,
+      scheduleId: options.schedule?.id,
+      scheduledFor: options.schedule?.scheduledFor,
     },
     select: { id: true },
   });

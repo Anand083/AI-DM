@@ -24,11 +24,13 @@ import {
   enqueueEmail,
   enqueueProcessTask,
   enqueueRankCheck,
+  enqueueReport,
 } from "@/server/jobs/enqueue";
 import { generateReport } from "@/server/services/report-generator";
 import { runDigestScheduler, sendDigest } from "@/server/services/alert-digest";
 import type { JobProcessors } from "@/server/jobs/runtime";
 import { purgeExpired } from "@/server/jobs/system/purge";
+import { runReportDispatcher } from "@/server/jobs/system/report-dispatcher";
 import { runRankCheckScheduler } from "@/server/jobs/system/scheduler";
 
 type RankJobData = { projectId: string; agencyId: string; date: string; keywordIds?: string[] };
@@ -62,7 +64,13 @@ export const processors: JobProcessors = {
           enqueue: enqueueDigest,
         });
         if (digests.queued > 0) logger.info(digests, "daily digests queued");
-        return { ...result, audits, digests };
+        const reports = await runReportDispatcher({
+          db: rawDb,
+          now: new Date(),
+          enqueue: enqueueReport,
+        });
+        if (reports.created > 0) logger.info(reports, "scheduled reports queued");
+        return { ...result, audits, digests, reports };
       }
       case "purge:expired": {
         const result = await purgeExpired(rawDb);

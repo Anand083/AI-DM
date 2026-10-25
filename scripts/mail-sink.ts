@@ -16,6 +16,9 @@ type Stored = {
   Text: string;
   HTML: string;
   Created: string;
+  FromName: string;
+  ReplyTo: { Address: string }[];
+  Attachments: { FileName: string; ContentType: string; Size: number }[];
 };
 
 const messages: Stored[] = [];
@@ -61,7 +64,9 @@ function splitPart(raw: string): { headers: Map<string, string>; body: string } 
   };
 }
 
-function collect(raw: string, out: { text: string; html: string }): void {
+type Collected = { text: string; html: string; attachments: Stored["Attachments"] };
+
+function collect(raw: string, out: Collected): void {
   const { headers, body } = splitPart(raw);
   const type = headers.get("content-type") ?? "text/plain";
   const boundary = /boundary="?([^";]+)"?/i.exec(type)?.[1];
@@ -71,6 +76,19 @@ function collect(raw: string, out: { text: string; html: string }): void {
       if (trimmed.startsWith("--") || trimmed.trim() === "") continue;
       collect(trimmed, out);
     }
+    return;
+  }
+  const disposition = headers.get("content-disposition") ?? "";
+  if (/^attachment/i.test(disposition)) {
+    const name = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? "file";
+    const encoding = (headers.get("content-transfer-encoding") ?? "7bit").toLowerCase();
+    const size =
+      encoding === "base64" ? Buffer.from(body.replace(/\s+/g, ""), "base64").length : body.length;
+    out.attachments.push({
+      FileName: name,
+      ContentType: type.split(";")[0]!.trim(),
+      Size: size,
+    });
     return;
   }
   const decoded = decodeBody(body, headers.get("content-transfer-encoding") ?? "7bit");
@@ -88,7 +106,7 @@ function decodeWords(value: string): string {
 
 function store(data: string, from: string, to: string[]): void {
   const { headers, body } = splitPart(data);
-  const out = { text: "", html: "" };
+  const out: Collected = { text: "", html: "", attachments: [] };
   collect(`${[...headers].map(([k, v]) => `${k}: ${v}`).join("\r\n")}\r\n\r\n${body}`, out);
   messages.unshift({
     ID: `${Date.now()}${Math.floor(Math.random() * 1000)}`,
@@ -98,6 +116,15 @@ function store(data: string, from: string, to: string[]): void {
     Text: out.text,
     HTML: out.html,
     Created: new Date().toISOString(),
+    FromName: decodeWords(
+      /^\s*"?([^"<]*?)"?\s*</.exec(headers.get("from") ?? "")?.[1] ?? "",
+    ).trim(),
+    ReplyTo: (headers.get("reply-to") ?? "")
+      .split(",")
+      .map((a) => /<([^>]+)>|^\s*(\S+@\S+)\s*$/.exec(a))
+      .filter((m): m is RegExpExecArray => m !== null)
+      .map((m) => ({ Address: (m[1] ?? m[2])! })),
+    Attachments: out.attachments,
   });
 }
 

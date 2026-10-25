@@ -10,6 +10,7 @@ const NOUN: Record<CountLimitKey, [string, string]> = {
   maxKeywords: ["keyword", "keywords"],
   maxTeamMembers: ["team member", "team members"],
   maxClientUsers: ["client user", "client users"],
+  reportSchedules: ["report schedule", "report schedules"],
 };
 
 export async function getPlanLimits(
