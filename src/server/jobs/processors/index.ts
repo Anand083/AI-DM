@@ -46,6 +46,7 @@ import { runGoogleScheduler } from "@/server/jobs/system/google-scheduler";
 import { getGoogleProvider } from "@/server/providers/google";
 import { pollLead, runLeadStart } from "@/server/services/lead-runner";
 import { notifyAgencyOfLead } from "@/server/services/leads";
+import { runKeywordMetrics } from "@/server/services/keyword-metrics-runner";
 import { runUrlInspection } from "@/server/services/google-inspect";
 import { runGoogleSync } from "@/server/services/google-sync";
 import { runReviewScheduler } from "@/server/jobs/system/review-scheduler";
@@ -260,6 +261,12 @@ export const processors: JobProcessors = {
           data,
         );
         logger.info({ jobId: job.id, ...result }, "google sync");
+        return result;
+      }
+      case "keyword-metrics": {
+        const data = job.data as { projectId: string; agencyId: string; date: string };
+        const result = await runKeywordMetrics({ db, gateway: getSeoGateway() }, data);
+        logger.info({ jobId: job.id, ...result }, "keyword metrics");
         return result;
       }
       case "google-inspect": {

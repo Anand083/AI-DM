@@ -1,5 +1,7 @@
 import type {
   AiEngine,
+  BingRank,
+  KeywordMetric,
   AiTopic,
   AiVisibilityResult,
   LlmMentionsSummary,
@@ -134,6 +136,56 @@ export function buildLlmMentions(input: { domain: string; day: number }): LlmMen
       mentions: top.reduce((sum, q) => sum + q.mentions, 0),
       aiSearchVolume: rng.int(200, 9000),
       topQuestions: top,
+    };
+  });
+}
+
+/** Pretend search numbers for exact phrases. Stable within a month. */
+export function buildKeywordMetrics(input: { keywords: string[]; day: number }): KeywordMetric[] {
+  const month = Math.floor(input.day / 30);
+  return input.keywords.map((keyword) => {
+    const rng = makeRng(keyword.toLowerCase(), "kw-metric", month);
+    if (rng.chance(0.05))
+      return { keyword, volume: null, cpcMicros: null, difficulty: null, trend: [] };
+    const volume = Math.round(Math.exp(rng.normal(6.2, 1.6)));
+    const season = rng.int(0, 11);
+    const trend = Array.from({ length: 12 }, (_, i) =>
+      Math.max(
+        0,
+        Math.round(
+          volume *
+            (1 + 0.35 * Math.cos(((i - season) / 12) * 2 * Math.PI)) *
+            (0.9 + rng.next() * 0.2),
+        ),
+      ),
+    );
+    return {
+      keyword,
+      volume: Math.max(10, volume),
+      cpcMicros: rng.int(100_000, 6_000_000),
+      difficulty: rng.int(5, 95),
+      trend,
+    };
+  });
+}
+
+/** Pretend Bing positions: Bing ranks a site a bit differently from Google. Stable within a week. */
+export function buildBingRankings(input: {
+  domain: string;
+  keywords: string[];
+  day: number;
+}): BingRank[] {
+  const week = Math.floor(input.day / 7);
+  return input.keywords.map((keyword) => {
+    const rng = makeRng(input.domain, keyword.toLowerCase(), "bing", week);
+    if (rng.chance(0.35)) return { keyword, position: null, url: null };
+    return {
+      keyword,
+      position: rng.int(1, 60),
+      url: `https://${input.domain}/${keyword
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")}`,
     };
   });
 }

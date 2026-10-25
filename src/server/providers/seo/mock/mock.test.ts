@@ -373,6 +373,48 @@ describe("backlinks, ranked keywords, AI and reviews", () => {
     expect(a).toEqual((await p.getLlmMentions(input)).data);
   });
 
+  it("returns exact search numbers for each phrase, the same every time", async () => {
+    const input = {
+      keywords: ["running shoes", "dentist near me", "xyz"],
+      locationCode: 2840,
+      languageCode: "en",
+    };
+    const a = (await p.getKeywordMetrics(input)).data;
+    expect(a.map((m) => m.keyword)).toEqual(input.keywords);
+    expect(a).toEqual((await p.getKeywordMetrics(input)).data);
+    for (const m of a) {
+      if (m.volume === null) expect(m.trend).toEqual([]);
+      else {
+        expect(m.trend).toHaveLength(12);
+        expect(m.difficulty).toBeGreaterThanOrEqual(5);
+        expect(m.difficulty).toBeLessThanOrEqual(95);
+      }
+    }
+  });
+
+  it("returns Bing positions from 1 to 60 or none, with a page for each hit", async () => {
+    const keywords = Array.from({ length: 40 }, (_, i) => `keyword ${i}`);
+    const a = (
+      await p.getBingRankings({
+        domain: "Example.com",
+        keywords,
+        locationCode: 2840,
+        languageCode: "en",
+      })
+    ).data;
+    expect(a).toHaveLength(40);
+    expect(a.some((r) => r.position === null)).toBe(true);
+    expect(a.some((r) => r.position !== null)).toBe(true);
+    for (const r of a) {
+      if (r.position === null) expect(r.url).toBeNull();
+      else {
+        expect(r.position).toBeGreaterThanOrEqual(1);
+        expect(r.position).toBeLessThanOrEqual(60);
+        expect(r.url).toMatch(/^https:\/\/example\.com\//);
+      }
+    }
+  });
+
   it("returns reviews with ratings from 1 to 5", async () => {
     const { data } = await p.getReviews({ businessName: "Bright Dental", locationCode: 2840 });
     expect(data.rating).toBeGreaterThanOrEqual(1);

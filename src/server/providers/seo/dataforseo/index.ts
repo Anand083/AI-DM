@@ -6,6 +6,8 @@ import { mapTasksReady, mapUserData } from "./mappers";
 import type {
   AiEngine,
   AiTopic,
+  BingRank,
+  KeywordMetric,
   AiVisibilityResult,
   LlmMentionsSummary,
   AuditResult,
@@ -90,6 +92,21 @@ export class DataForSeoProvider implements SeoDataProvider {
     limit: number;
   }): Promise<ProviderResult<KeywordIdea[]>> {
     throw new NotImplementedError("DataForSEO getKeywordIdeas");
+  }
+  getKeywordMetrics(_i: {
+    keywords: string[];
+    locationCode: number;
+    languageCode: string;
+  }): Promise<ProviderResult<KeywordMetric[]>> {
+    throw new NotImplementedError("DataForSEO getKeywordMetrics");
+  }
+  getBingRankings(_i: {
+    domain: string;
+    keywords: string[];
+    locationCode: number;
+    languageCode: string;
+  }): Promise<ProviderResult<BingRank[]>> {
+    throw new NotImplementedError("DataForSEO getBingRankings");
   }
   startAudit(_i: {
     domain: string;

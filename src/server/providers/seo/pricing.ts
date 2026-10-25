@@ -25,6 +25,10 @@ export const UNIT_COST_MICROS = {
   rankedKeywordRow: 100,
   /** per AI visibility check */
   aiVisibility: 10_000,
+  /** per keyword metrics request (up to 100 phrases) */
+  keywordMetric: 3000,
+  /** per keyword, Bing rankings */
+  bingRanking: 600,
   /** per AI topic demand request */
   aiTopics: 8000,
   /** per LLM mentions request */
@@ -56,6 +60,10 @@ export function estimateCostMicros(
       return UNIT_COST_MICROS.rankedKeywords + n * UNIT_COST_MICROS.rankedKeywordRow;
     case "ai_visibility":
       return n * UNIT_COST_MICROS.aiVisibility;
+    case "keyword_metrics":
+      return n * UNIT_COST_MICROS.keywordMetric;
+    case "bing_rankings":
+      return n * UNIT_COST_MICROS.bingRanking;
     case "ai_topics":
       return UNIT_COST_MICROS.aiTopics;
     case "llm_mentions":

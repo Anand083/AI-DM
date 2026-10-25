@@ -107,6 +107,23 @@ export async function enqueueLeadPoll(
   });
 }
 
+/** Queues a refresh of search volume and Bing positions. Returns false if one is queued for that date. */
+export async function enqueueKeywordMetrics(data: {
+  agencyId: string;
+  projectId: string;
+  date: string;
+}): Promise<boolean> {
+  const queue = getQueue("modules");
+  const jobId = jobIds.keywordMetrics(data.projectId, data.date);
+  if (await queue.getJob(jobId)) return false;
+  await queue.add("keyword-metrics", data, {
+    jobId,
+    attempts: 2,
+    backoff: { type: "exponential", delay: 60_000 },
+  });
+  return true;
+}
+
 /**
  * Queues a Google URL Inspection of one page. The job id holds the page and the minute, so a
  * double click does not ask Google twice. Returns false if it was already queued.

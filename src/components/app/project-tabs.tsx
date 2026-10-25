@@ -9,6 +9,7 @@ export function ProjectTabs({ base, canEdit }: { base: string; canEdit: boolean 
   const tabs = [
     { label: "Overview", href: base },
     { label: "Rankings", href: `${base}/rankings` },
+    { label: "Keyword insights", href: `${base}/keyword-insights` },
     { label: "Audit", href: `${base}/audit` },
     { label: "Backlinks", href: `${base}/backlinks` },
     { label: "Competitors", href: `${base}/competitors` },

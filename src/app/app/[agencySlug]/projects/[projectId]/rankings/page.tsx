@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AddKeywordsForm } from "@/components/app/add-keywords-form";
 import { CheckNowButton } from "@/components/app/check-now-button";
+import { ImportKeywordsForm } from "@/components/app/import-keywords-form";
 import { RankingsTable, type RankingRow } from "@/components/app/rankings-table";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -107,6 +108,17 @@ export default async function RankingsPage({
           </summary>
           <Card className="mt-3">
             <AddKeywordsForm agencySlug={agencySlug} projectId={projectId} />
+          </Card>
+        </details>
+      ) : null}
+
+      {canEdit ? (
+        <details className="group">
+          <summary className="inline-flex h-10 cursor-pointer items-center rounded-md border border-zinc-300 px-4 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+            Import from CSV
+          </summary>
+          <Card className="mt-3">
+            <ImportKeywordsForm agencySlug={agencySlug} projectId={projectId} />
           </Card>
         </details>
       ) : null}

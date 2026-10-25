@@ -3,6 +3,8 @@ import { ProviderError } from "../errors";
 import type {
   AiEngine,
   AiTopic,
+  BingRank,
+  KeywordMetric,
   AuditCrawlConfig,
   AiVisibilityResult,
   LlmMentionsSummary,
@@ -23,7 +25,14 @@ import type {
 import { auditStatusAt, buildAuditResult, makeAuditTaskId, parseAuditTaskId } from "./audit";
 import { buildBacklink, buildBacklinkSummary, buildRankedKeywords } from "./backlinks";
 import { buildKeywordIdeas } from "./keywords";
-import { buildAiTopics, buildAiVisibility, buildLlmMentions, buildReviews } from "./misc";
+import {
+  buildAiTopics,
+  buildAiVisibility,
+  buildBingRankings,
+  buildKeywordMetrics,
+  buildLlmMentions,
+  buildReviews,
+} from "./misc";
 import { dayNumber } from "./prng";
 import { buildRankResult } from "./rankings";
 
@@ -119,6 +128,31 @@ export class MockSeoProvider implements SeoDataProvider {
   }): Promise<ProviderResult<KeywordIdea[]>> {
     return this.call(() =>
       buildKeywordIdeas(i.seed, i.locationCode, i.languageCode, i.limit, this.now()),
+    );
+  }
+
+  getKeywordMetrics(i: {
+    keywords: string[];
+    locationCode: number;
+    languageCode: string;
+  }): Promise<ProviderResult<KeywordMetric[]>> {
+    return this.call(() =>
+      buildKeywordMetrics({ keywords: i.keywords, day: dayNumber(this.now()) }),
+    );
+  }
+
+  getBingRankings(i: {
+    domain: string;
+    keywords: string[];
+    locationCode: number;
+    languageCode: string;
+  }): Promise<ProviderResult<BingRank[]>> {
+    return this.call(() =>
+      buildBingRankings({
+        domain: i.domain.toLowerCase(),
+        keywords: i.keywords,
+        day: dayNumber(this.now()),
+      }),
     );
   }
 

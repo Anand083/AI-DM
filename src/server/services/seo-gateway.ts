@@ -5,6 +5,8 @@ import { ProviderError } from "@/server/providers/seo/errors";
 import type {
   AiEngine,
   AiTopic,
+  BingRank,
+  KeywordMetric,
   AuditCrawlConfig,
   AiVisibilityResult,
   LlmMentionsSummary,
@@ -264,6 +266,51 @@ export class SeoGateway {
       units: 1,
       caller,
       run: (p) => p.getKeywordIdeas(normalized),
+    });
+  }
+
+  /** Exact search numbers for up to 100 phrases. Cached for 30 days; counts as one keyword research. */
+  getKeywordMetrics(
+    caller: GatewayCaller,
+    input: { keywords: string[]; locationCode: number; languageCode: string },
+  ): Promise<GatewayResult<KeywordMetric[]>> {
+    const keywords = [...new Set(input.keywords.map((k) => k.trim().toLowerCase()).filter(Boolean))]
+      .sort()
+      .slice(0, 100);
+    const normalized = { ...input, keywords };
+    return this.cachedCall({
+      module: "keywords",
+      operation: "keyword_metrics",
+      costOperation: "keyword_metrics",
+      input: normalized,
+      expiresAt: (now) => new Date(now.getTime() + 30 * DAY_MS),
+      metric: "KEYWORD_RESEARCH",
+      units: 1,
+      caller,
+      run: (p) => p.getKeywordMetrics(normalized),
+    });
+  }
+
+  /** Bing positions for up to 100 keywords. Counts as rank checks. */
+  getBingRankings(
+    caller: GatewayCaller,
+    input: { domain: string; keywords: string[]; locationCode: number; languageCode: string },
+  ): Promise<GatewayResult<BingRank[]>> {
+    const keywords = [...new Set(input.keywords.map((k) => k.trim().toLowerCase()).filter(Boolean))]
+      .sort()
+      .slice(0, 100);
+    const normalized = { ...input, domain: input.domain.toLowerCase(), keywords };
+    return this.cachedCall({
+      module: "rankings",
+      operation: "bing_rankings",
+      costOperation: "bing_rankings",
+      input: normalized,
+      perDay: true,
+      expiresAt: endOfUtcDay,
+      metric: "RANK_CHECK",
+      units: keywords.length,
+      caller,
+      run: (p) => p.getBingRankings(normalized),
     });
   }
 

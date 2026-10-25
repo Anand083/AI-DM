@@ -44,6 +44,22 @@ export type KeywordIdea = {
   trend: number[];
 };
 
+/** Search numbers for one exact phrase (not ideas around it). */
+export type KeywordMetric = {
+  keyword: string;
+  /** Searches per month. Null when the vendor has no number for the phrase. */
+  volume: number | null;
+  /** Cost per click in micro-dollars. */
+  cpcMicros: number | null;
+  /** 0 (easy) to 100 (hard). */
+  difficulty: number | null;
+  /** Searches per month for the last 12 months, oldest first. Empty when unknown. */
+  trend: number[];
+};
+
+/** A rank on the Bing search engine. */
+export type BingRank = { keyword: string; position: number | null; url: string | null };
+
 export type AuditSeverity = "CRITICAL" | "WARNING" | "NOTICE";
 
 export type AuditIssueFound = {
@@ -191,6 +207,8 @@ export type SeoOperation =
   | "backlinks"
   | "ranked_keywords"
   | "ai_visibility"
+  | "keyword_metrics"
+  | "bing_rankings"
   | "ai_topics"
   | "llm_mentions"
   | "reviews";
@@ -227,6 +245,17 @@ export interface SeoDataProvider {
     languageCode: string;
     limit: number;
   }): Promise<ProviderResult<KeywordIdea[]>>;
+  getKeywordMetrics(i: {
+    keywords: string[];
+    locationCode: number;
+    languageCode: string;
+  }): Promise<ProviderResult<KeywordMetric[]>>;
+  getBingRankings(i: {
+    domain: string;
+    keywords: string[];
+    locationCode: number;
+    languageCode: string;
+  }): Promise<ProviderResult<BingRank[]>>;
   startAudit(i: {
     domain: string;
     maxPages: number;

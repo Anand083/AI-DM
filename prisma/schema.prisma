@@ -415,6 +415,18 @@ model Keyword {
   changeWeek      Int?
   changeMonth     Int?
 
+  /// Search numbers for the exact phrase, from the last metrics refresh. Null until then.
+  volume        Int?
+  cpcMicros     Int?
+  /// 0 (easy) to 100 (hard).
+  difficulty    Int?
+  /// Searches per month for the last 12 months, oldest first. Empty when unknown.
+  trend         Int[]
+  metricsOn     DateTime? @db.Date
+  /// Latest Bing position, 1 to 100. Null with `bingCheckedOn` set means "not in the top 100".
+  bingPosition  Int?
+  bingCheckedOn DateTime? @db.Date
+
   agency     Agency      @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   rankChecks RankCheck[]

@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { deleteKeywordsAction } from "@/app/app/[agencySlug]/projects/[projectId]/rankings/actions";
 import { ChangeBadge, PositionText } from "@/components/app/rank-widgets";
+import { BulkEditKeywords } from "@/components/app/bulk-edit-keywords";
 import { CheckNowButton } from "@/components/app/check-now-button";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 
@@ -92,6 +94,7 @@ export function RankingsTable({
   const router = useRouter();
   const { toast } = useToast();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState(false);
   const base = `/app/${agencySlug}/projects/${projectId}/rankings`;
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
@@ -120,6 +123,11 @@ export function RankingsTable({
             />
           ) : null}
           {canEdit ? (
+            <Button type="button" variant="outline" onClick={() => setEditing((v) => !v)}>
+              {editing ? "Close editor" : "Edit selected"}
+            </Button>
+          ) : null}
+          {canEdit ? (
             <ConfirmDialog
               trigger="Delete selected"
               title={`Delete ${selected.size} ${selected.size === 1 ? "keyword" : "keywords"}?`}
@@ -135,6 +143,17 @@ export function RankingsTable({
                 setSelected(new Set());
                 router.refresh();
                 return null;
+              }}
+            />
+          ) : null}
+          {editing && canEdit ? (
+            <BulkEditKeywords
+              agencySlug={agencySlug}
+              projectId={projectId}
+              ids={[...selected]}
+              onDone={() => {
+                setEditing(false);
+                setSelected(new Set());
               }}
             />
           ) : null}

@@ -247,7 +247,16 @@ export async function getKeywordDetail(
   const project = await getProject(ctx, projectId);
   const keyword = await db.keyword.findFirst({
     where: { id: keywordId, agencyId: ctx.agencyId, projectId },
-    select: rankingSelect,
+    select: {
+      ...rankingSelect,
+      volume: true,
+      difficulty: true,
+      cpcMicros: true,
+      trend: true,
+      metricsOn: true,
+      bingPosition: true,
+      bingCheckedOn: true,
+    },
   });
   if (!keyword) throw new NotFoundError("Keyword not found.");
 
