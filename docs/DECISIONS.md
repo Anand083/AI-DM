@@ -512,3 +512,11 @@ These steps are not in `docs/PLAN.md` (which is not edited without asking). They
 - Webhook secrets are stored as plain text because the app must sign with them. They are shown to owners and admins only and left out of the data export (as are key hashes).
 - **Notification choices**: each owner or admin can turn off the morning alert summary for themselves (Settings, "My notifications"). The agency switch still decides whether the summary exists at all. Task and report emails have no per-person choice yet.
 - **Not built**: Google Sheets (a Sheets add-on needs a Google OAuth app; use the CSV exports or the API from Apps Script instead), a write API, more webhook events (reports, audits), plan limits on API use, and OAuth for third-party apps.
+
+### H13: Everyday UX
+
+- **Search**: a search box in the top bar (a normal form, so it works without scripts) opens `/search?q=`. It looks in clients, projects (name and domain), keywords and tasks of the agency, 8 results of each kind, case-insensitive, at least 2 letters. Deleted clients and projects are left out. Client users cannot use it.
+- **Saved views**: a person can save the filters of the clients list and the tasks list (only the keys `q` and `status` for clients, `view` and `q` for tasks; anything else is dropped) and reopen them as links. They belong to one person, up to 20 per list.
+- **Bulk actions**: row checkboxes (linked to the bar with the HTML `form` attribute, so the tables stay server components). Clients: archive or restore. Tasks: mark done, set high priority, assign to me. Up to 100 rows. Each row goes through the normal service (`setClientArchived`, `updateTask`), so plan limits, ownership checks and repeating tasks work as before. A row that fails is reported (for example "plan allows 5 clients" when restoring), the rest still run. A missing permission fails the whole call.
+- **Dashboard**: each person can hide parts of the dashboard (totals, clients overview, alerts, plan usage). It is a show/hide choice, not a free layout builder.
+- Not built: a keyboard command palette, saved views for other lists, drag and drop dashboard layout, and the "feature unavailable" labels, which are added together with the real DataForSEO adapter because that is when some features differ by data source.

@@ -101,6 +101,7 @@ export const ACTION_FILES: Record<string, ActionGuard> = {
   "src/app/app/[agencySlug]/projects/[projectId]/content/actions.ts": "tenant",
   "src/app/app/[agencySlug]/profitability/actions.ts": "tenant",
   "src/app/app/[agencySlug]/integrations/actions.ts": "tenant",
+  "src/app/app/[agencySlug]/views/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/locations/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/keyword-insights/actions.ts": "tenant",
   "src/app/app/[agencySlug]/leads/actions.ts": "tenant",

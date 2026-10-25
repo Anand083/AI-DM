@@ -76,6 +76,8 @@ export const TENANT_MODELS = new Set([
   "ApiKey",
   "Webhook",
   "WebhookDelivery",
+  "SavedView",
+  "DashboardPref",
 ]);
 
 const WHERE_OPERATIONS = new Set([

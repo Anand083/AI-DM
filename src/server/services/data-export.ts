@@ -542,6 +542,16 @@ export function exportFiles(
       rows: allRows((a) => rawDb.webhookDelivery.findMany({ where, ...order, ...a })),
     },
     {
+      name: "saved-views.jsonl",
+      model: "SavedView",
+      rows: allRows((a) => rawDb.savedView.findMany({ where, ...order, ...a })),
+    },
+    {
+      name: "dashboard-prefs.jsonl",
+      model: "DashboardPref",
+      rows: allRows((a) => rawDb.dashboardPref.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "add-ons.jsonl",
       model: "AgencyAddOn",
       rows: allRows((a) => rawDb.agencyAddOn.findMany({ where, ...order, ...a })),

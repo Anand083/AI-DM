@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BulkBar, SavedViews } from "@/components/app/list-tools";
 import { SearchForm } from "@/components/ui/search-form";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -8,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { listClients } from "@/server/services/clients";
+import { listSavedViews } from "@/server/services/saved-views";
 
 export const metadata: Metadata = { title: "Clients" };
 export const dynamic = "force-dynamic";
@@ -27,7 +29,10 @@ export default async function ClientsPage({
   const q = typeof sp.q === "string" ? sp.q : undefined;
   const status = sp.status === "ARCHIVED" ? "ARCHIVED" : sp.status === "ALL" ? "ALL" : "ACTIVE";
   const page = pageFromParams(sp.page);
-  const { rows, total } = await listClients(ctx, { q, status, page, pageSize: PAGE_SIZE });
+  const [{ rows, total }, views] = await Promise.all([
+    listClients(ctx, { q, status, page, pageSize: PAGE_SIZE }),
+    listSavedViews(ctx, "clients"),
+  ]);
   const base = `/app/${agencySlug}/clients`;
   const canEdit = can(ctx.role, "content.edit");
   const addButton = canEdit ? (
@@ -70,6 +75,26 @@ export default async function ClientsPage({
         </div>
       </SearchForm>
 
+      <SavedViews
+        agencySlug={agencySlug}
+        scope="clients"
+        basePath={base}
+        current={{ ...(q ? { q } : {}), ...(status !== "ACTIVE" ? { status } : {}) }}
+        views={views}
+      />
+
+      {canEdit && rows.length > 0 ? (
+        <BulkBar
+          agencySlug={agencySlug}
+          formId="bulk-clients"
+          kind="clients"
+          options={[
+            { value: "archive", label: "Archive" },
+            { value: "restore", label: "Restore" },
+          ]}
+        />
+      ) : null}
+
       {rows.length === 0 ? (
         q || status !== "ACTIVE" ? (
           <EmptyState title="No clients found" description="Try a different search or filter." />
@@ -86,6 +111,11 @@ export default async function ClientsPage({
             <table className="w-full text-left text-sm" aria-label="Clients">
               <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
                 <tr>
+                  {canEdit ? (
+                    <th scope="col" className="w-10 px-4 py-2">
+                      <span className="sr-only">Select</span>
+                    </th>
+                  ) : null}
                   <th scope="col" className="px-4 py-2 font-medium">
                     Name
                   </th>
@@ -103,6 +133,18 @@ export default async function ClientsPage({
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {rows.map((c) => (
                   <tr key={c.id}>
+                    {canEdit ? (
+                      <td className="px-4 py-2">
+                        <input
+                          type="checkbox"
+                          name="ids"
+                          value={c.id}
+                          form="bulk-clients"
+                          className="size-4"
+                          aria-label={`Select ${c.name}`}
+                        />
+                      </td>
+                    ) : null}
                     <td className="px-4 py-2 font-medium">
                       <Link href={`${base}/${c.id}`} className="underline-offset-4 hover:underline">
                         {c.name}

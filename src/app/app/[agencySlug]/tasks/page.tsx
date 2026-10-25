@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BulkBar, SavedViews } from "@/components/app/list-tools";
 import { TaskDoneButton } from "@/components/app/task-extras";
 import { TemplatePanel } from "@/components/app/template-panel";
 import { TaskForm } from "@/components/app/task-form";
@@ -9,6 +10,7 @@ import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { isOverdue, priorityLabel, statusLabel } from "@/lib/tasks";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
+import { listSavedViews } from "@/server/services/saved-views";
 import { listProjects } from "@/server/services/projects";
 import { listTemplates } from "@/server/services/task-templates";
 import { listAssignees, listTasks, TASK_VIEWS, type TaskView } from "@/server/services/tasks";
@@ -45,11 +47,12 @@ export default async function TasksPage({
   const q = typeof sp.q === "string" ? sp.q : undefined;
   const page = pageFromParams(sp.page);
   const canEdit = can(ctx.role, "content.edit");
-  const [list, assignees, projects, templates] = await Promise.all([
+  const [list, assignees, projects, templates, views] = await Promise.all([
     listTasks(ctx, { view, q, page, pageSize: PAGE_SIZE }),
     listAssignees(ctx),
     canEdit ? listProjects(ctx, { pageSize: 100 }) : Promise.resolve({ rows: [] }),
     listTemplates(ctx),
+    listSavedViews(ctx, "tasks"),
   ]);
   const base = `/app/${agencySlug}/tasks`;
   const today = new Date().toISOString().slice(0, 10);
@@ -118,6 +121,27 @@ export default async function TasksPage({
         ))}
       </nav>
 
+      <SavedViews
+        agencySlug={agencySlug}
+        scope="tasks"
+        basePath={base}
+        current={{ ...(view !== "open" ? { view } : {}), ...(q ? { q } : {}) }}
+        views={views}
+      />
+
+      {canEdit && list.rows.length > 0 ? (
+        <BulkBar
+          agencySlug={agencySlug}
+          formId="bulk-tasks"
+          kind="tasks"
+          options={[
+            { value: "done", label: "Mark done" },
+            { value: "high", label: "Set high priority" },
+            { value: "assign_me", label: "Assign to me" },
+          ]}
+        />
+      ) : null}
+
       {list.rows.length === 0 ? (
         <EmptyState
           title={view === "done" ? "Nothing finished yet" : "No tasks here"}
@@ -138,6 +162,11 @@ export default async function TasksPage({
             <table className="w-full text-left text-sm" aria-label="Tasks">
               <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
                 <tr>
+                  {canEdit ? (
+                    <th scope="col" className="w-10 px-4 py-2">
+                      <span className="sr-only">Select</span>
+                    </th>
+                  ) : null}
                   {["Task", "Project", "Priority", "Status", "Owner", "Due"].map((h) => (
                     <th key={h} scope="col" className="px-4 py-2 font-medium">
                       {h}
@@ -156,6 +185,18 @@ export default async function TasksPage({
                     key={t.id}
                     className="border-b border-zinc-100 align-top last:border-0 dark:border-zinc-900"
                   >
+                    {canEdit ? (
+                      <td className="px-4 py-2">
+                        <input
+                          type="checkbox"
+                          name="ids"
+                          value={t.id}
+                          form="bulk-tasks"
+                          className="size-4"
+                          aria-label={`Select ${t.title}`}
+                        />
+                      </td>
+                    ) : null}
                     <td className="max-w-xs px-4 py-2">
                       <Link
                         href={`${base}/${t.id}`}

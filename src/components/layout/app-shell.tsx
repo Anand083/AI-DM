@@ -59,6 +59,19 @@ export function AppShell({
         <header className="flex flex-wrap items-center gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
           <MobileNav items={items} agencyName={agencyName} />
           <AgencySwitcher agencies={agencies} currentSlug={agencySlug} />
+          <form action={`${base}/search`} role="search" className="min-w-0 flex-1 sm:max-w-xs">
+            <label htmlFor="global-search" className="sr-only">
+              Find anything
+            </label>
+            <input
+              id="global-search"
+              name="q"
+              type="search"
+              maxLength={80}
+              placeholder="Search"
+              className="h-9 w-full rounded-md border border-zinc-300 bg-transparent px-3 text-sm dark:border-zinc-700"
+            />
+          </form>
           {showDemoBadge ? <Badge tone="warning">Demo data</Badge> : null}
           <div className="ml-auto flex items-center gap-2">
             <NotificationBell agencySlug={agencySlug} unread={bell.unread} recent={bell.recent} />

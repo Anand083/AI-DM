@@ -228,6 +228,8 @@ model Agency {
   apiKeys            ApiKey[]
   webhooks           Webhook[]
   webhookDeliveries  WebhookDelivery[]
+  savedViews         SavedView[]
+  dashboardPrefs     DashboardPref[]
 
   @@index([status, deletedAt])
 }
@@ -1928,4 +1930,33 @@ model WebhookDelivery {
   webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
   @@index([agencyId, webhookId, createdAt])
+}
+
+/// A saved set of list filters that one person can reopen (for example clients that are archived).
+model SavedView {
+  id        String   @id @default(cuid(2))
+  agencyId  String
+  userId    String
+  /// clients or tasks.
+  scope     String
+  name      String
+  /// Filter values, only keys allowed for the scope.
+  params    Json
+  createdAt DateTime @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, userId, scope])
+}
+
+/// Which dashboard parts one person has hidden.
+model DashboardPref {
+  id       String   @id @default(cuid(2))
+  agencyId String
+  userId   String
+  hidden   String[]
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, userId])
 }
