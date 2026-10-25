@@ -172,6 +172,9 @@ model Agency {
   backlinks          Backlink[]
   competitors        Competitor[]
   competitorKeywords CompetitorKeyword[]
+  aiPrompts          AiPrompt[]
+  aiChecks           AiVisibilityCheck[]
+  aiSettings         AiSetting[]
   backlinkSnapshots  BacklinkSnapshot[]
   keywordLists       KeywordList[]
   alerts             Alert[]
@@ -284,6 +287,9 @@ model Project {
   backlinks          Backlink[]
   competitors        Competitor[]
   competitorKeywords CompetitorKeyword[]
+  aiPrompts          AiPrompt[]
+  aiChecks           AiVisibilityCheck[]
+  aiSettings         AiSetting[]
   backlinkSnapshots  BacklinkSnapshot[]
   reports            Report[]
   reportSchedule     ReportSchedule?
@@ -1039,4 +1045,70 @@ model CompetitorKeyword {
   @@unique([competitorId, keyword])
   @@index([agencyId, projectId, volume])
   @@index([agencyId, competitorId, volume])
+}
+
+// ---------------------------------------------------------------------------
+// AI visibility
+// ---------------------------------------------------------------------------
+
+/// A question people might ask an AI assistant, for example "best dentist in Austin".
+model AiPrompt {
+  id        String   @id @default(cuid(2))
+  agencyId  String
+  projectId String
+  text      String
+  createdAt DateTime @default(now())
+
+  agency  Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  checks  AiVisibilityCheck[]
+
+  @@unique([projectId, text])
+  @@index([agencyId, projectId])
+}
+
+/// Which brand name and which AI engines are used for a project's checks. One row per project.
+model AiSetting {
+  id        String   @id @default(cuid(2))
+  agencyId  String
+  projectId String
+  brandName String
+  /// Engine keys, for example "chatgpt", "gemini", "perplexity", "claude", "google_ai_overview".
+  engines   String[]
+  updatedAt DateTime @updatedAt
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId])
+  @@index([agencyId])
+}
+
+/// The answer of one AI engine to one prompt on one day.
+model AiVisibilityCheck {
+  id                   String   @id @default(cuid(2))
+  agencyId             String
+  projectId            String
+  promptId             String
+  engine               String
+  /// UTC day of the check.
+  checkedOn            DateTime @db.Date
+  brandMentioned       Boolean
+  domainCited          Boolean
+  /// Place of the brand among the brands named in the answer (1 is first).
+  mentionPosition      Int?
+  sentiment            String?
+  snippet              String
+  citedUrls            String[]
+  /// Competitors of the project that the answer names or links to.
+  competitorsMentioned String[]
+  provider             String
+  createdAt            DateTime @default(now())
+
+  agency  Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  prompt  AiPrompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([promptId, engine, checkedOn])
+  @@index([agencyId, projectId, checkedOn])
 }

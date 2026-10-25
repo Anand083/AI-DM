@@ -2,6 +2,7 @@ import "server-only";
 import { DEFAULT_ACCENT, DEFAULT_PRIMARY, initials } from "@/lib/brand";
 import { normalizeHex, readableTextOn } from "@/lib/color";
 import { formatChange, formatPosition } from "@/lib/rank-math";
+import { describeAi } from "@/lib/report-ai";
 import { describeBacklinks } from "@/lib/report-backlinks";
 import type { ReportBacklinkRow, ReportKeywordRow, ReportModel } from "@/lib/report-model";
 
@@ -344,6 +345,31 @@ function createRenderer(rp: ReactPdf) {
                 </View>
               ) : (
                 <Text style={s.empty}>No competitors have been added yet.</Text>
+              )}
+            </View>
+          ) : null}
+
+          {has("ai") ? (
+            <View>
+              <Text style={s.h2}>AI visibility</Text>
+              {model.ai ? (
+                <View>
+                  {describeAi(model.ai).map((line) => (
+                    <Text key={line} style={[s.p, { marginBottom: 4 }]}>
+                      {line}
+                    </Text>
+                  ))}
+                  {model.ai.prompts.map((q) => (
+                    <View key={q.text} style={s.tr} wrap={false}>
+                      <Text style={s.cIssue}>{q.text}</Text>
+                      <Text style={s.cSev}>
+                        {q.mentioned} of {q.engines}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={s.empty}>No AI visibility check has been done yet.</Text>
               )}
             </View>
           ) : null}

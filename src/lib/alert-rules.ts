@@ -46,7 +46,7 @@ export function isEnteredTop(
 
 export type AlertDraft = {
   projectId: string | null;
-  type: "RANK_DROP" | "RANK_GAIN" | "AUDIT_CRITICAL" | "BACKLINKS_LOST";
+  type: "RANK_DROP" | "RANK_GAIN" | "AUDIT_CRITICAL" | "BACKLINKS_LOST" | "AI_MENTION_LOST";
   severity: "INFO" | "WARNING" | "CRITICAL";
   title: string;
   body: string;
@@ -166,5 +166,26 @@ export function buildBacklinkLossAlert(input: {
     body: `${plural(input.lost, "link", "links")} out of ${input.activeBefore} stopped pointing to the site since the last weekly check.`,
     data: { date: input.date, lost: input.lost, activeBefore: input.activeBefore },
     dedupeKey: `backlinks_lost:${input.projectId}:${input.date}`,
+  };
+}
+
+/** An alert when AI answers that named the brand last time do not name it now. */
+export function buildMentionLostAlert(input: {
+  projectId: string;
+  projectName: string;
+  date: string;
+  /** Readable names such as `"best plumber" on ChatGPT`. */
+  lost: string[];
+}): AlertDraft | null {
+  const n = input.lost.length;
+  if (n === 0) return null;
+  return {
+    projectId: input.projectId,
+    type: "AI_MENTION_LOST",
+    severity: n >= 3 ? "CRITICAL" : "WARNING",
+    title: `${input.projectName} stopped appearing in ${plural(n, "AI answer", "AI answers")}`,
+    body: input.lost.slice(0, SHOWN).join("; ") + (n > SHOWN ? `; and ${n - SHOWN} more.` : "."),
+    data: { date: input.date, total: n, lost: input.lost.slice(0, STORED) },
+    dedupeKey: `ai_mention_lost:${input.projectId}:${input.date}`,
   };
 }

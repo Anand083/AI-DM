@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildAuditAlert,
   buildBacklinkLossAlert,
+  buildMentionLostAlert,
   buildRankAlerts,
   DEFAULT_ALERT_SETTINGS as S,
   isEnteredTop,
@@ -165,5 +166,25 @@ describe("buildBacklinkLossAlert", () => {
     expect(buildBacklinkLossAlert({ ...base, lost: 20, activeBefore: 100 })?.severity).toBe(
       "CRITICAL",
     );
+  });
+});
+
+describe("buildMentionLostAlert", () => {
+  const base = { projectId: "p1", projectName: "Shop", date: "2026-03-10" };
+
+  it("gives nothing when nothing was lost", () => {
+    expect(buildMentionLostAlert({ ...base, lost: [] })).toBeNull();
+  });
+
+  it("warns for one or two, and is critical from three", () => {
+    const one = buildMentionLostAlert({ ...base, lost: ['"best shoes" on ChatGPT'] });
+    expect(one).toMatchObject({
+      type: "AI_MENTION_LOST",
+      severity: "WARNING",
+      title: "Shop stopped appearing in 1 AI answer",
+      body: '"best shoes" on ChatGPT.',
+      dedupeKey: "ai_mention_lost:p1:2026-03-10",
+    });
+    expect(buildMentionLostAlert({ ...base, lost: ["a", "b", "c"] })?.severity).toBe("CRITICAL");
   });
 });

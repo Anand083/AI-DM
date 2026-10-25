@@ -106,7 +106,7 @@ export type RankedKeyword = {
   url: string;
 };
 
-export type AiEngine = "chatgpt" | "gemini" | "perplexity" | "google_ai_overview";
+export type AiEngine = "chatgpt" | "gemini" | "perplexity" | "claude" | "google_ai_overview";
 
 export type AiVisibilityResult = {
   engine: AiEngine;

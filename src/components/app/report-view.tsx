@@ -1,5 +1,6 @@
 import { brandCssVars, initials } from "@/lib/brand";
 import { formatChange, formatPosition } from "@/lib/rank-math";
+import { describeAi } from "@/lib/report-ai";
 import { describeBacklinks } from "@/lib/report-backlinks";
 import type { ReportBacklinkRow, ReportKeywordRow, ReportModel } from "@/lib/report-model";
 
@@ -344,6 +345,48 @@ export function ReportView({
             </>
           ) : (
             <p className="text-sm text-zinc-600">No competitors have been added yet.</p>
+          )}
+        </Section>
+      ) : null}
+
+      {has("ai") ? (
+        <Section title="AI visibility">
+          {model.ai ? (
+            <>
+              {describeAi(model.ai).map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+              {model.ai.prompts.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg border border-zinc-200">
+                  <table
+                    className="w-full text-left text-sm"
+                    aria-label="AI visibility by question"
+                  >
+                    <thead className="border-b border-zinc-200 bg-zinc-50">
+                      <tr>
+                        {["Question", "Engines that named the brand"].map((h) => (
+                          <th key={h} scope="col" className="px-3 py-2 font-medium">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200">
+                      {model.ai.prompts.map((p) => (
+                        <tr key={p.text}>
+                          <td className="px-3 py-2 font-medium">{p.text}</td>
+                          <td className="px-3 py-2 tabular-nums">
+                            {p.mentioned} of {p.engines}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm text-zinc-600">No AI visibility check has been done yet.</p>
           )}
         </Section>
       ) : null}

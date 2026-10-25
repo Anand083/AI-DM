@@ -1,10 +1,12 @@
 import "server-only";
 import sharp from "sharp";
+import { engineLabel, sortByEngine, summarizeChecks } from "@/lib/ai-visibility";
 import { summarizeCompetitors } from "@/lib/competitors";
 import { assembleReport } from "@/lib/report-assembler";
 import { pickPositions, START_LOOKBACK_DAYS, type PeriodCheck } from "@/lib/report-data";
 import {
   RANKINGS_LIMIT,
+  type ReportAiInput,
   type ReportAuditInput,
   type ReportBacklinkRow,
   type ReportBacklinksInput,
@@ -90,7 +92,82 @@ export async function loadReportInput(agencyId: string, reportId: string): Promi
     competitors: (report.sections as string[]).includes("competitors")
       ? await loadCompetitors(agencyId, report.projectId)
       : null,
+    ai: (report.sections as string[]).includes("ai")
+      ? await loadAiVisibility(agencyId, report.projectId, report.periodEnd)
+      : null,
     generatedOn: day(new Date()),
+  };
+}
+
+/** The last AI visibility check up to the end of the period, with the rate of the one before. */
+async function loadAiVisibility(
+  agencyId: string,
+  projectId: string,
+  periodEnd: Date,
+): Promise<ReportAiInput | null> {
+  const days = await db.aiVisibilityCheck.findMany({
+    where: { agencyId, projectId, checkedOn: { lte: periodEnd } },
+    select: { checkedOn: true },
+    distinct: ["checkedOn"],
+    orderBy: { checkedOn: "desc" },
+    take: 2,
+  });
+  const latestOn = days[0]?.checkedOn;
+  if (!latestOn) return null;
+  const select = {
+    promptId: true,
+    engine: true,
+    brandMentioned: true,
+    domainCited: true,
+    mentionPosition: true,
+    competitorsMentioned: true,
+  } as const;
+  const [latest, before, prompts] = await Promise.all([
+    db.aiVisibilityCheck.findMany({
+      where: { agencyId, projectId, checkedOn: latestOn },
+      select,
+      take: 1000,
+    }),
+    days[1]
+      ? db.aiVisibilityCheck.findMany({
+          where: { agencyId, projectId, checkedOn: days[1].checkedOn },
+          select,
+          take: 1000,
+        })
+      : Promise.resolve([]),
+    db.aiPrompt.findMany({
+      where: { agencyId, projectId },
+      select: { id: true, text: true },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: 20,
+    }),
+  ]);
+  const summary = summarizeChecks(latest);
+  return {
+    checkedOn: day(latestOn),
+    total: summary.total,
+    mentionRate: summary.mentionRate,
+    previousRate: before.length > 0 ? summarizeChecks(before).mentionRate : null,
+    citedRate: summary.citedRate,
+    shareOfVoice: summary.shareOfVoice,
+    averagePosition: summary.averagePosition,
+    engines: sortByEngine(Object.entries(summary.byEngine)).map(([engine, e]) => ({
+      engine,
+      label: engineLabel(engine),
+      total: e.total,
+      mentionRate: e.mentionRate,
+    })),
+    prompts: prompts
+      .map((p) => {
+        const rows = latest.filter((c) => c.promptId === p.id);
+        return {
+          text: p.text,
+          mentioned: rows.filter((c) => c.brandMentioned).length,
+          engines: rows.length,
+        };
+      })
+      .filter((p) => p.engines > 0)
+      .slice(0, 10),
   };
 }
 

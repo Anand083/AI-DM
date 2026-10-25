@@ -188,3 +188,21 @@ describe("competitors in the report", () => {
     expect(assembleReport(input({ competitors })).competitors).toEqual(competitors);
   });
 });
+
+describe("AI visibility in the report", () => {
+  it("is null when the loader gave none, and passed through when given", () => {
+    expect(assembleReport(input()).ai).toBeNull();
+    const ai = {
+      checkedOn: "2026-03-30",
+      total: 3,
+      mentionRate: 33,
+      previousRate: null,
+      citedRate: 0,
+      shareOfVoice: null,
+      averagePosition: null,
+      engines: [],
+      prompts: [],
+    };
+    expect(assembleReport(input({ ai })).ai).toEqual(ai);
+  });
+});

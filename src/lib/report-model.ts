@@ -11,6 +11,7 @@ export const REPORT_SECTIONS = [
   { key: "opportunities", label: "Keyword opportunities" },
   { key: "backlinks", label: "Backlinks" },
   { key: "competitors", label: "Competitors" },
+  { key: "ai", label: "AI visibility" },
   { key: "notes", label: "Notes" },
 ] as const;
 
@@ -93,6 +94,21 @@ export type ReportCompetitorsInput = {
   gap: { keyword: string; competitor: string; position: number; volume: number }[];
 };
 
+export type ReportAiInput = {
+  checkedOn: string;
+  /** Answers in the latest check. */
+  total: number;
+  mentionRate: number;
+  /** Mention rate of the check before, if there was one. */
+  previousRate: number | null;
+  citedRate: number;
+  shareOfVoice: number | null;
+  averagePosition: number | null;
+  engines: { engine: string; label: string; total: number; mentionRate: number }[];
+  /** Each question with the number of engines that named the brand. At most 10. */
+  prompts: { text: string; mentioned: number; engines: number }[];
+};
+
 export type ReportInput = {
   title: string;
   projectName: string;
@@ -106,6 +122,7 @@ export type ReportInput = {
   /** Optional so older callers and saved reports keep working. */
   backlinks?: ReportBacklinksInput | null;
   competitors?: ReportCompetitorsInput | null;
+  ai?: ReportAiInput | null;
   generatedOn: string;
 };
 
@@ -142,6 +159,8 @@ export type ReportModel = {
   backlinks?: ReportBacklinksInput | null;
   /** Missing in reports made before the competitor section existed. */
   competitors?: ReportCompetitorsInput | null;
+  /** Missing in reports made before the AI visibility section existed. */
+  ai?: ReportAiInput | null;
   issues: ReportAuditInput["issues"];
   opportunities: ReportKeywordRow[];
   notes: string | null;

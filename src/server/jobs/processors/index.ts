@@ -4,6 +4,7 @@ import { db, rawDb } from "@/server/db/client";
 import { AppError } from "@/server/services/errors";
 import { ProviderError } from "@/server/providers/seo/errors";
 import { createAudit } from "@/server/services/audits";
+import { runAiVisibility } from "@/server/services/ai-runner";
 import { runCompetitorGap } from "@/server/services/competitor-runner";
 import { runBacklinkRefresh } from "@/server/services/backlink-runner";
 import { backlinkWindow } from "@/server/services/backlinks";
@@ -22,6 +23,7 @@ import { getEmailProvider } from "@/server/providers/email";
 import type { EmailJobData } from "@/server/jobs/enqueue";
 import {
   enqueueAuditPoll,
+  enqueueAiCheck,
   enqueueAutoAudit,
   enqueueBacklinkRefresh,
   enqueueDigest,
@@ -37,6 +39,7 @@ import type { JobProcessors } from "@/server/jobs/runtime";
 import { uploadLatestBackup } from "@/server/jobs/system/backup-upload";
 import { S3StorageProvider } from "@/server/providers/storage/s3";
 import { purgeExpired } from "@/server/jobs/system/purge";
+import { runAiScheduler } from "@/server/jobs/system/ai-scheduler";
 import { runBacklinkScheduler } from "@/server/jobs/system/backlink-scheduler";
 import { runBillingTick } from "@/server/jobs/system/billing-tick";
 import { runReportDispatcher } from "@/server/jobs/system/report-dispatcher";
@@ -74,6 +77,13 @@ export const processors: JobProcessors = {
           paused: async () => budget.state === "paused",
         });
         if (backlinks.queued > 0) logger.info(backlinks, "weekly backlink checks queued");
+        const aiChecks = await runAiScheduler({
+          db: rawDb,
+          now: new Date(),
+          enqueue: enqueueAiCheck,
+          paused: async () => budget.state === "paused",
+        });
+        if (aiChecks.queued > 0) logger.info(aiChecks, "weekly AI visibility checks queued");
         const digests = await runDigestScheduler({
           db: rawDb,
           now: new Date(),
@@ -88,7 +98,7 @@ export const processors: JobProcessors = {
         if (reports.created > 0) logger.info(reports, "scheduled reports queued");
         const billing = await runBillingTick({ db: rawDb, now: new Date() });
         if (billing.checked + billing.reminders > 0) logger.info(billing, "billing tick");
-        return { ...result, audits, backlinks, digests, reports, billing };
+        return { ...result, audits, backlinks, aiChecks, digests, reports, billing };
       }
       case "export:agency": {
         const { exportId, agencyId } = job.data as { exportId: string; agencyId: string };
@@ -159,6 +169,20 @@ export const processors: JobProcessors = {
           // Plan limits and the budget pause are not worth retrying.
           if (error instanceof AppError) {
             logger.warn({ jobId: job.id, message: error.message }, "backlink check stopped");
+            return { error: error.message };
+          }
+          throw error;
+        }
+      }
+      case "ai-visibility": {
+        const data = job.data as { projectId: string; agencyId: string; date: string };
+        try {
+          const result = await runAiVisibility({ db, gateway: getSeoGateway() }, data);
+          logger.info({ jobId: job.id, ...result }, "ai visibility check");
+          return result;
+        } catch (error) {
+          if (error instanceof AppError) {
+            logger.warn({ jobId: job.id, message: error.message }, "ai visibility stopped");
             return { error: error.message };
           }
           throw error;

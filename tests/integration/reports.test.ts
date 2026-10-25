@@ -347,6 +347,71 @@ describe("generating a report", () => {
     expect((await getReport(owner.ctx, without.id)).model?.competitors).toBeNull();
   });
 
+  it("adds the AI visibility section from the last check in the period", async () => {
+    const { owner, project } = await setup();
+    const agencyId = owner.ctx.agencyId;
+    const prompt = await prisma.aiPrompt.create({
+      data: { agencyId, projectId: project.id, text: "best family dentist" },
+    });
+    const check = (checkedOn: string, engine: string, brandMentioned: boolean) =>
+      prisma.aiVisibilityCheck.create({
+        data: {
+          agencyId,
+          projectId: project.id,
+          promptId: prompt.id,
+          engine,
+          checkedOn: new Date(`${checkedOn}T00:00:00Z`),
+          brandMentioned,
+          domainCited: brandMentioned,
+          mentionPosition: brandMentioned ? 2 : null,
+          snippet: "x",
+          citedUrls: [],
+          competitorsMentioned: [],
+          provider: "mock",
+        },
+      });
+    await check("2026-03-02", "chatgpt", false);
+    await check("2026-03-02", "gemini", false);
+    await check("2026-03-23", "chatgpt", true);
+    await check("2026-03-23", "gemini", false);
+    // After the period: must not count.
+    await check("2026-04-06", "chatgpt", true);
+    await check("2026-04-06", "gemini", true);
+
+    const created = await createReport(
+      owner.ctx,
+      { ...base, projectId: project.id, sections: [...base.sections, "ai"] },
+      { now, enqueue },
+    );
+    await generateReport(agencyId, created.id);
+    const model = (await getReport(owner.ctx, created.id)).model;
+    expect(model?.ai).toMatchObject({
+      checkedOn: "2026-03-23",
+      total: 2,
+      mentionRate: 50,
+      previousRate: 0,
+      citedRate: 50,
+      averagePosition: 2,
+      prompts: [{ text: "best family dentist", mentioned: 1, engines: 2 }],
+    });
+    expect(model?.ai?.engines.map((e) => [e.label, e.mentionRate])).toEqual([
+      ["ChatGPT", 100],
+      ["Gemini", 0],
+    ]);
+    const { text } = readPdf((await readReportPdf(owner.ctx, created.id))!.bytes);
+    expect(text).toContain("AI visibility");
+    expect(text).toContain("best family dentist");
+    expect(text).not.toContain(getEnv().APP_NAME);
+
+    const without = await createReport(
+      owner.ctx,
+      { ...base, projectId: project.id },
+      { now, enqueue },
+    );
+    await generateReport(agencyId, without.id);
+    expect((await getReport(owner.ctx, without.id)).model?.ai).toBeNull();
+  });
+
   it("works for a project with no keywords and no audit", async () => {
     const { owner } = await setup();
     const client = await prisma.client.create({

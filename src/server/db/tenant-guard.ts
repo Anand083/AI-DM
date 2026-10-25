@@ -39,6 +39,9 @@ export const TENANT_MODELS = new Set([
   "BacklinkSnapshot",
   "Competitor",
   "CompetitorKeyword",
+  "AiPrompt",
+  "AiSetting",
+  "AiVisibilityCheck",
 ]);
 
 const WHERE_OPERATIONS = new Set([

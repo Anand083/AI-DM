@@ -84,6 +84,19 @@ export async function enqueueBacklinkRefresh(data: {
   return true;
 }
 
+/** Queues the AI visibility check of a project. Returns false if it was already queued for that date. */
+export async function enqueueAiCheck(data: {
+  agencyId: string;
+  projectId: string;
+  date: string;
+}): Promise<boolean> {
+  const queue = getQueue("modules");
+  const jobId = jobIds.aiCheck(data.projectId, data.date);
+  if (await queue.getJob(jobId)) return false;
+  await queue.add("ai-visibility", data, { jobId, attempts: 2 });
+  return true;
+}
+
 /** Queues the keyword gap refresh of a project. Returns false if it was already queued for that date. */
 export async function enqueueCompetitorGap(data: {
   agencyId: string;

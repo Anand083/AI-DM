@@ -35,5 +35,6 @@
 | 26 Backups and operations | Done (S3 upload and monitor need the server) | S3 upload job for the newest dump, restore and restore-test scripts (restore verified locally, row counts match), docs/OPERATIONS.md. Sentry skipped (package not approved). |
 | 27 Backlink monitor | Done | tables + weekly snapshot job (modules queue), summary, history, filters (active, new, lost, suspicious), CSV, loss alert, report section, plan-aware window; unit + integration + isolation + E2E pass |
 | 28 Competitor analysis | Done | up to 5 competitors per project, free ranking comparison from saved top 10 results, keyword gap job in the worker (cached 7 days), add to rank tracker, report section; unit + integration + isolation + E2E pass |
+| 29 AI visibility tracker | Done | questions, brand and engine settings, weekly worker check with plan limit handling, mention rate, share of voice, cited pages, latest answers, mention-lost alert, report section; unit + integration + isolation + E2E pass |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).
