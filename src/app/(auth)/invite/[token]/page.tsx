@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AcceptInvitationButton } from "@/components/app/accept-invitation-button";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -25,6 +26,9 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
       </AuthShell>
     );
   }
+  // Client invitations use the agency's own branded pages, never ours.
+  if (preview.role === "CLIENT") redirect(`/portal/${preview.agencySlug}/invite/${token}`);
+
   if (preview.status === "expired") {
     return (
       <AuthShell

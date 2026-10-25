@@ -51,8 +51,17 @@ export async function seedRankings(
   return withDb(async (prisma) => {
     const agency = await prisma.agency.findUniqueOrThrow({ where: { slug: agencySlug } });
     for (const [phrase, before, after] of rows) {
+      // The keyword row also holds the latest snapshot, which the worker keeps up to date.
       const keyword = await prisma.keyword.create({
-        data: { agencyId: agency.id, projectId, phrase },
+        data: {
+          agencyId: agency.id,
+          projectId,
+          phrase,
+          lastCheckedOn: new Date(daysAgo(1)),
+          currentPosition: after,
+          bestPosition: Math.min(...[before, after].filter((p): p is number => p !== null)),
+          changeMonth: (before ?? 101) - (after ?? 101),
+        },
       });
       for (const [days, position] of [
         [25, before],

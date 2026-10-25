@@ -263,6 +263,7 @@ export async function removeMember(ctx: TenantContext, memberId: string) {
 export type InvitationPreview = {
   status: "valid" | "expired" | "used" | "invalid";
   agencyName?: string;
+  agencySlug?: string;
   role?: InviteRole;
   email?: string;
 };
@@ -294,6 +295,7 @@ export async function previewInvitation(token: string): Promise<InvitationPrevie
   }
   const base = {
     agencyName: invitation.agency.name,
+    agencySlug: invitation.agency.slug,
     role: invitation.role,
     email: invitation.email,
   };

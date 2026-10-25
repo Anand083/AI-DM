@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: process.env.APP_NAME ?? "SEO Platform",
   description: "SEO tools and branded reports for agencies.",
+  // Set here (not as a file in app/) so the portal can replace it with the agency icon.
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

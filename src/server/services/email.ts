@@ -1,6 +1,7 @@
 import "server-only";
 import { render } from "@react-email/components";
 import { getEnv } from "@/env";
+import { ClientInvite, type ClientInviteProps } from "@/emails/client-invite";
 import { Invite, type InviteProps } from "@/emails/invite";
 import { ResetPassword } from "@/emails/reset-password";
 import { VerifyEmail } from "@/emails/verify-email";
@@ -35,6 +36,18 @@ export async function sendInviteEmail(
     subject: `You are invited to ${props.brandName}`,
     fromName: props.brandName,
     replyTo: props.replyTo,
+    ...body,
+  });
+}
+
+/** Client invites show only the agency name, link to the portal, and reply to the agency. */
+export async function sendClientInviteEmail(to: string, props: ClientInviteProps): Promise<void> {
+  const body = await renderBoth(ClientInvite(props));
+  await enqueueEmail({
+    to,
+    subject: `${props.brandName} invited you`,
+    fromName: props.brandName,
+    replyTo: props.supportEmail ?? undefined,
     ...body,
   });
 }

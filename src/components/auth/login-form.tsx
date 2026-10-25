@@ -10,7 +10,16 @@ import { authClient } from "@/lib/auth-client";
 import { loginSchema, type LoginValues } from "@/lib/auth-schemas";
 import { zodResolver } from "@/lib/form";
 
-export function LoginForm({ next, notice }: { next: string; notice?: string }) {
+export function LoginForm({
+  next,
+  notice,
+  forgotHref = "/forgot-password",
+}: {
+  next: string;
+  notice?: string;
+  /** Where "forgot password" goes. Pass null to hide it (the client portal has no platform pages). */
+  forgotHref?: string | null;
+}) {
   const router = useRouter();
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(
     notice ? { kind: "success", text: notice } : null,
@@ -63,11 +72,13 @@ export function LoginForm({ next, notice }: { next: string; notice?: string }) {
         error={errors.password?.message}
         {...register("password")}
       />
-      <div className="text-right text-sm">
-        <Link href="/forgot-password" className="underline">
-          Forgot your password?
-        </Link>
-      </div>
+      {forgotHref ? (
+        <div className="text-right text-sm">
+          <Link href={forgotHref} className="underline">
+            Forgot your password?
+          </Link>
+        </div>
+      ) : null}
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? "Signing in..." : "Sign in"}
       </Button>

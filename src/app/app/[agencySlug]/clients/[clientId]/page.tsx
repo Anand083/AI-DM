@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClientActions } from "@/components/app/client-actions";
+import { ClientUsersPanel } from "@/components/app/client-users-panel";
 import { ProjectsTable } from "@/components/app/projects-table";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
+import { getEnv } from "@/env";
 import { getClient } from "@/server/services/clients";
+import { listClientUsers } from "@/server/services/client-users";
 import { NotFoundError } from "@/server/services/errors";
 import { listProjects } from "@/server/services/projects";
 
@@ -37,6 +40,10 @@ export default async function ClientPage({
   const { rows, total } = await listProjects(ctx, { clientId, page, pageSize: PAGE_SIZE });
   const base = `/app/${agencySlug}/clients/${client.id}`;
   const canEdit = can(ctx.role, "content.edit");
+  const canInvite = can(ctx.role, "clientUsers.invite");
+  const access = canInvite ? await listClientUsers(ctx, clientId) : { users: [], pending: [] };
+  const when = (d: Date) =>
+    new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" }).format(d);
 
   return (
     <div className="space-y-8">
@@ -104,6 +111,21 @@ export default async function ClientPage({
           </>
         )}
       </section>
+
+      {canInvite ? (
+        <ClientUsersPanel
+          agencySlug={agencySlug}
+          clientId={client.id}
+          portalUrl={`${getEnv().APP_URL}/portal/${agencySlug}`}
+          users={access.users.map((u) => ({ id: u.id, name: u.user.name, email: u.user.email }))}
+          pending={access.pending.map((p) => ({
+            id: p.id,
+            email: p.email,
+            expires: when(p.expiresAt),
+          }))}
+          canInvite={canInvite}
+        />
+      ) : null}
 
       <ClientActions
         agencySlug={agencySlug}
