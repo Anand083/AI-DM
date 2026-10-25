@@ -19,6 +19,7 @@ export function AppShell({
   showDemoBadge,
   bell,
   logoUrl,
+  banner,
   children,
 }: {
   agencySlug: string;
@@ -30,6 +31,8 @@ export function AppShell({
   bell: { unread: number; recent: BellAlert[] };
   /** URL of the agency logo, if it has one. */
   logoUrl: string | null;
+  /** Trial, payment or read-only notice shown above the page. */
+  banner?: ReactNode;
   children: ReactNode;
 }) {
   const base = `/app/${agencySlug}`;
@@ -52,6 +55,7 @@ export function AppShell({
         <SidebarNav items={items} />
       </aside>
       <div className="flex min-w-0 flex-col">
+        {banner}
         <header className="flex flex-wrap items-center gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
           <MobileNav items={items} agencyName={agencyName} />
           <AgencySwitcher agencies={agencies} currentSlug={agencySlug} />

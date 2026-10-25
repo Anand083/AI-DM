@@ -30,6 +30,7 @@ import { generateReport } from "@/server/services/report-generator";
 import { runDigestScheduler, sendDigest } from "@/server/services/alert-digest";
 import type { JobProcessors } from "@/server/jobs/runtime";
 import { purgeExpired } from "@/server/jobs/system/purge";
+import { runBillingTick } from "@/server/jobs/system/billing-tick";
 import { runReportDispatcher } from "@/server/jobs/system/report-dispatcher";
 import { runRankCheckScheduler } from "@/server/jobs/system/scheduler";
 
@@ -70,7 +71,9 @@ export const processors: JobProcessors = {
           enqueue: enqueueReport,
         });
         if (reports.created > 0) logger.info(reports, "scheduled reports queued");
-        return { ...result, audits, digests, reports };
+        const billing = await runBillingTick({ db: rawDb, now: new Date() });
+        if (billing.checked + billing.reminders > 0) logger.info(billing, "billing tick");
+        return { ...result, audits, digests, reports, billing };
       }
       case "purge:expired": {
         const result = await purgeExpired(rawDb);

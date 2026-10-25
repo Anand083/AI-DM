@@ -32,7 +32,12 @@ export async function runRankCheckScheduler(
       where: {
         deletedAt: null,
         client: { deletedAt: null, status: "ACTIVE" },
-        agency: { status: "ACTIVE", deletedAt: null },
+        agency: {
+          status: "ACTIVE",
+          deletedAt: null,
+          // Read-only accounts (trial over, unpaid, canceled) get no new work.
+          subscription: { isNot: { status: { in: ["EXPIRED", "CANCELED"] } } },
+        },
       },
       select: { id: true, agencyId: true, rankCheckFrequency: true, rankCheckHourUtc: true },
       orderBy: { id: "asc" },

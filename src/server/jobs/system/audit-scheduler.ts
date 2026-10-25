@@ -31,7 +31,12 @@ export async function runAuditScheduler(
         autoAudit: true,
         deletedAt: null,
         client: { deletedAt: null, status: "ACTIVE" },
-        agency: { status: "ACTIVE", deletedAt: null },
+        agency: {
+          status: "ACTIVE",
+          deletedAt: null,
+          // Read-only accounts (trial over, unpaid, canceled) get no new work.
+          subscription: { isNot: { status: { in: ["EXPIRED", "CANCELED"] } } },
+        },
         audits: { none: { createdAt: { gte: monthStart } } },
       },
       select: { id: true, agencyId: true },

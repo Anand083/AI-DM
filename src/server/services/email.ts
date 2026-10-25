@@ -1,6 +1,7 @@
 import "server-only";
 import { render } from "@react-email/components";
 import { getEnv } from "@/env";
+import { BillingNotice, type BillingNoticeProps } from "@/emails/billing-notice";
 import { ClientInvite, type ClientInviteProps } from "@/emails/client-invite";
 import { Invite, type InviteProps } from "@/emails/invite";
 import { ResetPassword } from "@/emails/reset-password";
@@ -50,4 +51,15 @@ export async function sendClientInviteEmail(to: string, props: ClientInviteProps
     replyTo: props.supportEmail ?? undefined,
     ...body,
   });
+}
+
+/** Billing notices go to agency owners, so they use the platform name. `key` stops repeats. */
+export async function sendBillingNoticeEmail(
+  to: string,
+  subject: string,
+  props: Omit<BillingNoticeProps, "brandName">,
+  key: string,
+): Promise<void> {
+  const body = await renderBoth(BillingNotice({ brandName: getEnv().APP_NAME, ...props }));
+  await enqueueEmail({ to, subject, ...body }, key);
 }

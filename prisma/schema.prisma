@@ -170,6 +170,9 @@ model Agency {
   alerts           Alert[]
   branding         Branding?
   reports          Report[]
+  invoices         Invoice[]
+  checkoutSessions CheckoutSession[]
+  billingEvents    BillingEvent[]
   reportSchedules  ReportSchedule[]
   keywordListItems KeywordListItem[]
   auditPages       AuditPage[]
@@ -309,6 +312,14 @@ model Subscription {
   currentPeriodEnd       DateTime?
   cancelAtPeriodEnd      Boolean            @default(false)
   graceEndsAt            DateTime?
+  /// A plan change that starts at the end of the current period (a downgrade).
+  pendingPlanId          String?
+  pendingInterval        BillingInterval?
+  /// Set when the 3 day and 1 day trial reminder emails were queued.
+  trialReminder3At       DateTime?
+  trialReminder1At       DateTime?
+  /// Provider specific notes. The mock provider uses `{ "failRenewal": true }` in tests.
+  providerMeta           Json?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
@@ -758,5 +769,69 @@ model ReportSchedule {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([enabled, nextRunAt])
+  @@index([agencyId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  PAID
+  FAILED
+}
+
+enum CheckoutStatus {
+  OPEN
+  COMPLETED
+  FAILED
+}
+
+/// Every webhook we receive, once. The event id is unique, so a repeat is ignored.
+model BillingEvent {
+  id          String          @id @default(cuid(2))
+  eventId     String          @unique
+  provider    BillingProvider
+  type        String
+  agencyId    String?
+  payload     Json
+  receivedAt  DateTime        @default(now())
+  processedAt DateTime?
+  error       String?
+
+  agency Agency? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+
+  @@index([agencyId, receivedAt])
+}
+
+model Invoice {
+  id          String        @id @default(cuid(2))
+  agencyId    String
+  /// Human friendly number, for example INV-000012.
+  number      String        @unique
+  description String
+  amountCents Int
+  currency    String        @default("USD")
+  status      InvoiceStatus
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime      @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, createdAt])
+}
+
+/// Used by the mock billing provider: a checkout the person finishes on our own page.
+model CheckoutSession {
+  id        String          @id @default(cuid(2))
+  agencyId  String
+  planCode  String
+  interval  BillingInterval
+  status    CheckoutStatus  @default(OPEN)
+  createdAt DateTime        @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
   @@index([agencyId, createdAt])
 }

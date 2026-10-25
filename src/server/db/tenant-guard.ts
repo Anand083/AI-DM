@@ -29,6 +29,9 @@ export const TENANT_MODELS = new Set([
   "Branding",
   "Report",
   "ReportSchedule",
+  "BillingEvent",
+  "Invoice",
+  "CheckoutSession",
 ]);
 
 const WHERE_OPERATIONS = new Set([

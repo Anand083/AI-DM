@@ -23,6 +23,22 @@ export type AgencyPlan = {
   period: UsagePeriod;
 };
 
+/**
+ * Read-only accounts (trial over, unpaid or canceled) may look at their data but not start new
+ * work. Agencies without a subscription row are not blocked.
+ */
+export async function assertNotReadOnly(agency: AgencyRef): Promise<void> {
+  const sub = await db.subscription.findFirst({
+    where: { agencyId: agency.agencyId },
+    select: { status: true },
+  });
+  if (sub && (sub.status === "EXPIRED" || sub.status === "CANCELED")) {
+    throw new LimitExceededError(
+      "Your subscription has ended, so your account is read-only. Choose a plan to continue.",
+    );
+  }
+}
+
 export async function getAgencyPlan(
   agency: AgencyRef,
   now: Date = new Date(),

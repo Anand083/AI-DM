@@ -12,6 +12,7 @@ import { generateToken } from "@/server/tokens";
 import { logActivity } from "./activity";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "./errors";
 import { paging, type Page } from "./paging";
+import { assertNotReadOnly } from "./usage";
 import { parseInput } from "./validation";
 
 type Enqueue = (data: { reportId: string; agencyId: string }) => Promise<void>;
@@ -60,6 +61,7 @@ export async function createReportRecord(
   } = {},
 ) {
   const input = parseInput(reportSchema, rawInput);
+  await assertNotReadOnly(agency);
   const project = await db.project.findFirst({
     where: {
       id: input.projectId,

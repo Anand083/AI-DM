@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { nextRunAt } from "@/lib/report-schedule";
+import { AppError } from "@/server/services/errors";
 import { createReportRecord } from "@/server/services/reports";
 
 export type ReportDispatcherDeps = {
@@ -24,7 +25,11 @@ export async function runReportDispatcher(
     where: {
       enabled: true,
       nextRunAt: { lte: deps.now },
-      agency: { status: "ACTIVE", deletedAt: null },
+      agency: {
+        status: "ACTIVE",
+        deletedAt: null,
+        subscription: { isNot: { status: { in: ["EXPIRED", "CANCELED"] } } },
+      },
       project: { deletedAt: null, client: { deletedAt: null, status: "ACTIVE" } },
     },
     select: {
@@ -62,6 +67,17 @@ export async function runReportDispatcher(
       );
       created++;
     } catch (error) {
+      // The account became read-only or the project went away since the query: skip this run.
+      if (error instanceof AppError) {
+        await deps.db.reportSchedule.updateMany({
+          where: { id: schedule.id, nextRunAt: schedule.nextRunAt },
+          data: {
+            lastRunAt: deps.now,
+            nextRunAt: nextRunAt(schedule, deps.now, schedule.agency.timezone),
+          },
+        });
+        continue;
+      }
       // Already made for this run time (an earlier tick stopped before moving the schedule).
       if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
         throw error;
