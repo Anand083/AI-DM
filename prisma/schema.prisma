@@ -157,32 +157,34 @@ model Agency {
   dailyDigest          Boolean   @default(false)
   lastDigestOn         DateTime? @db.Date
 
-  members          AgencyMember[]
-  invitations      Invitation[]
-  clients          Client[]
-  clientUsers      ClientUser[]
-  projects         Project[]
-  subscription     Subscription?
-  activityLogs     ActivityLog[]
-  usageRecords     UsageRecord[]
-  providerTasks    PendingProviderTask[]
-  keywords         Keyword[]
-  rankChecks       RankCheck[]
-  audits           Audit[]
-  keywordLists     KeywordList[]
-  alerts           Alert[]
-  branding         Branding?
-  reports          Report[]
-  dataExports      DataExport[]
-  impersonations   Impersonation[]
-  usageBonuses     UsageBonus[]
-  invoices         Invoice[]
-  checkoutSessions CheckoutSession[]
-  billingEvents    BillingEvent[]
-  reportSchedules  ReportSchedule[]
-  keywordListItems KeywordListItem[]
-  auditPages       AuditPage[]
-  auditIssues      AuditIssue[]
+  members           AgencyMember[]
+  invitations       Invitation[]
+  clients           Client[]
+  clientUsers       ClientUser[]
+  projects          Project[]
+  subscription      Subscription?
+  activityLogs      ActivityLog[]
+  usageRecords      UsageRecord[]
+  providerTasks     PendingProviderTask[]
+  keywords          Keyword[]
+  rankChecks        RankCheck[]
+  audits            Audit[]
+  backlinks         Backlink[]
+  backlinkSnapshots BacklinkSnapshot[]
+  keywordLists      KeywordList[]
+  alerts            Alert[]
+  branding          Branding?
+  reports           Report[]
+  dataExports       DataExport[]
+  impersonations    Impersonation[]
+  usageBonuses      UsageBonus[]
+  invoices          Invoice[]
+  checkoutSessions  CheckoutSession[]
+  billingEvents     BillingEvent[]
+  reportSchedules   ReportSchedule[]
+  keywordListItems  KeywordListItem[]
+  auditPages        AuditPage[]
+  auditIssues       AuditIssue[]
 
   @@index([status, deletedAt])
 }
@@ -273,12 +275,14 @@ model Project {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  agency         Agency          @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  keywords       Keyword[]
-  audits         Audit[]
-  reports        Report[]
-  reportSchedule ReportSchedule?
+  agency            Agency             @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  client            Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  keywords          Keyword[]
+  audits            Audit[]
+  backlinks         Backlink[]
+  backlinkSnapshots BacklinkSnapshot[]
+  reports           Report[]
+  reportSchedule    ReportSchedule?
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -928,4 +932,61 @@ model ContactMessage {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Backlinks
+// ---------------------------------------------------------------------------
+
+/// One link from another site to a project's website. A link that disappears is kept with `lostAt`.
+model Backlink {
+  id                String    @id @default(cuid(2))
+  agencyId          String
+  projectId         String
+  sourceUrl         String
+  sourceDomain      String
+  targetUrl         String
+  anchor            String
+  dofollow          Boolean
+  /// 0 to 100, the authority of the linking site.
+  sourceRating      Int
+  /// UTC days (no time).
+  firstSeen         DateTime  @db.Date
+  lastSeen          DateTime  @db.Date
+  lostAt            DateTime? @db.Date
+  suspicious        Boolean   @default(false)
+  /// Why the link was flagged: "spammy_tld", "low_rating", "exact_anchor".
+  suspiciousReasons String[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, sourceUrl, targetUrl])
+  @@index([agencyId, projectId, lostAt, firstSeen])
+  @@index([agencyId, projectId, suspicious])
+}
+
+/// The numbers from one weekly check of a project's backlinks.
+model BacklinkSnapshot {
+  id               String   @id @default(cuid(2))
+  agencyId         String
+  projectId        String
+  /// UTC day of the check.
+  takenOn          DateTime @db.Date
+  totalBacklinks   Int
+  referringDomains Int
+  dofollowPercent  Int
+  domainRating     Int
+  /// Links found for the first time / links that disappeared since the snapshot before.
+  newLinks         Int
+  lostLinks        Int
+  createdAt        DateTime @default(now())
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, takenOn])
+  @@index([agencyId, projectId, takenOn])
 }

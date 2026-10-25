@@ -9,6 +9,8 @@ export const QUEUES = [
   "alerts",
   "provider-tasks",
   "maintenance",
+  /** Weekly work of the extra modules: backlinks, competitors, AI visibility, reviews, search data. */
+  "modules",
 ] as const;
 export type QueueName = (typeof QUEUES)[number];
 
@@ -53,5 +55,6 @@ export const jobIds = {
   auditAuto: (projectId: string, month: string) => `audit_auto_${safe(projectId)}_${month}`,
   agencyExport: (exportId: string) => `export_${safe(exportId)}`,
   report: (reportId: string) => `report_${safe(reportId)}`,
+  backlinkRefresh: (projectId: string, date: string) => `backlinks_${safe(projectId)}_${date}`,
   maintenance: (name: string, date: string) => `maintenance_${safe(name)}_${date}`,
 };

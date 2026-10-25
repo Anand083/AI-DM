@@ -4,6 +4,8 @@ import { db, rawDb } from "@/server/db/client";
 import { AppError } from "@/server/services/errors";
 import { ProviderError } from "@/server/providers/seo/errors";
 import { createAudit } from "@/server/services/audits";
+import { runBacklinkRefresh } from "@/server/services/backlink-runner";
+import { backlinkWindow } from "@/server/services/backlinks";
 import { failAudit, pollAudit, runAuditStart } from "@/server/services/audit-runner";
 import { runAuditScheduler } from "@/server/jobs/system/audit-scheduler";
 import { runProjectRankCheck } from "@/server/services/rank-checks";
@@ -20,6 +22,7 @@ import type { EmailJobData } from "@/server/jobs/enqueue";
 import {
   enqueueAuditPoll,
   enqueueAutoAudit,
+  enqueueBacklinkRefresh,
   enqueueDigest,
   enqueueEmail,
   enqueueProcessTask,
@@ -33,6 +36,7 @@ import type { JobProcessors } from "@/server/jobs/runtime";
 import { uploadLatestBackup } from "@/server/jobs/system/backup-upload";
 import { S3StorageProvider } from "@/server/providers/storage/s3";
 import { purgeExpired } from "@/server/jobs/system/purge";
+import { runBacklinkScheduler } from "@/server/jobs/system/backlink-scheduler";
 import { runBillingTick } from "@/server/jobs/system/billing-tick";
 import { runReportDispatcher } from "@/server/jobs/system/report-dispatcher";
 import { runRankCheckScheduler } from "@/server/jobs/system/scheduler";
@@ -62,6 +66,13 @@ export const processors: JobProcessors = {
           paused: async () => budget.state === "paused",
         });
         if (audits.queued > 0) logger.info(audits, "monthly audits queued");
+        const backlinks = await runBacklinkScheduler({
+          db: rawDb,
+          now: new Date(),
+          enqueue: enqueueBacklinkRefresh,
+          paused: async () => budget.state === "paused",
+        });
+        if (backlinks.queued > 0) logger.info(backlinks, "weekly backlink checks queued");
         const digests = await runDigestScheduler({
           db: rawDb,
           now: new Date(),
@@ -76,7 +87,7 @@ export const processors: JobProcessors = {
         if (reports.created > 0) logger.info(reports, "scheduled reports queued");
         const billing = await runBillingTick({ db: rawDb, now: new Date() });
         if (billing.checked + billing.reminders > 0) logger.info(billing, "billing tick");
-        return { ...result, audits, digests, reports, billing };
+        return { ...result, audits, backlinks, digests, reports, billing };
       }
       case "export:agency": {
         const { exportId, agencyId } = job.data as { exportId: string; agencyId: string };
@@ -130,6 +141,30 @@ export const processors: JobProcessors = {
         return { error: error.message };
       }
       throw error;
+    }
+  },
+  modules: async (job) => {
+    switch (job.name) {
+      case "backlinks": {
+        const data = job.data as { projectId: string; agencyId: string; date: string };
+        try {
+          const result = await runBacklinkRefresh(
+            { db, gateway: getSeoGateway(), windowFor: (agencyId) => backlinkWindow({ agencyId }) },
+            data,
+          );
+          logger.info({ jobId: job.id, ...result }, "backlink check");
+          return result;
+        } catch (error) {
+          // Plan limits and the budget pause are not worth retrying.
+          if (error instanceof AppError) {
+            logger.warn({ jobId: job.id, message: error.message }, "backlink check stopped");
+            return { error: error.message };
+          }
+          throw error;
+        }
+      }
+      default:
+        logger.warn({ name: job.name }, "unknown modules job");
     }
   },
   audits: async (job) => {

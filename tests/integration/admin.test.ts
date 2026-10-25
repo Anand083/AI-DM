@@ -507,6 +507,7 @@ describe("queues, providers, plans and settings", () => {
       "audits",
       "emails",
       "maintenance",
+      "modules",
       "provider-tasks",
       "rank-checks",
       "reports",

@@ -9,6 +9,7 @@ export const REPORT_SECTIONS = [
   { key: "audit", label: "Site health" },
   { key: "issues", label: "Top issues" },
   { key: "opportunities", label: "Keyword opportunities" },
+  { key: "backlinks", label: "Backlinks" },
   { key: "notes", label: "Notes" },
 ] as const;
 
@@ -52,6 +53,31 @@ export type ReportAuditInput = {
   }[];
 };
 
+export type ReportBacklinkRow = {
+  domain: string;
+  anchor: string;
+  dofollow: boolean;
+  rating: number;
+};
+
+export type ReportBacklinksInput = {
+  /** Day of the check these numbers come from. */
+  checkedOn: string;
+  totalBacklinks: number;
+  referringDomains: number;
+  domainRating: number;
+  dofollowPercent: number;
+  /** Change since the start of the period. Null when there was no earlier check. */
+  totalChange: number | null;
+  domainsChange: number | null;
+  newInPeriod: number;
+  lostInPeriod: number;
+  suspicious: number;
+  /** The strongest new and lost links, at most 5 each. */
+  topNew: ReportBacklinkRow[];
+  topLost: ReportBacklinkRow[];
+};
+
 export type ReportInput = {
   title: string;
   projectName: string;
@@ -62,6 +88,8 @@ export type ReportInput = {
   notes: string | null;
   keywords: ReportKeywordRow[];
   audit: ReportAuditInput | null;
+  /** Optional so older callers and saved reports keep working. */
+  backlinks?: ReportBacklinksInput | null;
   generatedOn: string;
 };
 
@@ -94,6 +122,8 @@ export type ReportModel = {
   movers: { up: ReportKeywordRow[]; down: ReportKeywordRow[] };
   rankings: ReportKeywordRow[];
   audit: ReportAuditInput | null;
+  /** Missing in reports made before the backlink section existed. */
+  backlinks?: ReportBacklinksInput | null;
   issues: ReportAuditInput["issues"];
   opportunities: ReportKeywordRow[];
   notes: string | null;

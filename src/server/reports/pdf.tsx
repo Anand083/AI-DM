@@ -2,7 +2,8 @@ import "server-only";
 import { DEFAULT_ACCENT, DEFAULT_PRIMARY, initials } from "@/lib/brand";
 import { normalizeHex, readableTextOn } from "@/lib/color";
 import { formatChange, formatPosition } from "@/lib/rank-math";
-import type { ReportKeywordRow, ReportModel } from "@/lib/report-model";
+import { describeBacklinks } from "@/lib/report-backlinks";
+import type { ReportBacklinkRow, ReportKeywordRow, ReportModel } from "@/lib/report-model";
 
 type ReactPdf = typeof import("@react-pdf/renderer");
 
@@ -138,6 +139,22 @@ function createRenderer(rp: ReactPdf) {
     );
   }
 
+  function LinkRows({ title, rows, s }: { title: string; rows: ReportBacklinkRow[]; s: S }) {
+    if (rows.length === 0) return null;
+    return (
+      <View style={{ marginTop: 4 }}>
+        <Text style={[s.p, { fontWeight: 700 }]}>{title}</Text>
+        {rows.map((r) => (
+          <View key={`${r.domain}-${r.anchor}`} style={s.tr} wrap={false}>
+            <Text style={s.cIssue}>{r.domain}</Text>
+            <Text style={s.cSev}>{r.dofollow ? "Dofollow" : "Nofollow"}</Text>
+            <Text style={s.cPages}>{r.rating}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
+
   function KeywordTable({ rows, s, empty }: { rows: ReportKeywordRow[]; s: S; empty: string }) {
     if (rows.length === 0) return <Text style={s.empty}>{empty}</Text>;
     return (
@@ -267,6 +284,25 @@ function createRenderer(rp: ReactPdf) {
                 </Text>
               ) : (
                 <Text style={s.empty}>No site check has been finished yet.</Text>
+              )}
+            </View>
+          ) : null}
+
+          {has("backlinks") ? (
+            <View>
+              <Text style={s.h2}>Backlinks</Text>
+              {model.backlinks ? (
+                <View>
+                  {describeBacklinks(model.backlinks).map((line) => (
+                    <Text key={line} style={[s.p, { marginBottom: 4 }]}>
+                      {line}
+                    </Text>
+                  ))}
+                  <LinkRows title="Strongest new links" rows={model.backlinks.topNew} s={s} />
+                  <LinkRows title="Strongest lost links" rows={model.backlinks.topLost} s={s} />
+                </View>
+              ) : (
+                <Text style={s.empty}>No backlink check has been done yet.</Text>
               )}
             </View>
           ) : null}

@@ -89,6 +89,7 @@ export function assembleReport(input: ReportInput): Omit<ReportModel, "summary">
       .sort((a, b) => positionOrLast(a.position) - positionOrLast(b.position) || byPhrase(a, b))
       .slice(0, RANKINGS_LIMIT),
     audit: input.audit,
+    backlinks: input.backlinks ?? null,
     issues,
     opportunities,
     notes: input.notes?.trim() ? input.notes.trim() : null,

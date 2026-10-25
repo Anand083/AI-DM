@@ -1,3 +1,4 @@
+import { lossSeverity } from "./backlink-math";
 import { formatPosition, rankChange } from "./rank-math";
 
 export type AlertSettings = {
@@ -45,7 +46,7 @@ export function isEnteredTop(
 
 export type AlertDraft = {
   projectId: string | null;
-  type: "RANK_DROP" | "RANK_GAIN" | "AUDIT_CRITICAL";
+  type: "RANK_DROP" | "RANK_GAIN" | "AUDIT_CRITICAL" | "BACKLINKS_LOST";
   severity: "INFO" | "WARNING" | "CRITICAL";
   title: string;
   body: string;
@@ -144,5 +145,26 @@ export function buildAuditAlert(input: {
       : `The latest site audit found ${plural(n, "new critical issue", "new critical issues")} that were not there before.`,
     data: { auditId: input.auditId, newCritical: n },
     dedupeKey: `audit_critical:${input.auditId}`,
+  };
+}
+
+/** An alert when a project lost many links since the last weekly check. */
+export function buildBacklinkLossAlert(input: {
+  projectId: string;
+  projectName: string;
+  date: string;
+  lost: number;
+  activeBefore: number;
+}): AlertDraft | null {
+  const severity = lossSeverity(input.lost, input.activeBefore);
+  if (!severity) return null;
+  return {
+    projectId: input.projectId,
+    type: "BACKLINKS_LOST",
+    severity,
+    title: `${plural(input.lost, "backlink", "backlinks")} lost for ${input.projectName}`,
+    body: `${plural(input.lost, "link", "links")} out of ${input.activeBefore} stopped pointing to the site since the last weekly check.`,
+    data: { date: input.date, lost: input.lost, activeBefore: input.activeBefore },
+    dedupeKey: `backlinks_lost:${input.projectId}:${input.date}`,
   };
 }

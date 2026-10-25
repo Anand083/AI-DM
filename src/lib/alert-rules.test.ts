@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAuditAlert,
+  buildBacklinkLossAlert,
   buildRankAlerts,
   DEFAULT_ALERT_SETTINGS as S,
   isEnteredTop,
@@ -142,5 +143,27 @@ describe("buildAuditAlert", () => {
     expect(
       buildAuditAlert({ ...base, newCritical: 4, settings: { ...S, onCriticalAudit: false } }),
     ).toBeNull();
+  });
+});
+
+describe("buildBacklinkLossAlert", () => {
+  const base = { projectId: "p1", projectName: "Shop", date: "2026-03-10" };
+
+  it("gives nothing for a small loss", () => {
+    expect(buildBacklinkLossAlert({ ...base, lost: 3, activeBefore: 20 })).toBeNull();
+    expect(buildBacklinkLossAlert({ ...base, lost: 5, activeBefore: 200 })).toBeNull();
+  });
+
+  it("warns for a big loss and is critical at 20 percent", () => {
+    const warn = buildBacklinkLossAlert({ ...base, lost: 10, activeBefore: 100 });
+    expect(warn).toMatchObject({
+      type: "BACKLINKS_LOST",
+      severity: "WARNING",
+      title: "10 backlinks lost for Shop",
+      dedupeKey: "backlinks_lost:p1:2026-03-10",
+    });
+    expect(buildBacklinkLossAlert({ ...base, lost: 20, activeBefore: 100 })?.severity).toBe(
+      "CRITICAL",
+    );
   });
 });

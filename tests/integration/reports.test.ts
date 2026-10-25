@@ -207,6 +207,83 @@ describe("generating a report", () => {
     expect(raw).not.toContain("react-pdf");
   });
 
+  it("adds the backlink section only when asked, with numbers from the period", async () => {
+    const { owner, project } = await setup();
+    const agencyId = owner.ctx.agencyId;
+    const snap = (takenOn: string, total: number, domains: number, newLinks = 0, lostLinks = 0) =>
+      prisma.backlinkSnapshot.create({
+        data: {
+          agencyId,
+          projectId: project.id,
+          takenOn: new Date(`${takenOn}T00:00:00Z`),
+          totalBacklinks: total,
+          referringDomains: domains,
+          dofollowPercent: 80,
+          domainRating: 44,
+          newLinks,
+          lostLinks,
+        },
+      });
+    await snap("2026-02-24", 100, 20);
+    await snap("2026-03-23", 130, 26, 40, 10);
+    // Taken after the period: must not count.
+    await snap("2026-04-06", 999, 99);
+    const link = (n: number, extra: Record<string, unknown>) =>
+      prisma.backlink.create({
+        data: {
+          agencyId,
+          projectId: project.id,
+          sourceUrl: `https://news${n}.example/a`,
+          sourceDomain: `news${n}.example`,
+          targetUrl: "https://acme.test/",
+          anchor: "great dentist",
+          dofollow: true,
+          sourceRating: 50 + n,
+          firstSeen: new Date("2026-01-01T00:00:00Z"),
+          lastSeen: new Date("2026-03-20T00:00:00Z"),
+          suspicious: false,
+          suspiciousReasons: [],
+          ...extra,
+        },
+      });
+    await link(1, { firstSeen: new Date("2026-03-10T00:00:00Z") });
+    await link(2, { lostAt: new Date("2026-03-12T00:00:00Z") });
+    await link(3, { firstSeen: new Date("2026-02-01T00:00:00Z"), suspicious: true });
+
+    const withSection = await createReport(
+      owner.ctx,
+      { ...base, projectId: project.id, sections: [...base.sections, "backlinks"] },
+      { now, enqueue },
+    );
+    await generateReport(agencyId, withSection.id);
+    const model = (await getReport(owner.ctx, withSection.id)).model;
+    expect(model?.backlinks).toMatchObject({
+      checkedOn: "2026-03-23",
+      totalBacklinks: 130,
+      referringDomains: 26,
+      totalChange: 30,
+      domainsChange: 6,
+      newInPeriod: 1,
+      lostInPeriod: 1,
+      suspicious: 1,
+    });
+    expect(model?.backlinks?.topNew.map((r) => r.domain)).toEqual(["news1.example"]);
+    expect(model?.backlinks?.topLost.map((r) => r.domain)).toEqual(["news2.example"]);
+    const pdf = await readReportPdf(owner.ctx, withSection.id);
+    const { text } = readPdf(pdf!.bytes);
+    expect(text).toContain("Backlinks");
+    expect(text).toContain("news1.example");
+    expect(text).not.toContain(getEnv().APP_NAME);
+
+    const without = await createReport(
+      owner.ctx,
+      { ...base, projectId: project.id },
+      { now, enqueue },
+    );
+    await generateReport(agencyId, without.id);
+    expect((await getReport(owner.ctx, without.id)).model?.backlinks).toBeNull();
+  });
+
   it("works for a project with no keywords and no audit", async () => {
     const { owner } = await setup();
     const client = await prisma.client.create({

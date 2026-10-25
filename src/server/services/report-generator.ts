@@ -5,6 +5,8 @@ import { pickPositions, START_LOOKBACK_DAYS, type PeriodCheck } from "@/lib/repo
 import {
   RANKINGS_LIMIT,
   type ReportAuditInput,
+  type ReportBacklinkRow,
+  type ReportBacklinksInput,
   type ReportInput,
   type ReportKeywordRow,
   type ReportModel,
@@ -79,6 +81,9 @@ export async function loadReportInput(agencyId: string, reportId: string): Promi
     notes: report.notes,
     keywords: rows,
     audit: await loadAudit(agencyId, report.projectId, report.periodEnd),
+    backlinks: (report.sections as string[]).includes("backlinks")
+      ? await loadBacklinks(agencyId, report.projectId, report.periodStart, report.periodEnd)
+      : null,
     generatedOn: day(new Date()),
   };
 }
@@ -130,6 +135,70 @@ async function loadAudit(
         fix: info.fix,
       };
     }),
+  };
+}
+
+const topLinks = (
+  rows: { sourceDomain: string; anchor: string; dofollow: boolean; sourceRating: number }[],
+): ReportBacklinkRow[] =>
+  rows.map((r) => ({
+    domain: r.sourceDomain,
+    anchor: r.anchor,
+    dofollow: r.dofollow,
+    rating: r.sourceRating,
+  }));
+
+/** Backlink numbers from the last weekly check up to the end of the period. */
+async function loadBacklinks(
+  agencyId: string,
+  projectId: string,
+  periodStart: Date,
+  periodEnd: Date,
+): Promise<ReportBacklinksInput | null> {
+  const latest = await db.backlinkSnapshot.findFirst({
+    where: { agencyId, projectId, takenOn: { lte: periodEnd } },
+    orderBy: { takenOn: "desc" },
+  });
+  if (!latest) return null;
+  const before = await db.backlinkSnapshot.findFirst({
+    where: { agencyId, projectId, takenOn: { lte: periodStart } },
+    orderBy: { takenOn: "desc" },
+    select: { totalBacklinks: true, referringDomains: true, takenOn: true },
+  });
+  const inPeriod = { gt: periodStart, lte: periodEnd };
+  const order = [{ sourceRating: "desc" as const }, { sourceUrl: "asc" as const }];
+  const select = { sourceDomain: true, anchor: true, dofollow: true, sourceRating: true };
+  const [newInPeriod, lostInPeriod, suspicious, topNew, topLost] = await Promise.all([
+    db.backlink.count({ where: { agencyId, projectId, firstSeen: inPeriod } }),
+    db.backlink.count({ where: { agencyId, projectId, lostAt: inPeriod } }),
+    db.backlink.count({ where: { agencyId, projectId, lostAt: null, suspicious: true } }),
+    db.backlink.findMany({
+      where: { agencyId, projectId, firstSeen: inPeriod },
+      select,
+      orderBy: order,
+      take: 5,
+    }),
+    db.backlink.findMany({
+      where: { agencyId, projectId, lostAt: inPeriod },
+      select,
+      orderBy: order,
+      take: 5,
+    }),
+  ]);
+  const comparable = before && before.takenOn < latest.takenOn;
+  return {
+    checkedOn: day(latest.takenOn),
+    totalBacklinks: latest.totalBacklinks,
+    referringDomains: latest.referringDomains,
+    domainRating: latest.domainRating,
+    dofollowPercent: latest.dofollowPercent,
+    totalChange: comparable ? latest.totalBacklinks - before.totalBacklinks : null,
+    domainsChange: comparable ? latest.referringDomains - before.referringDomains : null,
+    newInPeriod,
+    lostInPeriod,
+    suspicious,
+    topNew: topLinks(topNew),
+    topLost: topLinks(topLost),
   };
 }
 

@@ -1,6 +1,7 @@
 import { brandCssVars, initials } from "@/lib/brand";
 import { formatChange, formatPosition } from "@/lib/rank-math";
-import type { ReportKeywordRow, ReportModel } from "@/lib/report-model";
+import { describeBacklinks } from "@/lib/report-backlinks";
+import type { ReportBacklinkRow, ReportKeywordRow, ReportModel } from "@/lib/report-model";
 
 export type ReportBrand = {
   displayName: string;
@@ -50,6 +51,36 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       </h2>
       {children}
     </section>
+  );
+}
+
+function LinkTable({ title, rows }: { title: string; rows: ReportBacklinkRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="overflow-x-auto rounded-lg border border-zinc-200">
+      <table className="w-full text-left text-sm" aria-label={title}>
+        <caption className="px-3 pt-2 text-left text-sm font-medium">{title}</caption>
+        <thead className="border-b border-zinc-200 bg-zinc-50">
+          <tr>
+            {["Website", "Link text", "Type", "Rating"].map((h) => (
+              <th key={h} scope="col" className="px-3 py-2 font-medium">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-200">
+          {rows.map((r) => (
+            <tr key={`${r.domain}-${r.anchor}`}>
+              <td className="px-3 py-2 font-medium">{r.domain}</td>
+              <td className="px-3 py-2">{r.anchor}</td>
+              <td className="px-3 py-2">{r.dofollow ? "Dofollow" : "Nofollow"}</td>
+              <td className="px-3 py-2 tabular-nums">{r.rating}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -220,6 +251,22 @@ export function ReportView({
             </p>
           ) : (
             <p className="text-sm text-zinc-600">No site check has been finished yet.</p>
+          )}
+        </Section>
+      ) : null}
+
+      {has("backlinks") ? (
+        <Section title="Backlinks">
+          {model.backlinks ? (
+            <>
+              {describeBacklinks(model.backlinks).map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+              <LinkTable title="Strongest new links" rows={model.backlinks.topNew} />
+              <LinkTable title="Strongest lost links" rows={model.backlinks.topLost} />
+            </>
+          ) : (
+            <p className="text-sm text-zinc-600">No backlink check has been done yet.</p>
           )}
         </Section>
       ) : null}

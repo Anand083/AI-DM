@@ -153,3 +153,24 @@ describe("computeKpis", () => {
     expect(computeKpis([row("a", 5, null)]).averageChange).toBeNull();
   });
 });
+
+describe("backlinks in the report", () => {
+  it("is null when the loader gave none, and passed through when given", () => {
+    expect(assembleReport(input()).backlinks).toBeNull();
+    const backlinks = {
+      checkedOn: "2026-03-30",
+      totalBacklinks: 10,
+      referringDomains: 4,
+      domainRating: 30,
+      dofollowPercent: 70,
+      totalChange: null,
+      domainsChange: null,
+      newInPeriod: 0,
+      lostInPeriod: 0,
+      suspicious: 0,
+      topNew: [],
+      topLost: [],
+    };
+    expect(assembleReport(input({ backlinks })).backlinks).toEqual(backlinks);
+  });
+});

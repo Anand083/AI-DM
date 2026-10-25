@@ -35,6 +35,8 @@ export const TENANT_MODELS = new Set([
   "Impersonation",
   "UsageBonus",
   "DataExport",
+  "Backlink",
+  "BacklinkSnapshot",
 ]);
 
 const WHERE_OPERATIONS = new Set([
