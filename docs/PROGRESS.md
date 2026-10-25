@@ -24,5 +24,6 @@
 | 15 Reports | Done | builder (period, sections, notes), pure assembler, mock summary, PDF (SVG chart) built in the worker, web view, authorized download, public share link with expiry and revoke, noindex; unit + integration + E2E pass |
 | 16 Scheduled reports | Done | weekly or monthly schedule per project (agency time zone), 15-minute dispatcher, branded email with PDF attached (link if over 5 MB), never sent twice; schedules page; unit + integration + E2E pass |
 | 17 Client portal | Done | invite client users from the client page, branded portal (login, invite, overview, rankings, audit summary, reports and PDF), no platform name in pages, titles, icon or emails; unit + integration + E2E pass |
+| 18 Custom domains | Done | behind CUSTOM_DOMAINS_ENABLED (off by default); DNS steps and Verify, host routing in proxy.ts, domain-allowed endpoint, trusted sign-in origin; unit + integration + E2E pass |
 
 Notes for the founder: see `docs/DECISIONS.md` (Prisma 6 instead of 7 until adapter packages are approved).

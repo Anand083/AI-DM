@@ -7,6 +7,7 @@ import { nextCookies } from "better-auth/next-js";
 import { getEnv } from "@/env";
 import { rawDb } from "@/server/db/client";
 import { logger } from "@/server/logger";
+import { findAgencySlugByDomain } from "@/server/services/custom-domain";
 import { getRedis } from "@/server/redis";
 import { RedisRateLimitStore } from "@/server/rate-limit";
 import { sendResetPasswordEmail, sendVerifyEmail } from "@/server/services/email";
@@ -24,6 +25,19 @@ function createAuth() {
     advanced: {
       database: { generateId: () => createId() },
       useSecureCookies: env.COOKIE_SECURE,
+    },
+    // Agencies' own domains (Step 18) sign in on their own origin, so a verified custom domain
+    // is a trusted origin for requests that come from it.
+    trustedOrigins: async (request) => {
+      if (!env.CUSTOM_DOMAINS_ENABLED) return [];
+      const origin = request?.headers.get("origin");
+      if (!origin) return [];
+      try {
+        const host = new URL(origin).hostname;
+        return (await findAgencySlugByDomain(host)) ? [origin] : [];
+      } catch {
+        return [];
+      }
     },
     session: {
       // Sessions live in the database (Session table), not only in a signed cookie.

@@ -37,7 +37,7 @@ test("a client user sees only their own client, in the agency's branding", async
   await expect(nameField).toHaveValue(/Portal Agency/);
   await nameField.fill("Bright Studio");
   await expect(nameField).toHaveValue("Bright Studio");
-  await page.getByRole("button", { name: /^Save/ }).click();
+  await page.getByRole("button", { name: "Save branding" }).click();
   await expect(page.getByText("Branding saved.")).toBeVisible();
 
   const a = await addClientWithProject(page, slug, "Client Alpha", "Alpha");

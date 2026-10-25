@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { BrandingForm } from "@/components/app/branding-form";
+import { CustomDomainPanel } from "@/components/app/custom-domain-panel";
 import { getPageContext, requirePermission } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { getBranding } from "@/server/services/branding";
+import { getCustomDomain } from "@/server/services/custom-domain";
 
 export const metadata: Metadata = { title: "Branding" };
 export const dynamic = "force-dynamic";
@@ -16,6 +18,7 @@ export default async function BrandingPage({
   const { ctx } = await getPageContext(agencySlug);
   requirePermission(ctx, "branding.edit");
   const branding = await getBranding(ctx);
+  const domain = await getCustomDomain(ctx);
   return (
     <div className="space-y-6">
       <div>
@@ -38,6 +41,15 @@ export default async function BrandingPage({
           website: branding.website ?? "",
         }}
       />
+      {domain.enabled ? (
+        <CustomDomainPanel
+          agencySlug={agencySlug}
+          domain={domain.domain}
+          status={domain.status}
+          records={domain.records}
+          allowedByPlan={domain.allowedByPlan}
+        />
+      ) : null}
     </div>
   );
 }

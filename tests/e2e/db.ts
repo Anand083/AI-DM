@@ -91,3 +91,23 @@ export async function expireShareLink(reportTitle: string) {
     }),
   );
 }
+
+/** Moves an agency to another plan, as billing would after an upgrade. */
+export async function setPlan(agencySlug: string, planCode: string) {
+  return withDb(async (prisma) => {
+    const agency = await prisma.agency.findUniqueOrThrow({ where: { slug: agencySlug } });
+    const plan = await prisma.plan.findUniqueOrThrow({ where: { code: planCode } });
+    await prisma.subscription.update({ where: { agencyId: agency.id }, data: { planId: plan.id } });
+  });
+}
+
+/** Marks an agency's custom domain as verified, as the DNS check would once records exist. */
+export async function markDomainVerified(agencySlug: string) {
+  return withDb(async (prisma) => {
+    const agency = await prisma.agency.findUniqueOrThrow({ where: { slug: agencySlug } });
+    await prisma.branding.update({
+      where: { agencyId: agency.id },
+      data: { customDomainStatus: "VERIFIED" },
+    });
+  });
+}

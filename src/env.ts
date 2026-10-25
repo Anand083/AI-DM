@@ -15,6 +15,8 @@ const baseSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_NAME: z.string().min(1).default("SEO Platform"),
   APP_URL: z.url().default("http://localhost:3000"),
+  /** The host agencies point their CNAME at. Defaults to the host in APP_URL. */
+  CUSTOM_DOMAIN_CNAME_TARGET: optionalString,
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 
   DATABASE_URL: z.string().min(1).default("postgresql://app:app@localhost:5432/app"),

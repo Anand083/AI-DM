@@ -18,9 +18,9 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         // Optional: use an already installed Chromium (for example in a cloud sandbox).
-        launchOptions: process.env.PW_CHROMIUM_PATH
-          ? { executablePath: process.env.PW_CHROMIUM_PATH }
-          : {},
+        launchOptions: {
+          ...(process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {}),
+        },
       },
     },
   ],
@@ -31,7 +31,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
       // Many sign-ups come from one IP in tests, so raise the auth rate limit.
-      env: { AUTH_RATE_LIMIT_MAX: "1000" },
+      env: { AUTH_RATE_LIMIT_MAX: "1000", CUSTOM_DOMAINS_ENABLED: "true" },
     },
     {
       // The worker sends emails (and runs all other background jobs).
