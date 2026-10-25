@@ -171,6 +171,8 @@ export async function pollAudit(
           lcpMs: p.lcpMs ?? null,
           cls: p.cls ?? null,
           inpMs: p.inpMs ?? null,
+          lastModified: p.lastModified ? new Date(`${p.lastModified}T00:00:00Z`) : null,
+          inlinks: p.inlinks ?? null,
         })),
       });
     }

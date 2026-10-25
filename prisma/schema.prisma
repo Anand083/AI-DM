@@ -216,6 +216,7 @@ model Agency {
   locations          Location[]
   localRanks         LocalRank[]
   listingChecks      ListingCheck[]
+  contentUpdates     ContentUpdate[]
 
   @@index([status, deletedAt])
 }
@@ -339,6 +340,7 @@ model Project {
   locations          Location[]
   localRanks         LocalRank[]
   listingChecks      ListingCheck[]
+  contentUpdates     ContentUpdate[]
 
   @@index([agencyId, clientId, deletedAt])
   @@index([agencyId, domain])
@@ -648,19 +650,23 @@ model Audit {
 }
 
 model AuditPage {
-  id         String  @id @default(cuid(2))
-  agencyId   String
-  auditId    String
-  url        String
-  statusCode Int
-  title      String?
-  loadTimeMs Int
-  wordCount  Int
-  issueCount Int
+  id           String    @id @default(cuid(2))
+  agencyId     String
+  auditId      String
+  url          String
+  statusCode   Int
+  title        String?
+  loadTimeMs   Int
+  wordCount    Int
+  issueCount   Int
   /// Core Web Vitals when measured: LCP and INP in ms, CLS times 1000.
-  lcpMs      Int?
-  cls        Int?
-  inpMs      Int?
+  lcpMs        Int?
+  cls          Int?
+  inpMs        Int?
+  /// Last update day of the page when the crawl could tell (HTTP date, sitemap or page markup).
+  lastModified DateTime? @db.Date
+  /// Internal links pointing to the page, when the crawl counted them.
+  inlinks      Int?
 
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   audit  Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
@@ -1741,4 +1747,25 @@ model ListingCheck {
 
   @@unique([locationId, source])
   @@index([agencyId, projectId, locationId])
+}
+
+/// A content update the team made to a page, with the page's numbers just before it. The "after" is read later.
+model ContentUpdate {
+  id                     String   @id @default(cuid(2))
+  agencyId               String
+  projectId              String
+  url                    String
+  updatedOn              DateTime @db.Date
+  note                   String?
+  /// Clicks, impressions and average position (tenths) of the page in the 28 days before the update.
+  baselineClicks         Int
+  baselineImpressions    Int
+  baselinePositionTenths Int?
+  createdById            String?
+  createdAt              DateTime @default(now())
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, projectId, updatedOn])
 }

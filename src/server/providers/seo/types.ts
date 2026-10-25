@@ -80,6 +80,10 @@ export type AuditPageResult = {
   lcpMs?: number | null;
   cls?: number | null;
   inpMs?: number | null;
+  /** Last update day (YYYY-MM-DD) when the crawl could tell. */
+  lastModified?: string | null;
+  /** Internal links pointing to the page, when counted. */
+  inlinks?: number | null;
 };
 
 /** What the crawl found out about robots.txt and the sitemap. */

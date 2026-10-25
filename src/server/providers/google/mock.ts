@@ -1,3 +1,4 @@
+import { MOCK_SITE_PATHS } from "@/data/mock-paths";
 import { makeRng } from "../seo/mock/prng";
 import {
   GOOGLE_SCOPES,
@@ -19,18 +20,6 @@ export const MOCK_REVOKED_REFRESH_TOKEN = "mock-refresh-revoked";
 
 const DAY_MS = 86_400_000;
 
-const MOCK_PATHS = [
-  "/",
-  "/services",
-  "/blog/seo-checklist",
-  "/contact",
-  "/about",
-  "/pricing",
-  "/blog/local-seo-guide",
-  "/blog/link-building",
-  "/case-studies",
-  "/faq",
-];
 const BREAKDOWN_NAMES: Record<BreakdownDimension, (site: string) => string[]> = {
   QUERY: () => [
     "seo agency",
@@ -48,7 +37,7 @@ const BREAKDOWN_NAMES: Record<BreakdownDimension, (site: string) => string[]> = 
     const base = site.startsWith("sc-domain:")
       ? `https://${site.slice("sc-domain:".length)}`
       : site.replace(/\/$/, "");
-    return MOCK_PATHS.map((p) => `${base}${p}`);
+    return MOCK_SITE_PATHS.map((p) => `${base}${p}`);
   },
   COUNTRY: () => ["usa", "gbr", "ind", "can", "aus", "deu"],
   DEVICE: () => ["MOBILE", "DESKTOP", "TABLET"],
@@ -194,7 +183,7 @@ export class MockGoogleProvider implements GoogleProvider {
     input: { propertyId: string; startDate: string; endDate: string; limit: number },
   ): Promise<AnalyticsPageRow[]> {
     const days = datesBetween(input.startDate, input.endDate).length;
-    return MOCK_PATHS.slice(0, input.limit).map((path, i) => {
+    return MOCK_SITE_PATHS.slice(0, input.limit).map((path, i) => {
       const rng = makeRng(input.propertyId, "ga4-page", path, input.startDate);
       const sessions = Math.max(
         2,

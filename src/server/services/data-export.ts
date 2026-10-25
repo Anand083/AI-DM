@@ -508,6 +508,11 @@ export function exportFiles(
       rows: allRows((a) => rawDb.listingCheck.findMany({ where, ...order, ...a })),
     },
     {
+      name: "content-updates.jsonl",
+      model: "ContentUpdate",
+      rows: allRows((a) => rawDb.contentUpdate.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "activity-log.jsonl",
       model: "ActivityLog",
       rows: allRows((a) => rawDb.activityLog.findMany({ where, ...order, ...a })),

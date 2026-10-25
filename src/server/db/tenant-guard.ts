@@ -68,6 +68,7 @@ export const TENANT_MODELS = new Set([
   "Location",
   "LocalRank",
   "ListingCheck",
+  "ContentUpdate",
 ]);
 
 const WHERE_OPERATIONS = new Set([

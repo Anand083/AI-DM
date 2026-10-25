@@ -3,6 +3,7 @@ import {
   AUDIT_ISSUE_SEVERITY,
   type AuditIssueCode,
 } from "@/server/audit/issue-codes";
+import { MOCK_SITE_PATHS } from "@/data/mock-paths";
 import { ProviderError } from "../errors";
 import type {
   AuditIssueFound,
@@ -106,7 +107,11 @@ export function buildAuditResult(
   const issues: AuditIssueFound[] = [];
 
   for (let i = 0; i < pageCount; i++) {
-    const url = i === 0 ? `${origin}/` : `${origin}/${rng.pick(WORDS)}/${rng.pick(WORDS)}-${i}`;
+    // The first pages are the ones the sample Google data knows, so traffic and audit line up.
+    const url =
+      i < MOCK_SITE_PATHS.length
+        ? `${origin}${MOCK_SITE_PATHS[i]}`
+        : `${origin}/${rng.pick(WORDS)}/${rng.pick(WORDS)}-${i}`;
     const statusRoll = rng.next();
     const statusCode =
       i === 0
@@ -124,6 +129,13 @@ export function buildAuditResult(
     const lcpMs = Math.max(400, Math.round(Math.exp(rng.normal(7.7, 0.4))));
     const cls = Math.round(Math.abs(rng.normal(0.06, 0.08)) * 1000);
     const inpMs = Math.max(30, Math.round(Math.exp(rng.normal(5.3, 0.5))));
+    const ageDays = rng.chance(0.1) ? null : Math.round(Math.exp(rng.normal(5.2, 1.1)));
+    const lastModified =
+      ageDays === null
+        ? null
+        : new Date(startedAt.getTime() - ageDays * 86_400_000).toISOString().slice(0, 10);
+    const inlinks =
+      i === 0 ? rng.int(40, 200) : Math.max(0, Math.round(Math.exp(rng.normal(1.8, 1.1)) - 1));
     const found: AuditIssueCode[] = [];
     const details: Partial<Record<AuditIssueCode, Record<string, string | number | boolean>>> = {};
 
@@ -181,6 +193,8 @@ export function buildAuditResult(
       lcpMs,
       cls,
       inpMs,
+      lastModified,
+      inlinks,
     });
   }
 
