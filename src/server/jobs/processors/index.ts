@@ -65,6 +65,8 @@ import { runAiScheduler } from "@/server/jobs/system/ai-scheduler";
 import { runBacklinkScheduler } from "@/server/jobs/system/backlink-scheduler";
 import { runBillingTick } from "@/server/jobs/system/billing-tick";
 import { runReportDispatcher } from "@/server/jobs/system/report-dispatcher";
+import { runWebhookDeliveries, runWebhookTest } from "@/server/services/webhook-runner";
+import { addressAllowed, sendWebhook } from "@/server/services/webhook-send";
 import { runRankCheckScheduler } from "@/server/jobs/system/scheduler";
 
 type RankJobData = { projectId: string; agencyId: string; date: string; keywordIds?: string[] };
@@ -145,6 +147,14 @@ export const processors: JobProcessors = {
           enqueue: enqueueReport,
         });
         if (reports.created > 0) logger.info(reports, "scheduled reports queued");
+        const webhookRuns = await runWebhookDeliveries({
+          db: rawDb,
+          now: new Date(),
+          send: sendWebhook,
+          addressAllowed,
+        });
+        if (webhookRuns.sent + webhookRuns.failed > 0)
+          logger.info(webhookRuns, "webhook deliveries");
         const billing = await runBillingTick({ db: rawDb, now: new Date() });
         if (billing.checked + billing.reminders > 0) logger.info(billing, "billing tick");
         return {
@@ -275,6 +285,15 @@ export const processors: JobProcessors = {
           data,
         );
         logger.info({ jobId: job.id, ...result }, "google sync");
+        return result;
+      }
+      case "webhook-test": {
+        const data = job.data as { agencyId: string; webhookId: string };
+        const result = await runWebhookTest(
+          { db: rawDb, now: new Date(), send: sendWebhook, addressAllowed },
+          data,
+        );
+        logger.info({ jobId: job.id, ...result }, "webhook test");
         return result;
       }
       case "assistant": {

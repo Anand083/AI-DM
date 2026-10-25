@@ -9,6 +9,7 @@ import {
   updateAgencySchema,
   updateAgencySettings,
 } from "@/server/services/agency";
+import { setMyDigest } from "@/server/services/notifications";
 import { requestExport } from "@/server/services/data-export";
 
 const update = withTenantAction(
@@ -43,5 +44,16 @@ export async function requestExportAction(slug: string) {
 export async function deleteAgencyAction(slug: string, input: unknown) {
   const result = await remove(slug, input);
   if (result.ok) revalidatePath("/app", "layout");
+  return result;
+}
+
+const myDigest = withTenantAction(
+  { permission: "data.view", schema: z.object({ on: z.boolean() }) },
+  (ctx, input) => setMyDigest(ctx, input.on),
+);
+
+export async function setMyDigestAction(slug: string, on: boolean) {
+  const result = await myDigest(slug, { on });
+  if (result.ok) revalidatePath(`/app/${slug}/settings`);
   return result;
 }

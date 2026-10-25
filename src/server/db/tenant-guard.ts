@@ -73,6 +73,9 @@ export const TENANT_MODELS = new Set([
   "AssistantAction",
   "CurrencyRate",
   "AgencyAddOn",
+  "ApiKey",
+  "Webhook",
+  "WebhookDelivery",
 ]);
 
 const WHERE_OPERATIONS = new Set([

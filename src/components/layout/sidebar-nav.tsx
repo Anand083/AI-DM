@@ -11,6 +11,7 @@ import {
   ListChecks,
   MailPlus,
   Palette,
+  Plug,
   Coins,
   Settings,
   TrendingUp,
@@ -37,6 +38,7 @@ const ICONS: Record<NavKey, LucideIcon> = {
   branding: Palette,
   billing: CreditCard,
   usage: Gauge,
+  integrations: Plug,
   help: CircleHelp,
   settings: Settings,
 };

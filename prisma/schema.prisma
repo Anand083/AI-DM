@@ -225,16 +225,21 @@ model Agency {
   assistantActions   AssistantAction[]
   currencyRates      CurrencyRate[]
   addOns             AgencyAddOn[]
+  apiKeys            ApiKey[]
+  webhooks           Webhook[]
+  webhookDeliveries  WebhookDelivery[]
 
   @@index([status, deletedAt])
 }
 
 model AgencyMember {
-  id        String     @id @default(cuid(2))
-  agencyId  String
-  userId    String
-  role      MemberRole
-  createdAt DateTime   @default(now())
+  id          String     @id @default(cuid(2))
+  agencyId    String
+  userId      String
+  role        MemberRole
+  /// Gets the email summary of new alerts when the agency has the daily digest on.
+  emailDigest Boolean    @default(true)
+  createdAt   DateTime   @default(now())
 
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1860,4 +1865,67 @@ model AgencyAddOn {
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
   @@index([agencyId, limitKey])
+}
+
+/// A key for the public API. Only a hash is stored; the key itself is shown once when it is made.
+model ApiKey {
+  id          String    @id @default(cuid(2))
+  agencyId    String
+  name        String
+  /// The first characters of the key, so people can tell keys apart.
+  prefix      String
+  keyHash     String    @unique
+  /// For example read:clients.
+  scopes      String[]
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, createdAt])
+}
+
+/// A web address that receives a message when something happens (new alerts). JSON or Slack format.
+model Webhook {
+  id             String    @id @default(cuid(2))
+  agencyId       String
+  url            String
+  /// JSON or SLACK.
+  format         String    @default("JSON")
+  /// Signs each JSON message (header X-Signature).
+  secret         String
+  enabled        Boolean   @default(true)
+  /// Alerts created after this time have not been sent yet.
+  cursorAt       DateTime  @default(now())
+  failureStreak  Int       @default(0)
+  lastError      String?
+  lastDeliveryAt DateTime?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+
+  agency     Agency            @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@index([agencyId, createdAt])
+  @@index([enabled, cursorAt])
+}
+
+model WebhookDelivery {
+  id         String   @id @default(cuid(2))
+  agencyId   String
+  webhookId  String
+  event      String
+  alertId    String?
+  /// SUCCESS or FAILED.
+  status     String
+  httpStatus Int?
+  error      String?
+  createdAt  DateTime @default(now())
+
+  agency  Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId, webhookId, createdAt])
 }

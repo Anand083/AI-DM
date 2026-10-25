@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { DataExportPanel } from "@/components/app/data-export-panel";
 import { DeleteAgencyPanel } from "@/components/app/delete-agency-panel";
+import { MyNotifications } from "@/components/app/my-notifications";
 import { SettingsForm } from "@/components/app/settings-form";
 import { can } from "@/server/auth/permissions";
 import { getPageContext } from "@/server/auth/page-context";
 import { getAgency } from "@/server/services/agency";
 import { listExports } from "@/server/services/data-export";
+import { getMyNotifications } from "@/server/services/notifications";
 
 export const metadata: Metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
@@ -21,6 +23,7 @@ export default async function SettingsPage({
   const canEdit = can(ctx.role, "branding.edit");
   const isOwner = can(ctx.role, "agency.manage");
   const exports = isOwner ? await listExports(ctx) : [];
+  const mine = await getMyNotifications(ctx);
   const when = (d: Date) =>
     new Intl.DateTimeFormat("en-US", {
       dateStyle: "medium",
@@ -51,6 +54,15 @@ export default async function SettingsPage({
           address={`/app/${agency.slug}`}
         />
       </div>
+      {can(ctx.role, "branding.edit") ? (
+        <div className="mt-8">
+          <MyNotifications
+            agencySlug={agencySlug}
+            digest={mine.emailDigest}
+            digestAvailable={agency.dailyDigest}
+          />
+        </div>
+      ) : null}
       {isOwner ? (
         <div className="mt-10 space-y-8">
           <DataExportPanel

@@ -523,6 +523,25 @@ export function exportFiles(
       rows: allRows((a) => rawDb.currencyRate.findMany({ where, ...order, ...a })),
     },
     {
+      name: "api-keys.jsonl",
+      model: "ApiKey",
+      rows: allRows((a) =>
+        rawDb.apiKey.findMany({ where, ...order, omit: { keyHash: true }, ...a }),
+      ),
+    },
+    {
+      name: "webhooks.jsonl",
+      model: "Webhook",
+      rows: allRows((a) =>
+        rawDb.webhook.findMany({ where, ...order, omit: { secret: true }, ...a }),
+      ),
+    },
+    {
+      name: "webhook-deliveries.jsonl",
+      model: "WebhookDelivery",
+      rows: allRows((a) => rawDb.webhookDelivery.findMany({ where, ...order, ...a })),
+    },
+    {
       name: "add-ons.jsonl",
       model: "AgencyAddOn",
       rows: allRows((a) => rawDb.agencyAddOn.findMany({ where, ...order, ...a })),

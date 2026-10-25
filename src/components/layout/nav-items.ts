@@ -14,6 +14,7 @@ export type NavKey =
   | "branding"
   | "billing"
   | "usage"
+  | "integrations"
   | "settings"
   | "help";
 
@@ -39,6 +40,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: "branding", label: "Branding", path: "/branding", permission: "branding.edit" },
   { key: "billing", label: "Billing", path: "/billing", permission: "billing.manage" },
   { key: "usage", label: "Usage", path: "/usage", permission: "branding.edit" },
+  {
+    key: "integrations",
+    label: "Integrations",
+    path: "/integrations",
+    permission: "branding.edit",
+  },
   { key: "settings", label: "Settings", path: "/settings", permission: "data.view" },
   { key: "help", label: "Help", path: "/help", permission: "data.view" },
 ];

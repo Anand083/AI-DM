@@ -65,7 +65,7 @@ export async function sendDigest(deps: {
   let sent = 0;
   if (alerts.length > 0) {
     const members = await deps.db.agencyMember.findMany({
-      where: { agencyId: agency.id, role: { in: ["OWNER", "ADMIN"] } },
+      where: { agencyId: agency.id, role: { in: ["OWNER", "ADMIN"] }, emailDigest: true },
       select: { user: { select: { email: true } } },
       take: 50,
     });

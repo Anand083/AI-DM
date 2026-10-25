@@ -19,6 +19,7 @@ export type RouteGuard =
   | "public-agency-brand" // public information about an agency (logo), rate limited
   | "public-lead-token" // the long random id of a widget lead; returns the result only, rate limited
   | "public-static" // the same text for everyone, no data
+  | "api-key" // a key for the public API; the key decides the agency and its permission
   | "auth-library" // handled by Better Auth
   | "health"; // no data
 
@@ -29,6 +30,10 @@ export const ROUTES: Record<string, RouteGuard> = {
   "src/app/api/google/callback/route.ts": "tenant",
   "src/app/api/google/start/route.ts": "tenant",
   "src/app/api/health/route.ts": "health",
+  "src/app/api/v1/alerts/route.ts": "api-key",
+  "src/app/api/v1/clients/route.ts": "api-key",
+  "src/app/api/v1/projects/route.ts": "api-key",
+  "src/app/api/v1/projects/[projectId]/rankings/route.ts": "api-key",
   "src/app/api/widget/lead/[publicId]/route.ts": "public-lead-token",
   "src/app/api/internal/domain-allowed/route.ts": "feature-flag",
   "src/app/api/internal/domain-resolve/route.ts": "feature-flag",
@@ -62,6 +67,7 @@ export const ROUTE_GUARD_MARKERS: Record<RouteGuard, string[]> = {
   "public-agency-brand": ["loadPortalBrand(", "limitRequest("],
   "public-lead-token": ["getLeadStatus(", "limitRequest("],
   "public-static": ["export async function GET"],
+  "api-key": ["withApiKey("],
   "auth-library": ["toNextJsHandler("],
   health: ["export async function GET"],
 };
@@ -94,6 +100,7 @@ export const ACTION_FILES: Record<string, ActionGuard> = {
   "src/app/app/[agencySlug]/projects/[projectId]/assistant/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/content/actions.ts": "tenant",
   "src/app/app/[agencySlug]/profitability/actions.ts": "tenant",
+  "src/app/app/[agencySlug]/integrations/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/locations/actions.ts": "tenant",
   "src/app/app/[agencySlug]/projects/[projectId]/keyword-insights/actions.ts": "tenant",
   "src/app/app/[agencySlug]/leads/actions.ts": "tenant",

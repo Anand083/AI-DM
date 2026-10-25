@@ -121,6 +121,14 @@ export async function enqueueAssistant(data: {
   return true;
 }
 
+/** Queues a sample message to one webhook. The worker sends it. */
+export async function enqueueWebhookTest(data: {
+  agencyId: string;
+  webhookId: string;
+}): Promise<void> {
+  await getQueue("modules").add("webhook-test", data, { attempts: 1 });
+}
+
 /** Queues a local rank check for the locations of a project. Returns false if one is queued for that date. */
 export async function enqueueLocalRanks(data: {
   agencyId: string;

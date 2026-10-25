@@ -19,6 +19,7 @@ describe("navItemsFor", () => {
       "branding",
       "billing",
       "usage",
+      "integrations",
       "settings",
       "help",
     ]);
@@ -33,7 +34,8 @@ describe("navItemsFor", () => {
   });
   it("hides branding, billing and usage from members", () => {
     const list = keys("MEMBER");
-    for (const hidden of ["branding", "billing", "usage"]) expect(list).not.toContain(hidden);
+    for (const hidden of ["branding", "billing", "usage", "integrations"])
+      expect(list).not.toContain(hidden);
     expect(list).toContain("team");
   });
 });
