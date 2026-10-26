@@ -9,9 +9,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { SearchForm } from "@/components/ui/search-form";
 import { Select } from "@/components/ui/select";
+import { ProgressCard } from "@/components/app/progress-card";
 import { BUCKETS, type BucketKey } from "@/lib/rank-math";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
+import { getProjectProgress } from "@/server/services/progress";
 import { listProjectTags, listRankings, SORTS, type RankingSort } from "@/server/services/keywords";
 
 export const metadata: Metadata = { title: "Rankings" };
@@ -45,9 +47,10 @@ export default async function RankingsPage({
   const dir = one(sp.dir) === "desc" ? "desc" : "asc";
   const page = pageFromParams(sp.page);
 
-  const [{ rows, total }, tags] = await Promise.all([
+  const [{ rows, total }, tags, progress] = await Promise.all([
     listRankings(ctx, projectId, { q, tag, bucket, sort, dir, page, pageSize: PAGE_SIZE }),
     listProjectTags(ctx, projectId),
+    getProjectProgress(ctx, projectId),
   ]);
 
   const base = `/app/${agencySlug}/projects/${projectId}/rankings`;
@@ -86,6 +89,7 @@ export default async function RankingsPage({
 
   return (
     <div className="space-y-8">
+      <ProgressCard progress={progress} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h2 className="text-lg font-semibold">Keyword rankings</h2>
         <div className="flex flex-wrap items-start gap-3">

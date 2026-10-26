@@ -63,6 +63,7 @@ test("search, filter, save to a list and add 3 keywords to the rank tracker", as
 
   // The same 3 can be saved to a new list.
   for (let i = 1; i <= 3; i++) await rows.nth(i).getByRole("checkbox").check();
+  await page.getByText("Save to a list for later (optional)").click();
   await page.getByLabel("New list name").fill("Dentist ideas");
   await page.getByRole("button", { name: "Save to list" }).click();
   await expect(

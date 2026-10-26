@@ -10,6 +10,8 @@ import { Pagination, pageFromParams } from "@/components/ui/pagination";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { getEnv } from "@/env";
+import { ProgressCard } from "@/components/app/progress-card";
+import { getClientProgress } from "@/server/services/progress";
 import { getClient } from "@/server/services/clients";
 import { listClientUsers } from "@/server/services/client-users";
 import { NotFoundError } from "@/server/services/errors";
@@ -37,7 +39,10 @@ export default async function ClientPage({
     throw error;
   });
   const page = pageFromParams(sp.page);
-  const { rows, total } = await listProjects(ctx, { clientId, page, pageSize: PAGE_SIZE });
+  const [{ rows, total }, progress] = await Promise.all([
+    listProjects(ctx, { clientId, page, pageSize: PAGE_SIZE }),
+    getClientProgress(ctx, clientId),
+  ]);
   const base = `/app/${agencySlug}/clients/${client.id}`;
   const canEdit = can(ctx.role, "content.edit");
   const canInvite = can(ctx.role, "clientUsers.invite");
@@ -87,6 +92,8 @@ export default async function ClientPage({
           </div>
         ) : null}
       </dl>
+
+      <ProgressCard progress={progress} />
 
       <section aria-labelledby="projects-heading" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">

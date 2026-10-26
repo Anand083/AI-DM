@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckNowButton } from "@/components/app/check-now-button";
+import { ProgressCard } from "@/components/app/progress-card";
 import { ChangeBadge, DistributionBars, StatCard } from "@/components/app/rank-widgets";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getPageContext } from "@/server/auth/page-context";
 import { can } from "@/server/auth/permissions";
 import { getAnalyticsOverview } from "@/server/services/google";
 import { getProjectSummary } from "@/server/services/keywords";
+import { getProjectProgress } from "@/server/services/progress";
 
 export const metadata: Metadata = { title: "Project overview" };
 export const dynamic = "force-dynamic";
@@ -21,9 +23,10 @@ export default async function ProjectOverview({
 }) {
   const { agencySlug, projectId } = await params;
   const { ctx } = await getPageContext(agencySlug);
-  const [summary, google] = await Promise.all([
+  const [summary, google, progress] = await Promise.all([
     getProjectSummary(ctx, projectId),
     getAnalyticsOverview(ctx, projectId),
+    getProjectProgress(ctx, projectId),
   ]);
   const base = `/app/${agencySlug}/projects/${projectId}`;
 
@@ -45,6 +48,7 @@ export default async function ProjectOverview({
 
   return (
     <div className="space-y-8">
+      <ProgressCard progress={progress} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Average position"

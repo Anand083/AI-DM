@@ -121,45 +121,6 @@ export function ResearchTable({
             {selected.size} selected
           </p>
           {error ? <FormMessage kind="error">{error}</FormMessage> : null}
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label htmlFor="save-list" className="mb-1 block text-xs font-medium">
-                Save to list
-              </label>
-              <Select
-                id="save-list"
-                value={listId}
-                onChange={(e) => setListId(e.target.value)}
-                className="w-48"
-              >
-                <option value="">New list...</option>
-                {lists.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            {listId === "" ? (
-              <div>
-                <label htmlFor="new-list" className="mb-1 block text-xs font-medium">
-                  New list name
-                </label>
-                <Input
-                  id="new-list"
-                  value={newListName}
-                  onChange={(e) => setNewListName(e.target.value)}
-                  className="w-48"
-                />
-              </div>
-            ) : null}
-            <Button
-              onClick={saveToList}
-              disabled={busy || (listId === "" && newListName.trim().length < 2)}
-            >
-              Save to list
-            </Button>
-          </div>
           {projects.length > 0 ? (
             <div className="flex flex-wrap items-end gap-3">
               <div>
@@ -188,6 +149,52 @@ export function ResearchTable({
               Create a project first to track these keywords.
             </p>
           )}
+          <details className="rounded-md border border-zinc-200 dark:border-zinc-800">
+            <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
+              Save to a list for later (optional)
+            </summary>
+            <div className="p-3">
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label htmlFor="save-list" className="mb-1 block text-xs font-medium">
+                    Save to list
+                  </label>
+                  <Select
+                    id="save-list"
+                    value={listId}
+                    onChange={(e) => setListId(e.target.value)}
+                    className="w-48"
+                  >
+                    <option value="">New list...</option>
+                    {lists.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                {listId === "" ? (
+                  <div>
+                    <label htmlFor="new-list" className="mb-1 block text-xs font-medium">
+                      New list name
+                    </label>
+                    <Input
+                      id="new-list"
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                      className="w-48"
+                    />
+                  </div>
+                ) : null}
+                <Button
+                  onClick={saveToList}
+                  disabled={busy || (listId === "" && newListName.trim().length < 2)}
+                >
+                  Save to list
+                </Button>
+              </div>
+            </div>
+          </details>
         </div>
       ) : null}
 
